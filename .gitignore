@@ -1,0 +1,13 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+models/
+.vscode/
+results/*
+data/aortic_data
+data/cerebro_data
+data/UCSF_data
+data/CARDIAC
+venv_setup.txt
