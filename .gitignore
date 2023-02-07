@@ -11,4 +11,5 @@ data/aortic_data
 data/cerebro_data
 data/UCSF_data
 data/CARDIAC
+data/example_data
 venv_setup.txt
