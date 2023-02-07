@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 *.log
 models/
+4DFlowNet/*
 .vscode/
 results/*
 data/aortic_data
