@@ -25,19 +25,38 @@ def crop_mask(mask, desired_shape, downsample):
         mask = mask[:,:,1:-1]
         
     return mask
+def simple_temporal_downsampling(hr_data, downsample =2):
+    assert(len(hr_data.shape) == 4) # assume that data is of form t, h, w, d
+    if downsample ==2:
+        if hr_data.shape[0] % 2 == 0:
+            print("Even numver of frames: delete last frame")
+        
+        lr_frames = int(np.ceil(hr_data.shape[0]/2))
+
+        lr_data = np.zeros((lr_frames, hr_data.shape[1], hr_data.shape[2], hr_data.shape[3]))
+        print("Temporal downsampling from ", hr_data.shape[0], " frames to ", lr_frames, " frames." )
+        lr_data = hr_data[::2, : , :, :]
+        print(hr_data[::2, : , :, :].shape)
+        return lr_data
+        
+    else:
+        print("Only implemented for downsampling by 2, please implement if needed.")
+
+
+
 
 if __name__ == '__main__':
     # Config
     base_path = 'Temporal4DFlowNet/data/CARDIAC'
     # Put your path to Hires Dataset
-    input_filepath  =  f'{base_path}/M3_2mm_step5_static.h5'
-    output_filename = f'{base_path}/M3_2mm_step5_static_LR.h5' 
+    input_filepath  =  f'{base_path}/M1_2mm_step5_static.h5'
+    output_filename = f'{base_path}/M1_2mm_step5_static_TLR.h5' 
     # Downsample rate 
     downsample = 2
 
     # Check if file already exists
     if os.path.exists(output_filename): print("___ WARNING: overwriting already existing .h5 file!!____ ")
-    assert( not os.path.exists(output_filename))    # if file already exists: STOP, since it just adds to the current file
+    #assert( not os.path.exists(output_filename))    # if file already exists: STOP, since it just adds to the current file
 
     # --- Ready to do downsampling ---
     # setting the seeds for both random and np random, if we need to get the same random order on dataset everytime
@@ -58,10 +77,10 @@ if __name__ == '__main__':
             mask = mask[0]
         data_count = len(hf.get("u"))
 
-        # #TODO delete. 
-        # #show all the input data as gif
-        # stack = np.concatenate((hf["u"][0],hf["v"][0],hf["w"][0]), axis =0 )
-        # generate_gif_volume(stack, save_as="u_v_w", axis = 2)
+        hr_u = np.zeros_like(hf["u"])
+        hr_v = np.zeros_like(hf["u"])
+        hr_w = np.zeros_like(hf["u"])
+        hr_mag = np.zeros_like(hf["u"])
     
     print("Datacount:", data_count, " mask shape ", mask.shape)
     
@@ -84,9 +103,9 @@ if __name__ == '__main__':
             print("mask shape", mask.shape)
             #TODO check if dynamic
 
-            hr_u = np.asarray(hf['u'][idx])
-            hr_v = np.asarray(hf['v'][idx])
-            hr_w = np.asarray(hf['w'][idx])
+            hr_u_frame = np.asarray(hf['u'][idx])
+            hr_v_frame = np.asarray(hf['v'][idx])
+            hr_w_frame = np.asarray(hf['w'][idx])
             
             # Calculate the possible VENC for each direction (* 1.1 to avoid aliasing)
             max_u = np.asarray(hf['u_max'][idx]) * base_venc_multiplier
@@ -134,40 +153,47 @@ if __name__ == '__main__':
                 venc_w = vencs[2]
                  
         print(venc_choice, venc_u, venc_v, venc_w)
+        hr_u[idx, :, :, :] = hr_u_frame
+        hr_v[idx, :, :, :] = hr_v_frame
+        hr_w[idx, :, :, :] = hr_w_frame
+        hr_mag[idx, :, :, :] = mag_image
 
-        # DO the downsampling
-        lr_u, mag_u = fft.downsample_phase_img(hr_u, mag_image, venc_u, crop_ratio, targetSNRdb)
-        lr_v, mag_v = fft.downsample_phase_img(hr_v, mag_image, venc_v, crop_ratio, targetSNRdb)
-        lr_w, mag_w = fft.downsample_phase_img(hr_w, mag_image, venc_w, crop_ratio, targetSNRdb)
+        # only every second (even) needed for downsampling 
+        if idx % 2 == 0: 
+            save_to_h5(output_filename, "venc_u", venc_u)
+            save_to_h5(output_filename, "venc_v", venc_v)
+            save_to_h5(output_filename, "venc_w", venc_w)
+            save_to_h5(output_filename, "SNRdb", targetSNRdb)
 
-        print("lr max/min u", np.max(lr_u), np.min(lr_u), " shape ", lr_u.shape, "Mask max/min:", np.max(mask), np.min(mask))
+    # DO the downsampling
+    #TODO this is my part 
+    lr_u = simple_temporal_downsampling(hr_u, downsample)
+    lr_v = simple_temporal_downsampling(hr_v, downsample)
+    lr_w = simple_temporal_downsampling(hr_w, downsample)
 
-        stack = np.concatenate((lr_u, lr_v, lr_w), axis =0 )
-        generate_gif_volume(stack, save_as="u_v_w_LR", axis = 2)
+    mag_u = mag_v = mag_w = simple_temporal_downsampling(hr_mag)
 
-        # Save the downsampled images
-        save_to_h5(output_filename, "u", lr_u)
-        save_to_h5(output_filename, "v", lr_v)
-        save_to_h5(output_filename, "w", lr_w)
+    print("lr max/min u", np.max(lr_u), np.min(lr_u), " shape ", lr_u.shape, "Mask max/min:", np.max(mask), np.min(mask))
 
-        save_to_h5(output_filename, "mag_u", mag_u)
-        save_to_h5(output_filename, "mag_v", mag_v)
-        save_to_h5(output_filename, "mag_w", mag_w)
+    # Save the downsampled images
+    save_to_h5(output_filename, "u", lr_u, expand_dims=False)
+    save_to_h5(output_filename, "v", lr_v, expand_dims=False)
+    save_to_h5(output_filename, "w", lr_w, expand_dims=False)
 
-        save_to_h5(output_filename, "venc_u", venc_u)
-        save_to_h5(output_filename, "venc_v", venc_v)
-        save_to_h5(output_filename, "venc_w", venc_w)
-        save_to_h5(output_filename, "SNRdb", targetSNRdb)
-        
-        # Only save mask once
-        if not is_mask_saved:
-            # Use the downsampled shape, lr_u, to crop mask before applying zoom.
-            # Otherwise the resulting mask and vector fields may mismatch in shape.
-            mask_crop = crop_mask(mask, np.array(lr_u), downsample)
-            new_mask = ndimage.zoom(mask_crop, crop_ratio, order=1)
-            print("Saving downsampled mask...")
-            save_to_h5(output_filename, "mask", new_mask)
+    save_to_h5(output_filename, "mag_u", mag_u, expand_dims=False)
+    save_to_h5(output_filename, "mag_v", mag_v, expand_dims=False)
+    save_to_h5(output_filename, "mag_w", mag_w, expand_dims=False)
 
-            is_mask_saved = True
+    # Only save mask once
+
+    if not is_mask_saved:
+        # Use the downsampled shape, lr_u, to crop mask before applying zoom.
+        # Otherwise the resulting mask and vector fields may mismatch in shape.
+        #mask_crop = crop_mask(mask, np.array(lr_u), downsample)
+        #new_mask = ndimage.zoom(mask_crop, crop_ratio, order=1)
+        print("Saving downsampled mask...")
+        save_to_h5(output_filename, "mask", mask)
+
+        is_mask_saved = True
 
     print("Done!")

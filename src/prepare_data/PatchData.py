@@ -8,7 +8,17 @@ def write_header(filename):
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
 
-
+#TODO there has to be a more efficent way
+def create_temporal_mask(mask, n_frames):
+    '''
+    from static mask create temporal mask of shape (n_frames, h, w, d)
+    '''
+    assert(len(mask.shape) == 3), " shape: " + str(mask.shape) # shape of mask is assumed to be 3 dimensional
+    temporal_mask = np.zeros((n_frames, mask.shape[0], mask.shape[1], mask.shape[2]))
+    for i in range(n_frames):
+        temporal_mask[i, :, :, :] = mask
+    return temporal_mask
+    
 def generate_random_patches(input_filename, target_filename, output_filename, index, n_patch, binary_mask, patch_size, minimum_coverage, empty_patch_allowed, apply_all_rotation=True):
     empty_patch_counter = 0
             
@@ -66,7 +76,78 @@ def generate_random_patches(input_filename, target_filename, output_filename, in
         # break
         j += 1
     # /end of while n_patch
-    
+
+def generate_temporal_random_patches(input_filename, target_filename, output_filename, index,frames, n_patch, binary_mask, patch_size, minimum_coverage, empty_patch_allowed, apply_all_rotation=False):
+    empty_patch_counter = 0
+            
+    # foreach row, create n number of patches
+    j = 0
+    not_found = 0
+    # binary_mask = create_temporal_mask(binary_mask, frames)
+    # #TODO make this random 
+    # print("binary_mask shape", binary_mask.shape)
+    # binary_mask = np.transpose(binary_mask, axes=(1, 0, 2, 3)) # changing now to (h, t, w, d)
+    # print("reshaped to", binary_mask.shape)
+    # #take away h path, i.e. only patches of size (t, w, d)
+    # binary_mask = binary_mask[index, :, :, :]
+    binary_mask = binary_mask[:, index, :, :]
+    while j < n_patch:
+        if not_found > 100:
+            print(f"Cannot find enough patches above {minimum_coverage} coverage, please lower the minimum_coverage")
+            break
+
+        can_still_take_empty_patch = empty_patch_counter < empty_patch_allowed
+        # print('patch number', j)
+        patch = PatchData(input_filename, target_filename, patch_size)
+
+        
+
+        # default, no rotation
+        patch.create_random_patch(binary_mask, index)
+        patch.calculate_patch_coverage(binary_mask, minimum_coverage)
+
+        # before saving, do a check
+        # print(patch.coverage)
+        if patch.coverage < minimum_coverage:
+            if can_still_take_empty_patch:
+                
+                print('Taking this empty one',patch.coverage)
+                empty_patch_counter += 1
+                
+            else:
+                # skip empty patch because we already have one
+                not_found += 1
+                continue
+
+        patch.write_to_csv(output_filename)
+
+        # # apply ALL  rotation
+        # if apply_all_rotation:
+        #     patch.rotate = 1
+        #     for plane_nr in range(1,4):
+        #         # rotation plane 1,2,3
+        #         patch.rotation_plane = plane_nr
+
+        #         for rotation_idx in range(1,4):
+        #             # rotation index 1,2,3
+        #             patch.rotation_degree_idx = rotation_idx
+        #             patch.write_to_csv(output_filename)
+        #         # /end of rotation idx
+        #     # /end of plane
+        # else:
+        patch.rotate = 1
+        # do 1 random rotation
+
+        #TODO edit but start with no rotation at all
+        # patch.rotation_plane = rnd.randint(1,3)
+        # patch.rotation_degree_idx = rnd.randint(1,3)
+        # patch.write_to_csv(output_filename)
+
+        # break
+        j += 1
+    # /end of while n_patch
+
+
 class PatchData:
     def __init__(self, source_file, target_file, patch_size):
         self.patch_size = patch_size
@@ -116,6 +197,7 @@ class PatchData:
 
         return is_rotate, plane_nr, degree_idx
 
+    #TODO change fieldnames ? 
     def write_to_csv(self, output_filename):
         fieldnames = ['source', 'target', 'index', 'start_x', 'start_y', 'start_z', 'rotate', 'rotation_plane', 'rotation_degree_idx', 'coverage']
         with open(output_filename, mode='a', newline='') as csv_file:
