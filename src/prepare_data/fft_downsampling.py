@@ -87,10 +87,11 @@ def add_complex_signal_noise(imgfft, targetSNRdb):
 
     return imgfft
 
-def downsample_complex_img(complex_img, crop_ratio, targetSNRdb):
+def downsample_complex_img(complex_img, crop_ratio, targetSNRdb, temporal_downsampling = False):
     imgfft = np.fft.fftn(complex_img)
-
-    imgfft = rectangular_crop3d(imgfft, crop_ratio)
+    
+    if not temporal_downsampling:
+        imgfft = rectangular_crop3d(imgfft, crop_ratio)
     
     shifted_mag  = 20*np.log(np.fft.fftshift(np.abs(imgfft)))
 
@@ -111,13 +112,13 @@ def rescale_magnitude_on_ratio(new_mag, old_mag):
 
     return new_mag * rescale_ratio
     
-def downsample_phase_img(velocity_img, mag_image, venc, crop_ratio, targetSNRdb):
+def downsample_phase_img(velocity_img, mag_image, venc, crop_ratio, targetSNRdb, temporal_downsampling = False):
     # convert to phase
     phase_image = velocity_img / venc * math.pi
 
     complex_img = np.multiply(mag_image, np.exp(1j*phase_image))
     # -----------------------------------------------------------
-    new_complex_img, shifted_freqmag = downsample_complex_img(complex_img, crop_ratio, targetSNRdb)
+    new_complex_img, shifted_freqmag = downsample_complex_img(complex_img, crop_ratio, targetSNRdb, temporal_downsampling)
     # -----------------------------------------------------------
 
     # Get the MAGnitude and rescale

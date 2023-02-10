@@ -99,9 +99,7 @@ def generate_temporal_random_patches(input_filename, target_filename, output_fil
         can_still_take_empty_patch = empty_patch_counter < empty_patch_allowed
         # print('patch number', j)
         patch = PatchData(input_filename, target_filename, patch_size)
-
         
-
         # default, no rotation
         patch.create_random_patch(binary_mask, index)
         patch.calculate_patch_coverage(binary_mask, minimum_coverage)

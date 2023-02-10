@@ -25,11 +25,12 @@ def crop_mask(mask, desired_shape, downsample):
         mask = mask[:,:,1:-1]
         
     return mask
+
 def simple_temporal_downsampling(hr_data, downsample =2):
     assert(len(hr_data.shape) == 4) # assume that data is of form t, h, w, d
     if downsample ==2:
-        if hr_data.shape[0] % 2 == 0:
-            print("Even numver of frames: delete last frame")
+        # if hr_data.shape[0] % 2 == 0:
+        #     print("Even number of frames: delete last frame")
         
         lr_frames = int(np.ceil(hr_data.shape[0]/2))
 
@@ -43,20 +44,18 @@ def simple_temporal_downsampling(hr_data, downsample =2):
         print("Only implemented for downsampling by 2, please implement if needed.")
 
 
-
-
 if __name__ == '__main__':
     # Config
     base_path = 'Temporal4DFlowNet/data/CARDIAC'
     # Put your path to Hires Dataset
-    input_filepath  =  f'{base_path}/M1_2mm_step5_static.h5'
-    output_filename = f'{base_path}/M1_2mm_step5_static_TLR.h5' 
+    input_filepath  =  f'{base_path}/M2_2mm_step5_static.h5'
+    output_filename = f'{base_path}/M2_2mm_step5_static_TLR.h5' 
     # Downsample rate 
     downsample = 2
 
     # Check if file already exists
     if os.path.exists(output_filename): print("___ WARNING: overwriting already existing .h5 file!!____ ")
-    #assert( not os.path.exists(output_filename))    # if file already exists: STOP, since it just adds to the current file
+    assert( not os.path.exists(output_filename))    # if file already exists: STOP, since it just adds to the current file
 
     # --- Ready to do downsampling ---
     # setting the seeds for both random and np random, if we need to get the same random order on dataset everytime
@@ -76,11 +75,17 @@ if __name__ == '__main__':
         if len(mask.shape) == 4: 
             mask = mask[0]
         data_count = len(hf.get("u"))
-
+        
+        # #TODO delete. 
+        # temp_u = np.asarray(hf["u"])
+        # generate_gif_volume(temp_u[:, 10, :, :], save_as="u_temporal", axis = 0)
+        # exit()
         hr_u = np.zeros_like(hf["u"])
         hr_v = np.zeros_like(hf["u"])
         hr_w = np.zeros_like(hf["u"])
-        hr_mag = np.zeros_like(hf["u"])
+        hr_mag_u = np.zeros_like(hf["u"])
+        hr_mag_v = np.zeros_like(hf["u"])
+        hr_mag_w = np.zeros_like(hf["u"])
     
     print("Datacount:", data_count, " mask shape ", mask.shape)
     
@@ -100,7 +105,6 @@ if __name__ == '__main__':
             # Some h5 files have 4D mask with 1 in the temporal dimension while others are already 3D
             if len(mask.shape) == 4: 
                 mask = mask[0]
-            print("mask shape", mask.shape)
             #TODO check if dynamic
 
             hr_u_frame = np.asarray(hf['u'][idx])
@@ -152,11 +156,13 @@ if __name__ == '__main__':
                 venc_v = vencs[1]
                 venc_w = vencs[2]
                  
-        print(venc_choice, venc_u, venc_v, venc_w)
-        hr_u[idx, :, :, :] = hr_u_frame
-        hr_v[idx, :, :, :] = hr_v_frame
-        hr_w[idx, :, :, :] = hr_w_frame
-        hr_mag[idx, :, :, :] = mag_image
+        # TODO attention: is just adding noise NOT downsampling image
+        hr_u[idx, :, :, :], mag_u = fft.downsample_phase_img(hr_u_frame, mag_image, venc_u, crop_ratio, targetSNRdb, temporal_downsampling=True)
+        hr_v[idx, :, :, :], mag_v = fft.downsample_phase_img(hr_v_frame, mag_image, venc_v, crop_ratio, targetSNRdb, temporal_downsampling=True)
+        hr_w[idx, :, :, :], mag_w = fft.downsample_phase_img(hr_w_frame, mag_image, venc_w, crop_ratio, targetSNRdb, temporal_downsampling=True)
+        hr_mag_u[idx, :, :, :] = mag_u
+        hr_mag_v[idx, :, :, :] = mag_v
+        hr_mag_w[idx, :, :, :] = mag_w
 
         # only every second (even) needed for downsampling 
         if idx % 2 == 0: 
@@ -164,16 +170,18 @@ if __name__ == '__main__':
             save_to_h5(output_filename, "venc_v", venc_v)
             save_to_h5(output_filename, "venc_w", venc_w)
             save_to_h5(output_filename, "SNRdb", targetSNRdb)
+        
 
     # DO the downsampling
-    #TODO this is my part 
+    #TODO this can be done more fancy
     lr_u = simple_temporal_downsampling(hr_u, downsample)
     lr_v = simple_temporal_downsampling(hr_v, downsample)
     lr_w = simple_temporal_downsampling(hr_w, downsample)
 
-    mag_u = mag_v = mag_w = simple_temporal_downsampling(hr_mag)
+    mag_u = simple_temporal_downsampling(hr_mag_u)
+    mag_v = simple_temporal_downsampling(hr_mag_v)
+    mag_w = simple_temporal_downsampling(hr_mag_w)
 
-    print("lr max/min u", np.max(lr_u), np.min(lr_u), " shape ", lr_u.shape, "Mask max/min:", np.max(mask), np.min(mask))
 
     # Save the downsampled images
     save_to_h5(output_filename, "u", lr_u, expand_dims=False)

@@ -23,6 +23,8 @@ def crop_gt(gt, desired_shape):
         gt = gt[:,1:-1,:]
     if crop[2]:
         gt = gt[:,:,1:-1]
+    if len(crop)>3 and crop[3]:
+        gt = gt[:,:,:, 1:-1]
         
     return gt
 

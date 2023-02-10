@@ -86,6 +86,7 @@ class PatchGenerator():
         return img
 
     def _generate_overlapping_patches(self, img):
+        
         patch_size = self.patch_size
         
         img = self._pad_to_patch_size_with_overlap(img)

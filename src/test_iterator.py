@@ -3,6 +3,7 @@ import tensorflow as tf
 import time
 import h5py
 from Network.PatchHandler3D import PatchHandler3D
+from Network.PatchHandler3D_temporal import PatchHandler4D
 
 def load_indexes(index_file):
     """
@@ -12,16 +13,16 @@ def load_indexes(index_file):
     return indexes
 
 if __name__ == "__main__":
-    data_dir = '../data'
+    data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/train.csv'.format(data_dir)
+    training_file = '{}/train10MODEL3_2_temporal.csv'.format(data_dir)
    
     # Hyperparameters optimisation variables
     epochs =  3
     batch_size = 4
 
-    patch_size = 12
+    patch_size = 10
     res_increase = 2
     
 
@@ -30,7 +31,7 @@ if __name__ == "__main__":
     
     # ----------------- TensorFlow stuff -------------------
     # TRAIN dataset iterator
-    z = PatchHandler3D(data_dir, patch_size, res_increase, batch_size)
+    z = PatchHandler4D(data_dir, patch_size, res_increase, batch_size)
     trainset = z.initialize_dataset(trainset, shuffle=True, n_parallel=2)
 
     for epoch in range(epochs):
