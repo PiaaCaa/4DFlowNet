@@ -5,7 +5,9 @@ from utils import ImageDataset
 class PatchGenerator():
     def __init__(self, patch_size, res_increase):
         self.patch_size = patch_size
-        self.effective_patch_size = patch_size - 4 # we strip down 2 from each sides (on LR)
+        #TODO changed here
+        self.effective_patch_size = patch_size# we strip down 2 from each sides (on LR)
+        #self.effective_patch_size = patch_size - 4
         self.res_increase = res_increase
         # we make sure we pad it on the far side of x,y,z so the division will match
         self.padding = (0,0,0) 
@@ -80,7 +82,9 @@ class PatchGenerator():
         img = np.pad(img, ((0, pad_x),(0, pad_y),(0, pad_z)), 'constant')
 
         # the padding is for the HiRes version because we need to reconstruct the result later
-        self.padding = (pad_x*self.res_increase, pad_y*self.res_increase, pad_z*self.res_increase)
+        #TODO changed:
+        self.padding = (pad_x*self.res_increase, pad_y, pad_z)
+        # self.padding = (pad_x*self.res_increase, pad_y*self.res_increase, pad_z*self.res_increase)
         # print("LR padding:", self.padding)
         
         return img

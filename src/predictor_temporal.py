@@ -8,7 +8,7 @@ from utils import prediction_utils
 from utils.ImageDataset_temporal import ImageDataset_temporal
 from matplotlib import pyplot as plt
 import h5py
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock):
     # Prepare input
@@ -30,14 +30,21 @@ def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock
 
     return model
 
+
+
 if __name__ == '__main__':
+    # Define directories and filenames
+    model_name = '20230210-0333'
+    set_name = 'Test'
+    data_model= '3'
+
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
-    filename = 'M1_2mm_step5_static_TLR.h5'
+    filename = f'M{data_model}_2mm_step5_static_TLR.h5'
  
-    output_dir = "Temporal4DFlowNet/results"
-    output_filename = 'test_result_MODEL3_2_temporal_test_test.h5'
+    output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
+    output_filename = f'{set_name}set_result_model{set_name}_2_{model_name[-4::]}_temporal.h5'
     
-    model_path = "4DFlowNet/models/Temporal4DFlowNet_20230208-0717/Temporal4DFlowNet-best.h5"#"4DFlowNet/models/Temporal4DFlowNet_20230203-1037/4DFlowNet-best.h5"#
+    model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
     # Params
     patch_size = 10
@@ -52,6 +59,9 @@ if __name__ == '__main__':
     # Setting up
     input_filepath = '{}/{}'.format(data_dir, filename)
     output_filepath = '{}/{}'.format(output_dir, output_filename)
+
+    assert(not os.path.exists(output_filepath)) #STOP if output file is already created
+
     #TODO adapt it to temporal problem
     pgen = PatchGenerator(patch_size, res_increase)
     dataset = ImageDataset_temporal()
@@ -117,7 +127,6 @@ if __name__ == '__main__':
                 v[np.abs(v) < dataset.velocity_per_px] = 0
             
             v = np.expand_dims(v, axis=0) 
-
             prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', dataset.velocity_colnames[i], v, compression='gzip')
 
         if dataset.dx is not None:
