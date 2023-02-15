@@ -48,8 +48,8 @@ if __name__ == '__main__':
     # Config
     base_path = 'Temporal4DFlowNet/data/CARDIAC'
     # Put your path to Hires Dataset
-    input_filepath  =  f'{base_path}/M2_2mm_step5_static.h5'
-    output_filename = f'{base_path}/M2_2mm_step5_static_TLR.h5' 
+    input_filepath  =  f'{base_path}/M1_2mm_step5_static.h5'
+    output_filename = f'{base_path}/M1_2mm_step5_static_TLR_no_noise.h5' 
     # Downsample rate 
     downsample = 2
 
@@ -157,9 +157,9 @@ if __name__ == '__main__':
                 venc_w = vencs[2]
                  
         # TODO attention: is just adding noise NOT downsampling image
-        hr_u[idx, :, :, :], mag_u = fft.downsample_phase_img(hr_u_frame, mag_image, venc_u, crop_ratio, targetSNRdb, temporal_downsampling=True)
-        hr_v[idx, :, :, :], mag_v = fft.downsample_phase_img(hr_v_frame, mag_image, venc_v, crop_ratio, targetSNRdb, temporal_downsampling=True)
-        hr_w[idx, :, :, :], mag_w = fft.downsample_phase_img(hr_w_frame, mag_image, venc_w, crop_ratio, targetSNRdb, temporal_downsampling=True)
+        hr_u[idx, :, :, :], mag_u = hr_u_frame, mag_image #fft.downsample_phase_img(hr_u_frame, mag_image, venc_u, crop_ratio, targetSNRdb, temporal_downsampling=True)
+        hr_v[idx, :, :, :], mag_v = hr_v_frame, mag_image #fft.downsample_phase_img(hr_v_frame, mag_image, venc_v, crop_ratio, targetSNRdb, temporal_downsampling=True)
+        hr_w[idx, :, :, :], mag_w = hr_w_frame, mag_image #fft.downsample_phase_img(hr_w_frame, mag_image, venc_w, crop_ratio, targetSNRdb, temporal_downsampling=True)
         hr_mag_u[idx, :, :, :] = mag_u
         hr_mag_v[idx, :, :, :] = mag_v
         hr_mag_w[idx, :, :, :] = mag_w

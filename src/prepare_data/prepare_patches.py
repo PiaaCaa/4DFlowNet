@@ -30,9 +30,9 @@ if __name__ == "__main__":
     
     
     base_path = 'Temporal4DFlowNet/data/CARDIAC'
-    lr_file = 'M2_2mm_step5_static_TLR.h5' #LowRes velocity data
-    hr_file = 'M2_2mm_step5_static.h5' #HiRes velocity data
-    output_filename = f'{base_path}/Temporal{patch_size}{"MODEL2_2"}.csv'
+    lr_file = 'M1_2mm_step5_static_TLR_no_noise.h5' #LowRes velocity data
+    hr_file = 'M1_2mm_step5_static.h5' #HiRes velocity data
+    output_filename = f'{base_path}/Temporal{patch_size}MODEL1_2_no_noise.csv'
 
     
     # Load the data

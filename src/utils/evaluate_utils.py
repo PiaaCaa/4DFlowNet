@@ -10,6 +10,7 @@ import h5py
 from prepare_data.visualize_utils import generate_gif_volume
 from Network.loss_utils import calculate_divergence
 from scipy.signal import convolve2d
+from scipy.ndimage import convolve
 # import matplotlib
 # matplotlib.rcParams['text.usetex'] = True
 from matplotlib import pyplot as plt
@@ -40,10 +41,9 @@ def random_indices3D(mask, n):
 
     # # Get indexes
     x_idx = sample_pot[0][sample_idx]
+    y_idx = sample_pot[1][sample_idx]
     z_idx = sample_pot[2][sample_idx]
     return x_idx, y_idx, z_idx
-
-
 
 
 def calculate_relative_error_np(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_mask):
@@ -229,7 +229,7 @@ def plot_regression(gt, prediction, frame_idx, save_as):
     sr_w_vals = sr_w[idx_inner]
     sr_w_bounds = sr_w[idx_bounds]
 
-    def plot_regression(hr_vals, sr_vals, hr_vals_bounds, sr_vals_bounds):
+    def plot_regression_points(hr_vals, sr_vals, hr_vals_bounds, sr_vals_bounds):
         dimension = 2 #TODO
         plt.scatter(hr_vals, sr_vals, s=0.3, c=["black"])
         plt.scatter(hr_vals_bounds, sr_vals_bounds, s=0.3, c=["red"])
@@ -241,12 +241,20 @@ def plot_regression(gt, prediction, frame_idx, save_as):
     
     print(f"Plotting regression lines...")
 
-    plot_regression(hr_u_vals, sr_u_vals, hr_u_bounds, sr_u_bounds)
+    plt.subplot(1, 3, 1)
+    plot_regression_points(hr_u_vals, sr_u_vals, hr_u_bounds, sr_u_bounds)
     plt.savefig(f"{save_as}_LRXplot.png")
-    plot_regression(hr_v_vals, sr_v_vals, hr_v_bounds, sr_v_bounds)
+    plt.subplot(1 ,3, 2)
+    plot_regression_points(hr_v_vals, sr_v_vals, hr_v_bounds, sr_v_bounds)
     plt.savefig(f"{save_as}_LRYplot.png")
-    plot_regression(hr_w_vals, sr_w_vals, hr_w_bounds, sr_w_bounds)
+    plt.subplot(1, 3, 3)
+    plot_regression_points(hr_w_vals, sr_w_vals, hr_w_bounds, sr_w_bounds)
     plt.savefig(f"{save_as}_LRZplot.png")
+
+    # fig, axs = plt.subplots(nrows=1, ncols=3)
+    # plt.subplot(1, 3, 1)
+    # plot_regression_points()
+    # axs[1].plot(xs, np.sqrt(xs))
 
 
 
@@ -254,7 +262,7 @@ def get_slice(data, frame, axis, slice_idx):
     if len(data.squeeze().shape) == 3:
         frame = 0
         print("Only one frame available: take first frame.")
-        if len(data.shape) ==3:
+        if len(data.shape) == 3:
             data = np.expand_dims(data, 0)
         
     if axis == 0 :
@@ -502,7 +510,7 @@ def show_quiver( u, v, w, mask,save_as = "3DFlow.png"):
     plt.clf()
 
 
-def show_timeframes(gt,lr,  pred,mask, timepoints, axis, idx, save_as = "Frame_comparison.png"):
+def show_timeframes(gt,lr,  pred,mask, rel_error, dt,  timepoints, axis, idx, save_as = "Frame_comparison.png"):
     plt.clf()
     T = len(timepoints)
     i = 1
@@ -559,14 +567,17 @@ def show_timeframes(gt,lr,  pred,mask, timepoints, axis, idx, save_as = "Frame_c
         
         gt_slice = get_slice(gt, t,  axis=axis, slice_idx=idx )
         pred_slice = get_slice(pred, t, axis=axis, slice_idx=idx )
+        err_slice = get_slice(rel_error, t, axis=axis, slice_idx=idx )
+        dt_slice = get_slice(dt, t, axis=axis, slice_idx=idx )
+        print("shape dt:", dt.shape, dt_slice.shape, gt_slice.shape )
 
         lr_slice = np.zeros_like(gt_slice)
         if t%2 == 0: lr_slice = get_slice(lr, t//2, axis= axis, slice_idx= idx )
-        
+
         min_v = np.min([np.min(pred_slice ), np.min(gt_slice), np.min(lr_slice)])
         max_v = np.max([np.max(pred_slice), np.max(gt_slice), np.max(lr_slice)])  
 
-        plt.subplot(T, 3, i)
+        plt.subplot(T, 5, i)
         if t%2 == 0:
             plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap='jet')
             if i == 1: plt.title("LR")
@@ -576,27 +587,146 @@ def show_timeframes(gt,lr,  pred,mask, timepoints, axis, idx, save_as = "Frame_c
         else:
             plt.axis('off')
 
-        i +=1
-        plt.subplot(T, 3, i)
+        i += 1
+        plt.subplot(T, 5, i)
         plt.imshow(gt_slice, vmin = min_v, vmax = max_v, cmap='jet')
         if i == 2: plt.title("GT")
         plt.xticks([])
         plt.yticks([])
 
-        i +=1
-        plt.subplot(T, 3, i)
+        i += 1
+        plt.subplot(T, 5, i)
         plt.imshow(pred_slice, vmin = min_v, vmax = max_v, cmap='jet')
         if i == 3: plt.title("SR")
         plt.xticks([])
         plt.yticks([])
+
+        
+
+        i += 1
+        plt.subplot(T, 5, i)
+        plt.imshow(err_slice, cmap='jet')
+        if i == 4: plt.title("Relative error")
+        plt.xticks([])
+        plt.yticks([])
+
         i +=1
+        plt.subplot(T, 5, i)
+        plt.imshow(dt_slice, cmap='jet')
+        if i == 5: plt.title("|dt|")
+        plt.xticks([])
+        plt.yticks([])
 
         plt.colorbar()
+        
+
+        
+        i +=1
+        
 
     save_under = save_as[:-4]+ "_fluidregion.png"
     print("save with only fluid region visible", save_under)
     plt.savefig(save_under)
-    plt.clf()
+    #plt.clf()
+
+
+def calculate_temporal_derivative(data, timestep=1):
+    '''
+    Calculate difference between two time frames and each voxel
+    i.e. for u: dt u(t) = |u(t+1) - u(t)| / timestep
+    '''
+    # assume data of shape t, h, w, d
+    # kernel_t = np.zeros((2, 1, 1, 1))
+    # kernel_t[0] = -1
+    # kernel_t[1] = 1
+    # kernel_t = kernel_t/timestep
+    # print(kernel_t)
+    # #kernel_t = kernel_t.transpose((3, 1, 2, 0))
+    # print(kernel_t.shape)
+
+    n_frames = data.shape[0]
+    dt =  np.zeros_like(data)
+    for t in range(n_frames-1):
+        dt[t, :, :, :] = (data[t+timestep, :, :, :] - data[t, :, :, :])/timestep
+
+    dt = np.abs(dt)
+    # dt = convolve(data, kernel_t)
+    # print("dt shape:", dt.shape, data.shape)
+
+    # #TODO delete later
+    # #check one slice
+    # slice_t1 = get_slice(data, 2, axis=0, slice_idx=20)
+    # slice_t2 = get_slice(data, 3, axis=0, slice_idx=20)
+
+    # res = slice_t2 - slice_t1
+
+    # res_1 = get_slice(convolve(data, kernel_t.transpose(0, 1, 2, 3)), 2, axis= 0, slice_idx=20)
+    # res_2 = get_slice(convolve(data, kernel_t.transpose(1, 0, 2, 3)), 2, axis= 0, slice_idx=20)
+    # res_3 = get_slice(convolve(data, kernel_t.transpose(2, 1, 0, 3)), 2, axis= 0, slice_idx=20)
+    # res_4 = get_slice(convolve(data, kernel_t.transpose(3, 1, 2, 0)), 2, axis= 0, slice_idx=20)
+
+    # print("shapes", res_1.shape, res.shape)
+    # print("Check if kernel is correct:")
+    # print("Norm 1", np.linalg.norm(res_1-res))
+    # print("Norm 2", np.linalg.norm(res_2-res))
+    # print("Norm 3", np.linalg.norm(res_3-res))
+    # print("Norm 3", np.linalg.norm(res_4-res))
+    
+
+
+    return dt
+
+
+def plot_relative_error(lst_hgt_paths, lst_hpred_paths,lst_names, save_as = 'Relative_error_comparison.png'):
+    assert(len(lst_hgt_paths)==len(lst_hpred_paths))
+    vel_colnames=['u', 'v', 'w']
+
+    for gt_path, pred_path in zip(lst_hgt_paths, lst_hpred_paths):
+        gt = {}
+        pred = {}
+        with h5py.File(pred_path, mode = 'r' ) as h_pred:
+            with h5py.File(gt_path, mode = 'r' ) as h_gt:
+
+                # load gt and predcition values
+                for vel in vel_colnames:
+                    
+                    gt[vel] = np.asarray(h_gt[vel])
+                    pred[vel] = np.asarray(h_pred[vel])
+
+                    #transpose for temporal resolution
+                    #TODO change if needed
+                    pred[vel] = pred[vel].transpose(1, 0, 2, 3)
+                    # gt[vel] = crop_gt(gt[vel], pred[vel].shape 
+
+                    #load prediction values
+                gt["mask"] = np.asarray(h_gt["mask"])
+                #compute relative error
+
+                error_gt = calculate_relative_error_normalized(pred["u"], pred["v"], pred["w"], gt["u"], gt["v"] , gt["w"], gt["mask"])
+                #Plot Relative error
+                plt.plot(error_gt, '-')
+
+
+    plt.plot(50*np.ones(len(error_gt)), 'k:')
+    plt.xlabel("Frame")
+    plt.ylabel("Relative error (%)")
+    plt.ylim((0, 100))
+    plt.legend(lst_names)
+    plt.title("Relative error")
+    plt.savefig(save_as)
+    #plt.clf()
+
+def create_temporal_mask(mask, n_frames):
+    '''
+    from static mask create temporal mask of shape (n_frames, h, w, d)
+    '''
+    assert(len(mask.shape) == 3), " shape: " + str(mask.shape) # shape of mask is assumed to be 3 dimensional
+    temporal_mask = np.zeros((n_frames, mask.shape[0], mask.shape[1], mask.shape[2]))
+    for i in range(n_frames):
+        temporal_mask[i, :, :, :] = mask
+    return temporal_mask
+
+
 
 
 

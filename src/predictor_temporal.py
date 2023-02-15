@@ -42,7 +42,7 @@ if __name__ == '__main__':
     filename = f'M{data_model}_2mm_step5_static_TLR.h5'
  
     output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
-    output_filename = f'{set_name}set_result_model{set_name}_2_{model_name[-4::]}_temporal.h5'
+    output_filename = f'{set_name}set_result_model{data_model}_2_{model_name[-4::]}_temporal_new_6_eff_pad_size.h5'
     
     model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
@@ -126,7 +126,7 @@ if __name__ == '__main__':
                 # remove small velocity values
                 v[np.abs(v) < dataset.velocity_per_px] = 0
             
-            v = np.expand_dims(v, axis=0) 
+            v = np.expand_dims(v, axis=0)
             prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', dataset.velocity_colnames[i], v, compression='gzip')
 
         if dataset.dx is not None:
