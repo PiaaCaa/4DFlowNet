@@ -15,8 +15,8 @@ if __name__ == "__main__":
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal10MODEL1_2_temporal.csv'.format(data_dir) 
-    validate_file = '{}/Temporal10MODEL2_2.csv'.format(data_dir)
+    training_file = '{}/Temporal10MODEL12_2_temporal.csv'.format(data_dir) 
+    validate_file = '{}/Temporal10MODEL3_2_temporal.csv'.format(data_dir)
 
     QUICKSAVE = True
     benchmark_file = '{}/Temporal10MODEL3_2_temporal.csv'.format(data_dir)
@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     # Hyperparameters optimisation variables
     initial_learning_rate = 2e-4
-    epochs =  300
+    epochs =  400
     batch_size = 20
     mask_threshold = 0.6
 

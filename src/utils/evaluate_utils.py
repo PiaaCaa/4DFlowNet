@@ -176,7 +176,7 @@ def compare_masks(u_hi, v_hi, w_hi, binary_mask):
     return overlap_mask, mask[0].squeeze()
 
 
-def plot_regression(gt, prediction, frame_idx, save_as):
+def plot_regression(gt, prediction, frame_idx, save_as = None):
     """ Plot a linear regression between HR and predicted SR in given frame """
     #
     # Parameters
@@ -243,13 +243,13 @@ def plot_regression(gt, prediction, frame_idx, save_as):
 
     plt.subplot(1, 3, 1)
     plot_regression_points(hr_u_vals, sr_u_vals, hr_u_bounds, sr_u_bounds)
-    plt.savefig(f"{save_as}_LRXplot.png")
+    if save_as is not None: plt.savefig(f"{save_as}_LRXplot.png")
     plt.subplot(1 ,3, 2)
     plot_regression_points(hr_v_vals, sr_v_vals, hr_v_bounds, sr_v_bounds)
-    plt.savefig(f"{save_as}_LRYplot.png")
+    if save_as is not None: plt.savefig(f"{save_as}_LRYplot.png")
     plt.subplot(1, 3, 3)
     plot_regression_points(hr_w_vals, sr_w_vals, hr_w_bounds, sr_w_bounds)
-    plt.savefig(f"{save_as}_LRZplot.png")
+    if save_as is not None: plt.savefig(f"{save_as}_LRZplot.png")
 
     # fig, axs = plt.subplots(nrows=1, ncols=3)
     # plt.subplot(1, 3, 1)
@@ -725,6 +725,16 @@ def create_temporal_mask(mask, n_frames):
     for i in range(n_frames):
         temporal_mask[i, :, :, :] = mask
     return temporal_mask
+
+
+def temporal_bilinear_interpolation(lr, hr_shape):
+    interpolate = np.zeros(hr_shape)
+    interpolate[::2, :, :, :] = lr
+     # TODO double check this
+    interpolate[1::2, :,:, :] = np.average(lr, axis=0)
+
+    return interpolate
+
 
 
 
