@@ -1,17 +1,12 @@
-# Temporal 4DFlowNet
+# 4DFlowNet
+TODO: change it because copied text
 Super Resolution 4D Flow MRI using Residual Neural Network
 
-<!-- This repsository includes an implementation of the paper [4DFlowNet: Super-Resolution 4D Flow MRI](https://www.frontiersin.org/articles/10.3389/fphy.2020.00138/full) using Tensorflow 2.9.0 with Keras.  -->
-<!-- In addition, there is an implementation for a temporal instead of a spatial-super resolution problem. -->
-
-This is an extension of the repository [4DFlowNet](https://gitlab.eecs.umich.edu/bkhardy/4DFlowNet), which includes the implementation of the paper [4DFlowNet: Super-Resolution 4D Flow MRI](https://www.frontiersin.org/articles/10.3389/fphy.2020.00138/full) concerning spatial super resolution problem. 
-This implemenational in focusing on increasing the temporal resolution of the CFD 4D Flow MRI data. 
-
-
+This is an implementation of the paper [4DFlowNet: Super-Resolution 4D Flow MRI](https://www.frontiersin.org/articles/10.3389/fphy.2020.00138/full) using Tensorflow 2.9.0 with Keras.
 
 # Example results
 
-<!-- Below are example prediction results from an actual 4D Flow MRI of a bifurcation phantom dataset. 
+Below are example prediction results from an actual 4D Flow MRI of a bifurcation phantom dataset. 
 
 LowRes input (voxel size 4mm)
 <p align="left">
@@ -26,9 +21,9 @@ High Res Ground Truth vs noise-free Super Resolution (2mm)
 High Res Ground Truth vs noise-free Super Resolution (1mm)
 <p align="left">
     <img src="https://i.imgur.com/DMQa2Lr.gif" width="350">
-</p> -->
+</p>
 
-<!-- # Enviroment Setup
+# Enviroment Setup
 Because Big Blue's default python interpreter is shared by everyone, I use venv
 in order to create a personal environment that won't mess with C Heart or other
 important codes. When your venv is activated, all changes made to the python environment
@@ -71,44 +66,42 @@ without worrying about affecting others.
     add to this file if anything else comes up. This will help to prevent package version conflicts between everyone.
 
     Your virtual environment should now be ready to run 4DFlowNet. For other questions (such as setting a default 
-    interpreter in VS Code, etc.) you can reach me at bkhardy@umich.edu! -->
+    interpreter in VS Code, etc.) you can reach me at bkhardy@umich.edu!
 
 
-# General training setup from CFD data for temporal 
-
+# General training setup from CFD data
 ## Prepare dataset
 
-To prepare training or validation dataset, we assume a High resolution CFD dataset is available. As an example we have provided this under TODO
+To prepare training or validation dataset, we assume a High resolution CFD  dataset is available. As an example we have provided this under /data/example_data_HR.h5
 
 How to prepare training/validation dataset.
 
     1. Generate lowres dataset
-        >> Configure the datapath and filenames in prepare_temporal_lowres_dataset.py
-        >> Run prepare_temporal_lowres_dataset.py
+        >> Configure the datapath and filenames in prepare_lowres_dataset.py
+        >> Run prepare_lowres_dataset.py
         >> This will generate a separate HDF5 file for the low resolution velocity data.
     2. Generate random patches from the LR-HR dataset pairs.
         >> Configure the datapath and filenames in prepare_patches.py
-        >> For temporal problem, set .. to True. 
         >> Configure patch_size, rotation option, and number of patches per frame
         >> Run prepare_patches.py
         >> This will generate a csv file that contains the patch information.
 
 ## Training
 
-The trainer accepts csv files to define training and validation. A benchmark set is used to keep prediction progress everytime a model is being saved as checkpoint. Example csv files are provided in the /data folder. TODO
+The trainer accepts csv files to define training and validation. A benchmark set is used to keep prediction progress everytime a model is being saved as checkpoint. Example csv files are provided in the /data folder.
 
 To train a new 4DFlowNet Network:
 
     1. Put all data files (HDF5) and CSV patch index files in the same directory (e.g. /data)
-    2. Open trainer_temporal.py and configure the data_dir and the csv filenames
+    2. Open trainer.py and configure the data_dir and the csv filenames
     3. Adjust hyperparameters. The default values from the paper are already provided in the code.
-    4. Run trainer_temporal.py
+    4. Run trainer.py
 
 Adjustable parameters:
 
 |Parameter  | Description   |
 |------|--------------|
-| patch_size| The input low resolution image will be split into isotropic patches. Adjust according to computation power and image size |
+| patch_size| The image will be split into isotropic patches. Adjust according to computation power and image size.  |
 | res_increase| Upsample ratio. Adjustable to any integer. More upsample ratio requires more computation power. *Note*: res_increase=1 will denoise the image at the current resolution |
 | batch_size| Batch size per prediction. Keep it low. |
 | initial_learning_rate| Initial learning rate |
@@ -138,7 +131,7 @@ Adjustable parameters:
 | low_resblock | 8 |
 | hi_resblock | 4 |
 
-<!-- ## Standard Cerebrovascular Training Setup
+## Standard Cerebrovascular Training Setup
 |Parameter  | Value   |
 |------|--------------|
 | patch_size| 12 |
@@ -153,10 +146,10 @@ Adjustable parameters:
 |validate_file| newval12.csv |
 |benchmark_file| newbenchmark12.csv |
 | low_resblock | 8 |
-| hi_resblock | 4 | -->
+| hi_resblock | 4 |
 
 
-<!-- # Running prediction on MRI data
+# Running prediction on MRI data
 ## Prepare data from MRI (for prediction purpose)
 *NOTE*: all of the provided datasets are already in HDF5 format, making this step unnecessary for current use cases.
 To prepare 4D Flow MRI data to HDF5, go to the prepare_data/ directory and run the following script:
@@ -168,21 +161,21 @@ To prepare 4D Flow MRI data to HDF5, go to the prepare_data/ directory and run t
                            [--output-filename OUTPUT_FILENAME]
                            [--phase-pattern PHASE_PATTERN]
                            [--mag-pattern MAG_PATTERN] [--fh-mul FH_MUL]
-                           [--rl-mul RL_MUL] [--in-mul IN_MUL] 
+                           [--rl-mul RL_MUL] [--in-mul IN_MUL]
 
 Notes: 
 *  The directory must contains the following structure:
     [CASE_NAME]/[Magnitude_or_Phase]/[TriggerTime]
 * There must be exactly 3 Phase and 3 Magnitude directories 
 * To get the required directory structure, [DicomSort](https://dicomsort.com/) is recommended. Sort by SeriesDescription -> TriggerTime.
-* In our case, VENC and velocity direction is read from the SequenceName DICOM HEADER. Code might need to be adjusted if the criteria is different. -->
+* In our case, VENC and velocity direction is read from the SequenceName DICOM HEADER. Code might need to be adjusted if the criteria is different.
 
 ## Prediction
 
 To run a prediction:
 
-    1. Go to src/ and open predictor_temporal.py and configure the input_filename and output_filename if necessary
-    2. Run predictor_temporal.py
+    1. Go to src/ and open predictor.py and configure the input_filename and output_filename if necessary
+    2. Run predictor.py
 
 Adjustable parameters:
 
@@ -197,8 +190,8 @@ Adjustable parameters:
 
 
 
-<!-- ## Contact Information
+## Contact Information
 
 If you encounter any problems, feel free to contact me by email.
 
-Pia Callmer -->
+Brandon Hardy (bkhardy@umich.edu)
