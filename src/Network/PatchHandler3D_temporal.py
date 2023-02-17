@@ -69,7 +69,7 @@ class PatchHandler4D():
         #TODO idea: change csv with another information about the normal axis of the given slice. Then we can permute input such that it fits the requirements
         #NO INCREASE IN Y AND Z
         patch_t_index  = np.index_exp[x_start:x_start+patch_size,idx, y_start:y_start+patch_size, z_start:z_start+patch_size]
-        hr_t_patch_index = np.index_exp[x_start*self.res_increase :x_start*self.res_increase +hr_patch_size ,idx, y_start:y_start+patch_size, z_start:z_start+patch_size]
+        hr_t_patch_index = np.index_exp[x_start*self.res_increase :x_start*self.res_increase +hr_patch_size,idx, y_start:y_start+patch_size, z_start:z_start+patch_size]
         mask_t_index = np.index_exp[x_start*self.res_increase :x_start*self.res_increase +hr_patch_size,idx  ,y_start:y_start+patch_size, z_start:z_start+patch_size ]
         # mask_index = np.index_exp[0, x_start*self.res_increase :x_start*self.res_increase +hr_patch_size ,y_start*self.res_increase :y_start*self.res_increase +hr_patch_size , z_start*self.res_increase :z_start*self.res_increase +hr_patch_size ]
         u_patch, u_hr_patch, mag_u_patch, v_patch, v_hr_patch, mag_v_patch, w_patch, w_hr_patch, mag_w_patch, venc, mask_patch = self.load_vectorfield(hd5path, lr_hd5path, idx, mask_t_index, patch_t_index, hr_t_patch_index)
@@ -152,6 +152,7 @@ class PatchHandler4D():
                 mask_temp = self.create_temporal_mask(np.asarray(hl.get(self.mask_colname)).squeeze(),  hl.get(self.hr_colnames[i]).shape[0])
                 mask = mask_temp[mask_index] 
             mask = (mask >= self.mask_threshold) * 1.
+            print("mask shape:", hl.get(self.mask_colname).shape)
             
         with h5py.File(lr_hd5path, 'r') as hl:
             for i in range(len(self.lr_colnames)):

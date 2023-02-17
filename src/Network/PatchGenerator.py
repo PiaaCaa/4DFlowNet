@@ -5,7 +5,9 @@ from utils import ImageDataset
 class PatchGenerator():
     def __init__(self, patch_size, res_increase):
         self.patch_size = patch_size
-        self.effective_patch_size = patch_size - 4 # we strip down 2 from each sides (on LR)
+        #TODO changed here
+        #self.effective_patch_size = patch_size - 4# we strip down 2 from each sides (on LR)
+        self.effective_patch_size = patch_size - 4
         self.res_increase = res_increase
         # we make sure we pad it on the far side of x,y,z so the division will match
         self.padding = (0,0,0) 
@@ -80,7 +82,9 @@ class PatchGenerator():
         img = np.pad(img, ((0, pad_x),(0, pad_y),(0, pad_z)), 'constant')
 
         # the padding is for the HiRes version because we need to reconstruct the result later
-        self.padding = (pad_x*self.res_increase, pad_y*self.res_increase, pad_z*self.res_increase)
+        #TODO changed:
+        self.padding = (pad_x*self.res_increase, pad_y, pad_z)
+        # self.padding = (pad_x*self.res_increase, pad_y*self.res_increase, pad_z*self.res_increase)
         # print("LR padding:", self.padding)
         
         return img
@@ -115,16 +119,25 @@ class PatchGenerator():
             # return the number of of i j k elements        
 
     def _patchup_with_overlap(self, patches, x, y, z):
-        # print("Prediction size:", patches.shape)
+        # x=1, y = 9, z =9
+        print("Prediction size:", patches.shape)
+        #patches size: n patches, p1, p2, p3(p1 patches size in 1)
+        #here n_patches, 20, 10, 10
 
         side_pad = (self.patch_size - self.effective_patch_size) // 2
-        side_pad_hr =  side_pad * self.res_increase
-        patch_size = patches.shape[1]
-        n = patch_size-side_pad_hr
+        side_pad_hr =  side_pad * self.res_increase # size pad hr = 0
+        #TODO adapt to other axis
+        side_pad_hr_spatial = side_pad # no increase in spatial domain 
+        patch_size_thr = patches.shape[1]  # patchsize = 20
+        patch_size_shr = patches.shape[2]
 
-        patches = patches[:,side_pad_hr:n, side_pad_hr:n, side_pad_hr:n]
+        n = patch_size_thr-side_pad_hr # n=20
+        n_spatial = patch_size_shr - side_pad_hr_spatial
+
+        print("side pad hr:n", side_pad_hr, n, " spatial side pad: n", side_pad_hr, n_spatial)
+        patches = patches[:,side_pad_hr:n, side_pad_hr_spatial:n_spatial, side_pad_hr_spatial:n_spatial]
         # patches = patches[:,side_pad_hr:-side_pad_hr, side_pad_hr:-side_pad_hr, side_pad_hr:-side_pad_hr]
-        
+        #patches shape: n pacthes, 20, 10, 10
         z_stacks = []
         for k in range(len(patches) // z):
             
@@ -136,7 +149,7 @@ class PatchGenerator():
 
         y_stacks = []
         for j in range(len(z_stacks) // y):
-            y_start =j*y
+            y_start =j*y 
             # print('y_start', y_start, j, y)
             y_stack = np.concatenate(z_stacks[y_start:y_start+y], axis=1)
             # print('y_stack', y_stack.shape)

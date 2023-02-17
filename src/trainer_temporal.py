@@ -15,11 +15,11 @@ if __name__ == "__main__":
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal10MODEL1_2_temporal.csv'.format(data_dir) 
-    validate_file = '{}/Temporal10MODEL2_2.csv'.format(data_dir)
+    training_file = '{}/Temporal14MODEL12_2mm_step2.csv'.format(data_dir) 
+    validate_file = '{}/Temporal14MODEL3_2mm_step2.csv'.format(data_dir)
 
     QUICKSAVE = True
-    benchmark_file = '{}/Temporal10MODEL3_2_temporal.csv'.format(data_dir)
+    benchmark_file = '{}/Temporal14MODEL4_2mm_step2.csv'.format(data_dir)
     
     restore = False
     if restore:
@@ -28,13 +28,13 @@ if __name__ == "__main__":
 
     # Hyperparameters optimisation variables
     initial_learning_rate = 2e-4
-    epochs =  300
-    batch_size = 20
+    epochs =  400
+    batch_size = 15
     mask_threshold = 0.6
 
     # Network setting
     network_name = 'Temporal4DFlowNet'
-    patch_size = 10
+    patch_size = 14
     res_increase = 2
     # Residual blocks, default (8 LR ResBlocks and 4 HR ResBlocks)
     low_resblock = 8

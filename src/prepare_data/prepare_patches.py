@@ -21,8 +21,8 @@ def load_temporal_data(input_filepath):
 
 if __name__ == "__main__": 
     temporal_preparation = True
-    patch_size = 10 # Patch size, this will be checked to make sure the generated patches do not go out of bounds
-    n_patch = 8    # number of patch per time frame
+    patch_size = 14 # Patch size, this will be checked to make sure the generated patches do not go out of bounds
+    n_patch = 10    # number of patch per time frame
     n_empty_patch_allowed = 0 # max number of empty patch per frame
     all_rotation = False # When true, include 90,180, and 270 rotation for each patch. When False, only include 1 random rotation.
     mask_threshold = 0.4 # Threshold for non-binary mask 
@@ -30,9 +30,9 @@ if __name__ == "__main__":
     
     
     base_path = 'Temporal4DFlowNet/data/CARDIAC'
-    lr_file = 'M2_2mm_step5_static_TLR.h5' #LowRes velocity data
-    hr_file = 'M2_2mm_step5_static.h5' #HiRes velocity data
-    output_filename = f'{base_path}/Temporal{patch_size}{"MODEL2_2"}.csv'
+    lr_file = 'M1_2mm_step2_static_TLR_no_noise.h5' #LowRes velocity data
+    hr_file = 'M1_2mm_step2_static.h5' #HiRes velocity data
+    output_filename = f'{base_path}/Temporal{patch_size}MODEL1_2mm_step2_no_noise.csv'
 
     
     # Load the data

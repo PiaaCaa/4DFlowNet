@@ -69,6 +69,7 @@ class ImageDataset_temporal():
                 #TODO change this to other dimension/axis         
                 w = np.asarray(hl.get(self.velocity_colnames[i])[:, idx, :, :])
                 mag_w = np.asarray(hl.get(self.mag_colnames[i])[:, idx, :, :])
+                #TODO is this correct with the venc parameter?
                 w_venc = np.asarray(hl.get(self.venc_colnames[i]))#)[idx])
             
                 # add them to the list
