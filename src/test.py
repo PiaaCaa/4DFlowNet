@@ -15,12 +15,13 @@ def create_temporal_mask(mask, n_frames):
 
 if __name__ == "__main__": 
     gt_file = 'Temporal4DFlowNet/data/CARDIAC/M3_2mm_step5_static.h5'
-    patchify_file1 = 'Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333/Testset_result_model3_2_0333_temporal_new.h5'
-    patchify_file2 = 'Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333/Testset_result_model3_2_0333_temporal.h5' #temporal_new_6_eff_pad_size.h5
-    patchify_file3 = 'Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333/Testset_result_model3_2_0333_temporal_new_6_eff_pad_size.h5'
-    save_differenc = 'Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333//Testset_result_model3_2_0333_temporal_diff.h5'
+    lr_file = 'Temporal4DFlowNet/data/CARDIAC/M3_2mm_step2_static_TLR.h5'
+    # patchify_file1 = 'Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333/Testset_result_model3_2_0333_temporal_new.h5'
+    # patchify_file2 = 'Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333/Testset_result_model3_2_0333_temporal.h5' #temporal_new_6_eff_pad_size.h5
+    # patchify_file3 = 'Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333/Testset_result_model3_2_0333_temporal_new_6_eff_pad_size.h5'
+    # save_differenc = 'Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333//Testset_result_model3_2_0333_temporal_diff.h5'
 
-    # vel_volnames = ["u", "v", "w"]
+    vel_volnames = ["u", "v", "w"]
     # with h5py.File(patchify_file1, mode = 'r' ) as p1:
     #     with h5py.File(patchify_file2, mode = 'r' ) as p2:
     #         with h5py.File(patchify_file3, mode = 'r' ) as p3:
@@ -36,9 +37,13 @@ if __name__ == "__main__":
 
     #                     # prediction_utils.save_to_h5(save_differenc, f"{vel}_diff_no_padd_new", diff23, compression='gzip')
     #                     exit()
+    with h5py.File(lr_file, mode = 'r' ) as p1:
+        for vel in vel_volnames:
+            print(p1[vel].shape)
 
+        print("mask shape",p1['mask'].shape)
     
-    evaluate_utils.plot_relative_error([gt_file, gt_file, gt_file], [patchify_file1, patchify_file2, patchify_file3], ["effective padsize (-4)","no effective padsize" ,"effective padsize (-6)"], save_as='Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333/Error_comparison_patchify_testset.png')
+    #evaluate_utils.plot_relative_error([gt_file, gt_file, gt_file], [patchify_file1, patchify_file2, patchify_file3], ["effective padsize (-4)","no effective padsize" ,"effective padsize (-6)"], save_as='Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333/Error_comparison_patchify_testset.png')
                         
 
 

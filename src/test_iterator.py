@@ -17,7 +17,7 @@ def load_indexes(index_file):
 def check_compatibility(datapair):
     '''
     Test function, which checks compatibility of generated low ress and highres patches
-    Be aware: Only useful when comparing patches with no added noise
+    Be aware: Norm of difference is only zero when comparing patches with no added noise
     '''
 
     def simple_temporal_downsampling(hr_data, downsample =2):
@@ -65,15 +65,15 @@ def check_compatibility(datapair):
         print("LR u is not compatible with downsampled high res image!! ")
         print('Norm of difference: ', np.linalg.norm(lr_u - hr_u_downsampled))
         print("Count nonzero", np.count_nonzero(lr_u - hr_u_downsampled))
-        
+        print('Norm of difference: ', np.linalg.norm(lr_u - hr_u_downsampled))
 
     #check v
-    if np.linalg.norm(lr_v - hr_v_downsampled) >= 1:
+    if np.linalg.norm(lr_v - hr_v_downsampled) >=1:
         print("LR v is not compatible with downsampled high res image!! ")
         print('Norm of difference: ', np.linalg.norm(lr_v - hr_v_downsampled))
     
     #check w
-    if np.linalg.norm(np.asarray(lr_w) - hr_w_downsampled) >= 1:
+    if np.linalg.norm(np.asarray(lr_w) - hr_w_downsampled) >=1:
         print("LR w is not compatible with downsampled high res image!! ")
         print('Norm of difference: ', np.linalg.norm(lr_w - hr_w_downsampled))
 

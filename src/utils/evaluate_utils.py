@@ -521,6 +521,9 @@ def show_quiver( u, v, w, mask,save_as = "3DFlow.png"):
 
 
 def show_timeframes(gt,lr,  pred,mask, rel_error, dt,  timepoints, axis, idx, save_as = "Frame_comparison.png"):
+    '''
+    Plots a series of frames next to eachother to compare 
+    '''
     plt.clf()
     T = len(timepoints)
     i = 1
@@ -645,45 +648,14 @@ def calculate_temporal_derivative(data, timestep=1):
     Calculate difference between two time frames and each voxel
     i.e. for u: dt u(t) = |u(t+1) - u(t)| / timestep
     '''
-    # assume data of shape t, h, w, d
-    # kernel_t = np.zeros((2, 1, 1, 1))
-    # kernel_t[0] = -1
-    # kernel_t[1] = 1
-    # kernel_t = kernel_t/timestep
-    # print(kernel_t)
-    # #kernel_t = kernel_t.transpose((3, 1, 2, 0))
-    # print(kernel_t.shape)
 
     n_frames = data.shape[0]
     dt =  np.zeros_like(data)
     for t in range(n_frames-1):
         dt[t, :, :, :] = (data[t+timestep, :, :, :] - data[t, :, :, :])/timestep
 
-    dt = np.abs(dt)
-    # dt = convolve(data, kernel_t)
-    # print("dt shape:", dt.shape, data.shape)
-
-    # #TODO delete later
-    # #check one slice
-    # slice_t1 = get_slice(data, 2, axis=0, slice_idx=20)
-    # slice_t2 = get_slice(data, 3, axis=0, slice_idx=20)
-
-    # res = slice_t2 - slice_t1
-
-    # res_1 = get_slice(convolve(data, kernel_t.transpose(0, 1, 2, 3)), 2, axis= 0, slice_idx=20)
-    # res_2 = get_slice(convolve(data, kernel_t.transpose(1, 0, 2, 3)), 2, axis= 0, slice_idx=20)
-    # res_3 = get_slice(convolve(data, kernel_t.transpose(2, 1, 0, 3)), 2, axis= 0, slice_idx=20)
-    # res_4 = get_slice(convolve(data, kernel_t.transpose(3, 1, 2, 0)), 2, axis= 0, slice_idx=20)
-
-    # print("shapes", res_1.shape, res.shape)
-    # print("Check if kernel is correct:")
-    # print("Norm 1", np.linalg.norm(res_1-res))
-    # print("Norm 2", np.linalg.norm(res_2-res))
-    # print("Norm 3", np.linalg.norm(res_3-res))
-    # print("Norm 3", np.linalg.norm(res_4-res))
+    dt = np.abs(dt) 
     
-
-
     return dt
 
 
@@ -740,6 +712,7 @@ def create_temporal_mask(mask, n_frames):
 def temporal_linear_interpolation(lr, hr_shape):
     '''
     Linear interpolation in time, from (t, h, w, d) to (2t, h, w, d)
+    Be aware that if the hr shape is twice as high the last frame will be set to zero, since it it not in between slices
     '''
     t_lr = np.arange(0, lr.shape[0])
     x_lr = np.arange(0, lr.shape[1])
@@ -776,7 +749,7 @@ def temporal_NN_interpolation(lr, hr_shape):
 
 def temporal_cubic_interpolation(lr, hr_shape):
     '''
-    Cubic interpolation in time
+    Cubic interpolation in time , from (t, h, w, d) to (2t, h, w, d)
     '''
     x_lr = np.arange(0, lr.shape[0])
     x_hr = np.linspace(0, lr.shape[0]-0.5,  hr_shape[0])

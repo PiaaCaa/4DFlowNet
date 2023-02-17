@@ -152,6 +152,7 @@ class PatchHandler4D():
                 mask_temp = self.create_temporal_mask(np.asarray(hl.get(self.mask_colname)).squeeze(),  hl.get(self.hr_colnames[i]).shape[0])
                 mask = mask_temp[mask_index] 
             mask = (mask >= self.mask_threshold) * 1.
+            print("mask shape:", hl.get(self.mask_colname).shape)
             
         with h5py.File(lr_hd5path, 'r') as hl:
             for i in range(len(self.lr_colnames)):
