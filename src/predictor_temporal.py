@@ -34,15 +34,15 @@ def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock
 
 if __name__ == '__main__':
     # Define directories and filenames
-    model_name = '20230210-0333'
-    set_name = 'Test'
+    model_name = '20230215-1029' 
+    set_name = 'Validation'
     data_model= '3'
 
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     filename = f'M{data_model}_2mm_step5_static_TLR.h5'
  
     output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
-    output_filename = f'{set_name}set_result_model{data_model}_2_{model_name[-4::]}_temporal_new_6_eff_pad_size.h5'
+    output_filename = f'{set_name}set_result_model{data_model}_2_{model_name[-4::]}_temporal_.h5'
     
     model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 

@@ -11,6 +11,7 @@ from prepare_data.visualize_utils import generate_gif_volume
 from Network.loss_utils import calculate_divergence
 from scipy.signal import convolve2d
 from scipy.ndimage import convolve
+from scipy.interpolate import CubicSpline, RegularGridInterpolator
 # import matplotlib
 # matplotlib.rcParams['text.usetex'] = True
 from matplotlib import pyplot as plt
@@ -45,6 +46,8 @@ def random_indices3D(mask, n):
     z_idx = sample_pot[2][sample_idx]
     return x_idx, y_idx, z_idx
 
+def sigmoid(x):
+  return 1 / (1 + np.exp(-x))
 
 def calculate_relative_error_np(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_mask):
     # if epsilon is set to 0, we will get nan and inf
@@ -88,7 +91,7 @@ def calculate_relative_error_np(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary
 
 def calculate_relative_error_normalized(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_mask):
     # if epsilon is set to 0, we will get nan and inf
-    epsilon = 1e-5
+    epsilon = 1e-8 #TODO before 1e-5
 
     u_diff = np.square(u_pred - u_hi)
     v_diff = np.square(v_pred - v_hi)
@@ -100,8 +103,9 @@ def calculate_relative_error_normalized(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi
     print("max/min before arctan", np.max(diff_speed / (actual_speed + epsilon)), np.min(diff_speed / (actual_speed + epsilon)))
 
     # actual speed can be 0, resulting in inf
-    relative_speed_loss = np.arctan(diff_speed / (actual_speed + epsilon))
-    print("max/min after arctan", np.max(relative_speed_loss), np.min(relative_speed_loss))
+    #relative_speed_loss = np.arctan(diff_speed / (actual_speed + epsilon))
+    relative_speed_loss = np.tanh(diff_speed / (actual_speed + epsilon))
+    print("max/min after tanh", np.max(relative_speed_loss), np.min(relative_speed_loss))
     # Make sure the range is between 0 and 1
     #relative_speed_loss = np.clip(relative_speed_loss, 0., 1.)
 
@@ -150,16 +154,28 @@ def calculate_pointwise_error(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_m
     idx_mask = np.where(binary_mask == 0)
     relative_speed_loss[:,idx_mask[0], idx_mask[1], idx_mask[2]] = 0
 
-    return relative_speed_loss, np.sqrt(u_diff), np.sqrt(v_diff), np.sqrt(w_diff)#, np.sum(diff_speed, axis = 0) #corrected_speed_loss#mean_err
+    error_absolut = {} 
+    error_absolut["u"] = np.sqrt(u_diff)
+    error_absolut["v"] = np.sqrt(v_diff)
+    error_absolut["w"] = np.sqrt(w_diff)
+
+    return relative_speed_loss, error_absolut
 
 
 def calculate_mean_speed(u_hi, v_hi, w_hi, binary_mask):
+    '''
+    Calculate mean speed of given values. 
+    Important: Set values of u, v, w outside of fluid region to zero 
+    '''
 
     speed = np.sqrt(np.square(u_hi) + np.square(v_hi) + np.square(w_hi))
     mean_speed = np.sum(speed, axis=(1,2,3)) / (np.sum(binary_mask, axis=(0,1,2)) + 1) *100
     return mean_speed
 
 def compare_masks(u_hi, v_hi, w_hi, binary_mask):
+    '''
+    Compares the given binary mask with the created mask on the nonzero values of u, v and w
+    '''
     overlap_mask= np.zeros_like(u_hi)
     overlap_mask[np.where(u_hi != 0)] = 1
     overlap_mask[np.where(v_hi != 0)] = 1
@@ -191,43 +207,34 @@ def plot_regression(gt, prediction, frame_idx, save_as = None):
     
     mask[np.where(mask > mask_threshold)] = 1 
 
-    idx_inner = np.where(mask ==1)
-    idx_bounds = np.where(bounds ==1)
+    idx_inner = np.where(mask == 1 )
+    idx_bounds = np.where(bounds == 1)
+
     # # Use mask to find interesting samples
-    # sample_pot = np.where(mask > mask_threshold)[1:]
-    # sample_boundary_points = np.where(bounds > mask_threshold)[1:]
-    # rng = np.random.default_rng()
-
-    # # Sample <scatter_percent> samples
-    # sample_idx = rng.choice(len(sample_pot[0]), replace=False, size=(int(len(sample_pot[0])*scatter_percent)))
-
-    # # Get indexes
-    # x_idx = sample_pot[0][sample_idx]
-    # y_idx = sample_pot[1][sample_idx]
-    # z_idx = sample_pot[2][sample_idx]
-
+    x_idx, y_idx, z_idx = random_indices3D(mask-bounds, n=int(0.1*np.count_nonzero(mask)))
+    x_idx_b, y_idx_b, z_idx_b = random_indices3D(bounds, n=int(0.1*np.count_nonzero(bounds)))
+    
     # Get velocity values in all directions
-
     hr_u = np.asarray(gt['u'][frame_idx])
-    hr_u_vals = hr_u[idx_inner]
-    hr_u_bounds = hr_u[idx_bounds]
+    hr_u_vals = hr_u[x_idx, y_idx, z_idx]
+    hr_u_bounds = hr_u[x_idx_b, y_idx_b, z_idx_b]
     hr_v = np.asarray(gt['v'][frame_idx])
-    hr_v_vals = hr_v[idx_inner]
-    hr_v_bounds = hr_v[idx_bounds]
+    hr_v_vals = hr_v[x_idx, y_idx, z_idx]
+    hr_v_bounds = hr_v[x_idx_b, y_idx_b, z_idx_b]
     hr_w = np.asarray(gt['w'][frame_idx])
-    hr_w_vals = hr_w[idx_inner]
-    hr_w_bounds = hr_w[idx_bounds]
+    hr_w_vals = hr_w[x_idx, y_idx, z_idx]
+    hr_w_bounds = hr_w[x_idx_b, y_idx_b, z_idx_b]
 
   
     sr_u = np.asarray(prediction['u'][frame_idx])
-    sr_u_vals = sr_u[idx_inner]
-    sr_u_bounds = sr_u[idx_bounds]
+    sr_u_vals = sr_u[x_idx, y_idx, z_idx]
+    sr_u_bounds = sr_u[x_idx_b, y_idx_b, z_idx_b]
     sr_v = np.asarray(prediction['v'][frame_idx])
-    sr_v_vals = sr_v[idx_inner]
-    sr_v_bounds = sr_v[idx_bounds]
+    sr_v_vals = sr_v[x_idx, y_idx, z_idx]
+    sr_v_bounds = sr_v[x_idx_b, y_idx_b, z_idx_b]
     sr_w = np.asarray(prediction['w'][frame_idx])
-    sr_w_vals = sr_w[idx_inner]
-    sr_w_bounds = sr_w[idx_bounds]
+    sr_w_vals = sr_w[x_idx, y_idx, z_idx]
+    sr_w_bounds = sr_w[x_idx_b, y_idx_b, z_idx_b]
 
     def plot_regression_points(hr_vals, sr_vals, hr_vals_bounds, sr_vals_bounds):
         dimension = 2 #TODO
@@ -259,6 +266,9 @@ def plot_regression(gt, prediction, frame_idx, save_as = None):
 
 
 def get_slice(data, frame, axis, slice_idx):
+    '''
+    Returns 2D from 4D data with given time frame, axis and index
+    '''
     if len(data.squeeze().shape) == 3:
         frame = 0
         print("Only one frame available: take first frame.")
@@ -681,7 +691,7 @@ def plot_relative_error(lst_hgt_paths, lst_hpred_paths,lst_names, save_as = 'Rel
     assert(len(lst_hgt_paths)==len(lst_hpred_paths))
     vel_colnames=['u', 'v', 'w']
 
-    for gt_path, pred_path in zip(lst_hgt_paths, lst_hpred_paths):
+    for gt_path, pred_path, name in zip(lst_hgt_paths, lst_hpred_paths, lst_names):
         gt = {}
         pred = {}
         with h5py.File(pred_path, mode = 'r' ) as h_pred:
@@ -704,16 +714,16 @@ def plot_relative_error(lst_hgt_paths, lst_hpred_paths,lst_names, save_as = 'Rel
 
                 error_gt = calculate_relative_error_normalized(pred["u"], pred["v"], pred["w"], gt["u"], gt["v"] , gt["w"], gt["mask"])
                 #Plot Relative error
-                plt.plot(error_gt, '-')
+                plt.plot(error_gt, '-', label = name)
 
 
     plt.plot(50*np.ones(len(error_gt)), 'k:')
     plt.xlabel("Frame")
     plt.ylabel("Relative error (%)")
     plt.ylim((0, 100))
-    plt.legend(lst_names)
+    #plt.legend(lst_names)
     plt.title("Relative error")
-    plt.savefig(save_as)
+    #plt.savefig(save_as)
     #plt.clf()
 
 def create_temporal_mask(mask, n_frames):
@@ -727,11 +737,52 @@ def create_temporal_mask(mask, n_frames):
     return temporal_mask
 
 
-def temporal_bilinear_interpolation(lr, hr_shape):
-    interpolate = np.zeros(hr_shape)
-    interpolate[::2, :, :, :] = lr
-     # TODO double check this
-    interpolate[1::2, :,:, :] = np.average(lr, axis=0)
+def temporal_linear_interpolation(lr, hr_shape):
+    '''
+    Linear interpolation in time, from (t, h, w, d) to (2t, h, w, d)
+    '''
+    t_lr = np.arange(0, lr.shape[0])
+    x_lr = np.arange(0, lr.shape[1])
+    y_lr = np.arange(0, lr.shape[2])
+    z_lr = np.arange(0, lr.shape[3])
+
+    t_hr = np.linspace(0, lr.shape[0]-0.5,  hr_shape[0])
+    
+    tg, xg, yg ,zg = np.meshgrid(t_hr, x_lr, y_lr, z_lr, indexing='ij', sparse=True)
+
+    interp = RegularGridInterpolator((t_lr, x_lr, y_lr, z_lr), lr, method='linear', bounds_error=False, fill_value=0)
+    interpolate = interp((tg, xg, yg ,zg))
+
+    return interpolate
+
+
+def temporal_NN_interpolation(lr, hr_shape):
+    '''
+    Nearest neighbor interpolation in time, from (t, h, w, d) to (2t, h, w, d)
+    '''
+    t_lr = np.arange(0, lr.shape[0])
+    x_lr = np.arange(0, lr.shape[1])
+    y_lr = np.arange(0, lr.shape[2])
+    z_lr = np.arange(0, lr.shape[3])
+
+    t_hr = np.linspace(0, lr.shape[0]-0.5,  hr_shape[0])
+    
+    tg, xg, yg ,zg = np.meshgrid(t_hr, x_lr, y_lr, z_lr, indexing='ij', sparse=True)
+
+    interp = RegularGridInterpolator((t_lr, x_lr, y_lr, z_lr), lr, method='nearest', bounds_error=False, fill_value=0)
+    interpolate = interp((tg, xg, yg ,zg))
+
+    return interpolate
+
+def temporal_cubic_interpolation(lr, hr_shape):
+    '''
+    Cubic interpolation in time
+    '''
+    x_lr = np.arange(0, lr.shape[0])
+    x_hr = np.linspace(0, lr.shape[0]-0.5,  hr_shape[0])
+    cs = CubicSpline(x_lr, lr, axis=0)
+
+    interpolate = cs(x_hr)
 
     return interpolate
 
