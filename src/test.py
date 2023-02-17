@@ -41,8 +41,8 @@ if __name__ == "__main__":
         for vel in vel_volnames:
             print(p1[vel].shape)
 
-        print("mask shape",p1['mask'].shape)
-    
+        print("mask shape",p1['mask'].shape)  
+    #test this branch
     #evaluate_utils.plot_relative_error([gt_file, gt_file, gt_file], [patchify_file1, patchify_file2, patchify_file3], ["effective padsize (-4)","no effective padsize" ,"effective padsize (-6)"], save_as='Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333/Error_comparison_patchify_testset.png')
                         
 
