@@ -49,7 +49,7 @@ if __name__ == '__main__':
     base_path = 'Temporal4DFlowNet/data/CARDIAC'
     # Put your path to Hires Dataset
     input_filepath  =  f'{base_path}/M1_2mm_step2_static.h5'
-    output_filename = f'{base_path}/M1_2mm_step2_static_TLR_no_noise.h5' 
+    output_filename = f'{base_path}/M1_2mm_step2_static_noise.h5' 
     # Downsample rate 
     downsample = 2
 
@@ -153,12 +153,12 @@ if __name__ == '__main__':
                 venc_w = vencs[2]
                  
         # TODO attention: is just adding noise NOT downsampling image
-        # hr_u[idx, :, :, :], mag_u =  fft.downsample_phase_img(hr_u_frame, mag_image, venc_u, crop_ratio, targetSNRdb, temporal_downsampling=True)   
-        # hr_v[idx, :, :, :], mag_v =  fft.downsample_phase_img(hr_v_frame, mag_image, venc_v, crop_ratio, targetSNRdb, temporal_downsampling=True)   
-        # hr_w[idx, :, :, :], mag_w =  fft.downsample_phase_img(hr_w_frame, mag_image, venc_w, crop_ratio, targetSNRdb, temporal_downsampling=True)   
-        hr_u[idx, :, :, :], mag_u = hr_u_frame, mag_image
-        hr_v[idx, :, :, :], mag_v = hr_v_frame, mag_image
-        hr_w[idx, :, :, :], mag_w = hr_w_frame, mag_image
+        hr_u[idx, :, :, :], mag_u =  fft.downsample_phase_img(hr_u_frame, mag_image, venc_u, crop_ratio, targetSNRdb, temporal_downsampling=True)   
+        hr_v[idx, :, :, :], mag_v =  fft.downsample_phase_img(hr_v_frame, mag_image, venc_v, crop_ratio, targetSNRdb, temporal_downsampling=True)   
+        hr_w[idx, :, :, :], mag_w =  fft.downsample_phase_img(hr_w_frame, mag_image, venc_w, crop_ratio, targetSNRdb, temporal_downsampling=True)   
+        # hr_u[idx, :, :, :], mag_u = hr_u_frame, mag_image
+        # hr_v[idx, :, :, :], mag_v = hr_v_frame, mag_image
+        # hr_w[idx, :, :, :], mag_w = hr_w_frame, mag_image
         hr_mag_u[idx, :, :, :] = mag_u
         hr_mag_v[idx, :, :, :] = mag_v
         hr_mag_w[idx, :, :, :] = mag_w
@@ -173,13 +173,16 @@ if __name__ == '__main__':
 
     # DO the downsampling
     #TODO this can be done more fancy
-    lr_u = simple_temporal_downsampling(hr_u, downsample)
-    lr_v = simple_temporal_downsampling(hr_v, downsample)
-    lr_w = simple_temporal_downsampling(hr_w, downsample)
+    # lr_u = simple_temporal_downsampling(hr_u, downsample)
+    # lr_v = simple_temporal_downsampling(hr_v, downsample)
+    # lr_w = simple_temporal_downsampling(hr_w, downsample)
+    lr_u = hr_u
+    lr_v = hr_v
+    lr_w = hr_w
 
-    mag_u = simple_temporal_downsampling(hr_mag_u)
-    mag_v = simple_temporal_downsampling(hr_mag_v)
-    mag_w = simple_temporal_downsampling(hr_mag_w)
+    mag_u = hr_mag_u   #simple_temporal_downsampling(hr_mag_u)
+    mag_v = hr_mag_v   #simple_temporal_downsampling(hr_mag_v)
+    mag_w = hr_mag_w   #simple_temporal_downsampling(hr_mag_w)
 
 
     # Save the downsampled images

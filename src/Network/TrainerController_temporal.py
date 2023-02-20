@@ -196,7 +196,7 @@ class TrainerController_temporal:
         utility.log_to_file(self.logfile, f'epoch, {stat_names}, learning rate, elapsed (sec), best_model, benchmark_err, benchmark_rel_err, benchmark_mse, benchmark_divloss\n')
 
         print("Copying source code to model directory...")
-        base_path = "4DFlowNet/src/"
+        base_path = "Temporal4DFlowNet/src/"
 
         # Copy all the source file to the model dir for backup
         directory_to_backup = [base_path +".", base_path+ "Network"]

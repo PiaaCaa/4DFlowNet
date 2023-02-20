@@ -8,7 +8,7 @@ from utils import prediction_utils
 from utils.ImageDataset_temporal import ImageDataset_temporal
 from matplotlib import pyplot as plt
 import h5py
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock):
     # Prepare input
@@ -34,7 +34,7 @@ def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock
 
 if __name__ == '__main__':
     # Define directories and filenames
-    model_name = '20230215-1029' 
+    model_name = '20230217-0602' 
     set_name = 'Validation'
     data_model= '3'
 
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
     # Params
-    patch_size = 10
+    patch_size = 14
     res_increase = 2
     batch_size = 8
     round_small_values = True

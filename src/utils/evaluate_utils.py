@@ -466,7 +466,6 @@ def show_temporal_development_line(gt, lr, pred, mask, axis, indices, save_as = 
     min_v = np.min([np.min(prediction), np.min(ground_truth), np.min(low_resolution)])
     max_v = np.max([np.max(prediction), np.max(ground_truth), np.max(low_resolution)])
 
-    
 
     plt.subplot(1, 3, 1)
     plt.imshow(low_resolution, vmin = min_v, vmax = max_v, cmap='jet')
@@ -714,6 +713,7 @@ def temporal_linear_interpolation(lr, hr_shape):
     Linear interpolation in time, from (t, h, w, d) to (2t, h, w, d)
     Be aware that if the hr shape is twice as high the last frame will be set to zero, since it it not in between slices
     '''
+    # only temporal resolution increases 
     t_lr = np.arange(0, lr.shape[0])
     x_lr = np.arange(0, lr.shape[1])
     y_lr = np.arange(0, lr.shape[2])

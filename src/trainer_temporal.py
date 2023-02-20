@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from Network.PatchHandler3D_temporal import PatchHandler4D
+from Network.PatchHandler3D_temporal import PatchHandler4D, PatchHandler4D_all_axis
 from Network.TrainerController_temporal import TrainerController_temporal
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
@@ -15,20 +15,26 @@ if __name__ == "__main__":
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal14MODEL12_2mm_step2.csv'.format(data_dir) 
-    validate_file = '{}/Temporal14MODEL3_2mm_step2.csv'.format(data_dir)
+    training_file = '{}/Temporal14MODEL23_2mm_step2_all_axis.csv'.format(data_dir) 
+    validate_file = '{}/Temporal14MODEL1_2mm_step2_all_axis.csv'.format(data_dir)
 
     QUICKSAVE = True
-    benchmark_file = '{}/Temporal14MODEL4_2mm_step2.csv'.format(data_dir)
+    benchmark_file = '{}/Temporal14MODEL4_2mm_step2_all_axis.csv'.format(data_dir)
     
     restore = False
     if restore:
         model_dir = "4DFlowNet/models/4DFlowNet"
         model_file = "4DFlowNet-best.h5"
 
+    # Adapt how patches are saved for temporal domainm if True a different loading scheme is used
+    load_patches_all_axis = True
+
+    # if load_patches_all_axis:
+    #     assert #TODO, check that title is correct, since it implied which kind of loading it useses
+
     # Hyperparameters optimisation variables
     initial_learning_rate = 2e-4
-    epochs =  400
+    epochs =  100
     batch_size = 15
     mask_threshold = 0.6
 
@@ -46,11 +52,17 @@ if __name__ == "__main__":
     
     # ----------------- TensorFlow stuff -------------------
     # TRAIN dataset iterator
-    z = PatchHandler4D(data_dir, patch_size, res_increase, batch_size, mask_threshold)
+    if load_patches_all_axis: 
+        z = PatchHandler4D_all_axis(data_dir, patch_size, res_increase, batch_size, mask_threshold)
+    else:
+        z = PatchHandler4D(data_dir, patch_size, res_increase, batch_size, mask_threshold)
     trainset = z.initialize_dataset(trainset, shuffle=True, n_parallel=None)
 
     # VALIDATION iterator
-    valdh = PatchHandler4D(data_dir, patch_size, res_increase, batch_size, mask_threshold)
+    if load_patches_all_axis: 
+        valdh = PatchHandler4D_all_axis(data_dir, patch_size, res_increase, batch_size, mask_threshold)
+    else:
+        valdh = PatchHandler4D(data_dir, patch_size, res_increase, batch_size, mask_threshold)
     valset = valdh.initialize_dataset(valset, shuffle=True, n_parallel=None)
 
     # # Bechmarking dataset, use to keep track of prediction progress per best model
@@ -58,7 +70,10 @@ if __name__ == "__main__":
     if QUICKSAVE and benchmark_file is not None:
         # WE use this bechmarking set so we can see the prediction progressing over time
         benchmark_set = load_indexes(benchmark_file)
-        ph = PatchHandler4D(data_dir, patch_size, res_increase, batch_size, mask_threshold)
+        if load_patches_all_axis: 
+            ph = PatchHandler4D_all_axis(data_dir, patch_size, res_increase, batch_size, mask_threshold)
+        else:
+            ph = PatchHandler4D(data_dir, patch_size, res_increase, batch_size, mask_threshold)
         # No shuffling, so we can save the first batch consistently
         testset = ph.initialize_dataset(benchmark_set, shuffle=False) 
 
