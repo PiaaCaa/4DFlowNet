@@ -35,9 +35,8 @@ def random_indices3D(mask, n):
     mask_threshold = 0.9
     sample_pot = np.where(mask > mask_threshold)
     rng = np.random.default_rng()
-    scatter_percent = 0.05
 
-    # # Sample <scatter_percent> samples
+    # # Sample n samples
     sample_idx = rng.choice(len(sample_pot[0]), replace=False, size=n)
 
     # # Get indexes
@@ -50,6 +49,9 @@ def sigmoid(x):
   return 1 / (1 + np.exp(-x))
 
 def calculate_relative_error_np(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_mask):
+    '''
+    Relative error calculation for numpy arrays as in training
+    '''
     # if epsilon is set to 0, we will get nan and inf
     epsilon = 1e-5
 
@@ -90,6 +92,9 @@ def calculate_relative_error_np(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary
     return mean_err
 
 def calculate_relative_error_normalized(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_mask):
+    '''
+    Calculate relative error with tanh as normalization
+    '''
     # if epsilon is set to 0, we will get nan and inf
     epsilon = 1e-8 #TODO before 1e-5
 
@@ -100,7 +105,7 @@ def calculate_relative_error_normalized(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi
     diff_speed = np.sqrt(u_diff + v_diff + w_diff)
     actual_speed = np.sqrt(np.square(u_hi) + np.square(v_hi) + np.square(w_hi)) 
 
-    print("max/min before arctan", np.max(diff_speed / (actual_speed + epsilon)), np.min(diff_speed / (actual_speed + epsilon)))
+    print("max/min before tanh", np.max(diff_speed / (actual_speed + epsilon)), np.min(diff_speed / (actual_speed + epsilon)))
 
     # actual speed can be 0, resulting in inf
     #relative_speed_loss = np.arctan(diff_speed / (actual_speed + epsilon))
@@ -135,6 +140,9 @@ def calculate_relative_error_normalized(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi
 
 
 def calculate_pointwise_error(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_mask):
+    '''
+    Returns a relative pointswise error and a dictionary with the absolute difference between prediction and ground truth
+    '''
     # if epsilon is set to 0, we will get nan and inf
     epsilon = 1e-5
 
@@ -193,11 +201,12 @@ def compare_masks(u_hi, v_hi, w_hi, binary_mask):
 
 
 def plot_regression(gt, prediction, frame_idx, save_as = None):
-    """ Plot a linear regression between HR and predicted SR in given frame """
-    #
-    # Parameters
-    #
-    mask_threshold = 0.8
+    '''
+    Plot linear regresssion plot between ground truth and prediction
+    '''
+    #set percentage of how many random points are uses
+    p = 0.1
+
 
     mask = np.asarray(gt['mask']).squeeze()  #assume static mask
     bounds = np.zeros_like(mask)
@@ -211,8 +220,9 @@ def plot_regression(gt, prediction, frame_idx, save_as = None):
     idx_bounds = np.where(bounds == 1)
 
     # # Use mask to find interesting samples
-    x_idx, y_idx, z_idx = random_indices3D(mask-bounds, n=int(0.1*np.count_nonzero(mask)))
-    x_idx_b, y_idx_b, z_idx_b = random_indices3D(bounds, n=int(0.1*np.count_nonzero(bounds)))
+    #subtract bounds from mask such that mask only contains inner points
+    x_idx, y_idx, z_idx = random_indices3D(mask-bounds, n=int(p*np.count_nonzero(mask)))
+    x_idx_b, y_idx_b, z_idx_b = random_indices3D(bounds, n=int(p*np.count_nonzero(bounds)))
     
     # Get velocity values in all directions
     hr_u = np.asarray(gt['u'][frame_idx])
@@ -294,6 +304,7 @@ def crop_center(img,cropx,cropy):
 def get_boundaries(binary_mask):
     '''
     returns a 2d array with same shape as binary mask, 1: boundary point, 0 no boundary point
+    Uses finite difference convolutions on mask to extract boundaries
     '''
 
     kernel_x = np.array([[-1, 0, 1]])
@@ -659,6 +670,9 @@ def calculate_temporal_derivative(data, timestep=1):
 
 
 def plot_relative_error(lst_hgt_paths, lst_hpred_paths,lst_names, save_as = 'Relative_error_comparison.png'):
+    '''
+    Plots relative error from all the files given in the list of paths in the same plot
+    '''
     assert(len(lst_hgt_paths)==len(lst_hpred_paths))
     vel_colnames=['u', 'v', 'w']
 

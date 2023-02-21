@@ -3,12 +3,13 @@ import h5py
 from utils import ImageDataset
 
 class PatchGenerator():
-    def __init__(self, patch_size, res_increase):
+    def __init__(self, patch_size, res_increase, include_all_axis = False):
         self.patch_size = patch_size
         #TODO changed here
         #self.effective_patch_size = patch_size - 4# we strip down 2 from each sides (on LR)
         self.effective_patch_size = patch_size - 4
         self.res_increase = res_increase
+        self.all_axis = include_all_axis
         # we make sure we pad it on the far side of x,y,z so the division will match
         self.padding = (0,0,0) 
 
@@ -56,9 +57,14 @@ class PatchGenerator():
         """
             Pad image to the right, until it is exactly divisible by patch size
         """
+        if self.all_axis:
+            
+            img = img[::2, :, :]  # from shape (T, X, Y) to (1/2 T, X, Y) (of other combinations of X; Y; Z)
+
         side_pad = (self.patch_size-self.effective_patch_size) // 2
         
         # mandatory padding
+        #TODO pad temporal side with mirroring
         img = np.pad(img, ((side_pad, side_pad),(side_pad, side_pad),(side_pad, side_pad)), 'constant')
         
         res_x = (img.shape[0] % self.effective_patch_size)
@@ -128,8 +134,8 @@ class PatchGenerator():
         side_pad_hr =  side_pad * self.res_increase # size pad hr = 0
         #TODO adapt to other axis
         side_pad_hr_spatial = side_pad # no increase in spatial domain 
-        patch_size_thr = patches.shape[1]  # patchsize = 20
-        patch_size_shr = patches.shape[2]
+        patch_size_thr = patches.shape[1]  # patchsize = 20 # temproal high resolution
+        patch_size_shr = patches.shape[2]   # spatial high resolution
 
         n = patch_size_thr-side_pad_hr # n=20
         n_spatial = patch_size_shr - side_pad_hr_spatial
