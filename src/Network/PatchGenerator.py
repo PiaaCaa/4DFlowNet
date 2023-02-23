@@ -59,13 +59,15 @@ class PatchGenerator():
         """
         if self.all_axis:
             
-            img = img[::2, :, :]  # from shape (T, X, Y) to (1/2 T, X, Y) (of other combinations of X; Y; Z)
+            img = img[::2, :, :]  # from shape (T, X, Y) to (1/2 T, X, Y) (or other combinations of X; Y; Z)
 
         side_pad = (self.patch_size-self.effective_patch_size) // 2
         
         # mandatory padding
         #TODO pad temporal side with mirroring
-        img = np.pad(img, ((side_pad, side_pad),(side_pad, side_pad),(side_pad, side_pad)), 'constant')
+        #img = np.pad(img, ((side_pad, side_pad),(side_pad, side_pad),(side_pad, side_pad)), 'constant')
+        img = np.pad(img, ((0, 0),(side_pad, side_pad),(side_pad, side_pad)), 'constant')
+        img = np.pad(img, ((side_pad, side_pad),(0, 0),(0, 0)), 'wrap')
         
         res_x = (img.shape[0] % self.effective_patch_size)
         if (res_x > (2* side_pad)):

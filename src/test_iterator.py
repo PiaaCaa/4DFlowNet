@@ -43,7 +43,7 @@ def check_compatibility(datapair):
     hr_w_downsampled = simple_temporal_downsampling(hr_w, downsample=2)
 
     hr_u_mask = np.ones_like(hr_u_downsampled)
-    tol = 1e-10
+    tol = 1e-8
     hr_u_mask[np.where(np.abs(hr_u_downsampled) < tol)] = 0
     
     hr_u_downsampled = np.multiply(hr_u_downsampled, mask )
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal14MODEL1_2mm_step2_all_axis.csv'.format(data_dir)
+    training_file = '{}/Temporal14MODEL1_2mm_step2_all_axis_extended_no_noise.csv'.format(data_dir)
    
     # Hyperparameters optimisation variables
     epochs =  1

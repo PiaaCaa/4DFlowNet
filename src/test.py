@@ -18,9 +18,16 @@ if __name__ == "__main__":
     gt_file = 'Temporal4DFlowNet/data/CARDIAC/M3_2mm_step5_static.h5'
     lr_file = 'Temporal4DFlowNet/data/CARDIAC/M3_2mm_step2_static_TLR.h5'
 
-    print(rnd.randrange(0, 1))
     #t = np.arange(0, 50)
-    v = np.zeros((1, 2, 3, 4))
+    v = np.arange(10).reshape(2,5)
+    a = np.array([1, 2, 3, 4])
+
+    idx  = np.index_exp[:, 2:4]
+    #print(v)
+    print(v[idx])
+    print(v[idx][:, ::-1])
+
+
     print("original:", v.shape)
     print("transpose ():", v.transpose(1, 0, 2, 3).shape)
     print("transpose ():", v.transpose(1, 2, 0, 3).shape)
