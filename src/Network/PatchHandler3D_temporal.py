@@ -244,26 +244,27 @@ class PatchHandler4D_all_axis():
         start_t, start_1, start_2 = int(indexes[4]), int(indexes[5]), int(indexes[6])
         step_t = int(indexes[7])
         reverse = int(indexes[8]) # 1 for no reverse, -1 for reverse order, only reverse te first spatial component
-        #['source', 'target','axis', 'index', 'start_t', 'start_1', 'start_2', 'step_t', 'reverse', 'coverage']
        
         patch_size = self.patch_size
         hr_patch_size = self.patch_size * step_t    #self.res_increase
         
         # ============ get the patch ============ 
         if axis == 0 :
-            patch_t_index       = np.index_exp[start_t :start_t+hr_patch_size:step_t,   idx, start_1:start_1+patch_size:reverse, start_2:start_2+patch_size]
-            hr_t_patch_index    = np.index_exp[start_t :start_t+hr_patch_size,          idx, start_1:start_1+patch_size:reverse, start_2:start_2+patch_size]
-            mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,          idx, start_1:start_1+patch_size:reverse, start_2:start_2+patch_size]
+            patch_t_index       = np.index_exp[start_t :start_t+hr_patch_size:step_t,   idx, start_1:start_1+patch_size, start_2:start_2+patch_size]
+            hr_t_patch_index    = np.index_exp[start_t :start_t+hr_patch_size,          idx, start_1:start_1+patch_size, start_2:start_2+patch_size]
+            mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,          idx, start_1:start_1+patch_size, start_2:start_2+patch_size]
         elif axis ==1:
-            patch_t_index       = np.index_exp[start_t :start_t+hr_patch_size:step_t, start_1:start_1+patch_size:reverse,idx, start_2:start_2+patch_size]
-            hr_t_patch_index    = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size:reverse,idx, start_2:start_2+patch_size]
-            mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size:reverse,idx, start_2:start_2+patch_size]
+            patch_t_index       = np.index_exp[start_t :start_t+hr_patch_size:step_t, start_1:start_1+patch_size,idx, start_2:start_2+patch_size]
+            hr_t_patch_index    = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size,idx, start_2:start_2+patch_size]
+            mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size,idx, start_2:start_2+patch_size]
         elif axis ==2:
-            patch_t_index       = np.index_exp[start_t :start_t+hr_patch_size:step_t, start_1:start_1+patch_size:reverse, start_2:start_2+patch_size, idx]
-            hr_t_patch_index    = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size:reverse, start_2:start_2+patch_size, idx]
-            mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size:reverse, start_2:start_2+patch_size, idx]
+            patch_t_index       = np.index_exp[start_t :start_t+hr_patch_size:step_t, start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
+            hr_t_patch_index    = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
+            mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
+
         
-        u_patch, u_hr_patch, mag_u_patch, v_patch, v_hr_patch, mag_v_patch, w_patch, w_hr_patch, mag_w_patch, venc, mask_patch = self.load_vectorfield(hd5path, lr_hd5path, idx, mask_t_index, patch_t_index, hr_t_patch_index)
+        
+        u_patch, u_hr_patch, mag_u_patch, v_patch, v_hr_patch, mag_v_patch, w_patch, w_hr_patch, mag_w_patch, venc, mask_patch = self.load_vectorfield(hd5path, lr_hd5path, idx, mask_t_index, patch_t_index, hr_t_patch_index, reverse)
         
         # Expand dims (for InputLayer)
         return u_patch[...,tf.newaxis], v_patch[...,tf.newaxis], w_patch[...,tf.newaxis], \
@@ -282,7 +283,7 @@ class PatchHandler4D_all_axis():
             temporal_mask[i, :, :, :] = mask
         return temporal_mask
 
-    def load_vectorfield(self, hd5path, lr_hd5path, idx, mask_index, patch_index, hr_patch_index):
+    def load_vectorfield(self, hd5path, lr_hd5path, idx, mask_index, patch_index, hr_patch_index, reverse):
         '''
             Load LowRes velocity and magnitude components, and HiRes velocity components
             Also returns the global venc and HiRes mask
@@ -328,7 +329,15 @@ class PatchHandler4D_all_axis():
         hires_images = np.asarray(hires_images)
         lowres_images = np.asarray(lowres_images)
         mag_images = np.asarray(mag_images)
-        # print("shapes:", hires_images.shape, lowres_images.shape, mag_images.shape)
+        #rint("mask shape_", mask.shape)
+        if reverse: #reverse images shape now (3, t, x, y) (or other combinations of x, y, z)
+            hires_images = hires_images[:, :, ::-1, :] 
+            lowres_images = lowres_images[:, :, ::-1, :] 
+            mag_images = mag_images[:, :, ::-1, :] 
+            mask = mask[:, ::-1,:] # mask shape (t, x, y)
+            
+
+        #print("shapes:", hires_images.shape, lowres_images.shape, mag_images.shape)
         
         # Normalize the values 
         hires_images = self._normalize(hires_images, global_venc) # Velocity normalized to -1 .. 1

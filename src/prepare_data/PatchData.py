@@ -224,10 +224,10 @@ def generate_temporal_random_patches_all_axis(input_filename, target_filename, o
 
         #if reverse = True, created patch should only be reversed when random choice is True
         if reverse:
-            rev = np.random.choice([True, False])
-            if rev: 
-                patch.reverse = -1
-                patch.write_to_csv(output_filename)
+            # rev = np.random.choice([True, False])
+            # if rev: 
+            patch.reverse = -1
+            patch.write_to_csv(output_filename)
 
         
     # /end of while n_patch

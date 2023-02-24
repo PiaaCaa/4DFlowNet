@@ -36,8 +36,8 @@ def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock
 if __name__ == '__main__':
     # Define directories and filenames
     model_name = '20230220-0908' #this model: training 2, 3, validation: 1, test:4
-    set_name = 'Training'
-    data_model= '2'
+    set_name = 'Test'
+    data_model= '4'
     step = 2
 
     # set filenamaes and directories
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     filename = f'M{data_model}_2mm_step{step}_static_noise.h5'
  
     output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
-    output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal_.h5'
+    output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal_newpadding.h5'
     
     model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
@@ -151,7 +151,7 @@ if __name__ == '__main__':
                 
                 v = np.expand_dims(v, axis=0)
                 print("shape of v:", v.shape)
-                #prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'{dataset.velocity_colnames[i]}__axis{a}', v, compression='gzip')
+                # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'{dataset.velocity_colnames[i]}__axis{a}', v, compression='gzip')
                 if a == 0:      volume[i, :, nrow,  :,      :] = v#.transpose(1, 0, 2, 3)
                 elif a == 1:    volume[i, :, :,     nrow,   :] = v#.transpose(1, 2, 0, 3)
                 elif a == 2:    volume[i, :, :,     :,   nrow] = v#.transpose(1, 2, 3, 0)
@@ -163,6 +163,9 @@ if __name__ == '__main__':
                 new_spacing = np.expand_dims(new_spacing, axis=0) 
                 #prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', dataset.dx_colname, new_spacing, compression='gzip')
 
+        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'u_axis{a}', volume[0, :, :, :], compression='gzip')
+        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'v_axis{a}', volume[1, :, :, :], compression='gzip')
+        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'w_axis{a}', volume[2, :, :, :], compression='gzip')
         u_combined += volume[0, :, :, :] 
         v_combined += volume[1, :, :, :] 
         w_combined += volume[2, :, :, :] 

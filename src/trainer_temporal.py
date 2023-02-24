@@ -15,18 +15,18 @@ if __name__ == "__main__":
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal14MODEL23_2mm_step2_all_axis.csv'.format(data_dir) 
-    validate_file = '{}/Temporal14MODEL1_2mm_step2_all_axis.csv'.format(data_dir)
+    training_file = '{}/Temporal14MODEL23_2mm_step2_all_axis_extended.csv'.format(data_dir) 
+    validate_file = '{}/Temporal14MODEL1_2mm_step2_all_axis_extended.csv'.format(data_dir)
 
     QUICKSAVE = True
-    benchmark_file = '{}/Temporal14MODEL4_2mm_step2_all_axis.csv'.format(data_dir)
+    benchmark_file = '{}/Temporal14MODEL4_2mm_step2_all_axis_extended.csv'.format(data_dir)
     
     restore = False
     if restore:
         model_dir = "4DFlowNet/models/4DFlowNet"
         model_file = "4DFlowNet-best.h5"
 
-    # Adapt how patches are saved for temporal domainm if True a different loading scheme is used
+    # Adapt how patches are saved for temporal domain if True a different loading scheme is used
     load_patches_all_axis = True
 
     # if load_patches_all_axis:

@@ -96,7 +96,7 @@ def calculate_relative_error_normalized(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi
     Calculate relative error with tanh as normalization
     '''
     # if epsilon is set to 0, we will get nan and inf
-    epsilon = 1e-8 #TODO before 1e-5
+    epsilon = 1e-5 #TODO before 1e-5
 
     u_diff = np.square(u_pred - u_hi)
     v_diff = np.square(v_pred - v_hi)
@@ -206,7 +206,7 @@ def plot_regression(gt, prediction, frame_idx, save_as = None):
     '''
     #set percentage of how many random points are uses
     p = 0.1
-
+    mask_threshold = 0.6
 
     mask = np.asarray(gt['mask']).squeeze()  #assume static mask
     bounds = np.zeros_like(mask)
@@ -246,26 +246,27 @@ def plot_regression(gt, prediction, frame_idx, save_as = None):
     sr_w_vals = sr_w[x_idx, y_idx, z_idx]
     sr_w_bounds = sr_w[x_idx_b, y_idx_b, z_idx_b]
 
-    def plot_regression_points(hr_vals, sr_vals, hr_vals_bounds, sr_vals_bounds):
+    def plot_regression_points(hr_vals, sr_vals, hr_vals_bounds, sr_vals_bounds, direction = 'u'):
         dimension = 2 #TODO
         plt.scatter(hr_vals, sr_vals, s=0.3, c=["black"])
         plt.scatter(hr_vals_bounds, sr_vals_bounds, s=0.3, c=["red"])
         plt.plot(np.linspace(np.min(hr_vals), np.max(hr_vals)), np.linspace(np.min(hr_vals), np.max(hr_vals)), '--', color= 'grey')
-        plt.title(f"V_{dimension}")
-        plt.xlabel("V_HR [m/s]")
-        plt.ylabel("V_SR [m/s]")
+        # plt.title(f"V_{dimension}")
+        plt.title(direction)
+        plt.xlabel("V HR (m/s)")
+        plt.ylabel("V SR (m/s)")
 
     
     print(f"Plotting regression lines...")
 
     plt.subplot(1, 3, 1)
-    plot_regression_points(hr_u_vals, sr_u_vals, hr_u_bounds, sr_u_bounds)
+    plot_regression_points(hr_u_vals, sr_u_vals, hr_u_bounds, sr_u_bounds, direction='u')
     if save_as is not None: plt.savefig(f"{save_as}_LRXplot.png")
     plt.subplot(1 ,3, 2)
-    plot_regression_points(hr_v_vals, sr_v_vals, hr_v_bounds, sr_v_bounds)
+    plot_regression_points(hr_v_vals, sr_v_vals, hr_v_bounds, sr_v_bounds, direction='v')
     if save_as is not None: plt.savefig(f"{save_as}_LRYplot.png")
     plt.subplot(1, 3, 3)
-    plot_regression_points(hr_w_vals, sr_w_vals, hr_w_bounds, sr_w_bounds)
+    plot_regression_points(hr_w_vals, sr_w_vals, hr_w_bounds, sr_w_bounds, direction='w')
     if save_as is not None: plt.savefig(f"{save_as}_LRZplot.png")
 
     # fig, axs = plt.subplots(nrows=1, ncols=3)
@@ -772,6 +773,24 @@ def temporal_cubic_interpolation(lr, hr_shape):
     interpolate = cs(x_hr)
 
     return interpolate
+
+
+def create_temporal_comparison_gif(lr, hr, pred, vel):
+
+    v_lr = lr[vel]
+    v_hr = hr[vel]
+    v_pred = pred[vel]
+    print(v_hr)
+
+    v_NN = temporal_NN_interpolation(v_lr,v_hr.shape )
+
+    combined_image = np.concatenate((v_NN, v_hr, v_pred), axis = 2)
+    print(combined_image.shape)
+    idx = 30
+
+    generate_gif_volume(combined_image[:,idx, :, : ], axis = 0, save_as = "Temporal_Comparison")
+
+
 
 
 
