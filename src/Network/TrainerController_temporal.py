@@ -126,7 +126,7 @@ class TrainerController_temporal:
         total_loss = mse + divergence_loss
 
         # return all losses for logging
-        return  total_loss, mse, divergence_loss
+        return  tf.reduce_mean(total_loss), mse, divergence_loss
 
     def calculate_regularizer_loss(self):
         """
