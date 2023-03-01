@@ -34,8 +34,8 @@ def generate_gif_volume(img3D, axis = 0, save_as = "animation"):
         print("Invalid axis input.")
     
     frame_one = frames[0]
-    frame_one.save("/home/pcallmer/Temporal4DFlowNet/results/plots" +save_as+".gif", format="GIF", append_images=frames,
-               save_all=True, duration=100, loop=0) #/home/pcallmer/Temporal4DFlowNet/results/plots
+    frame_one.save(save_as+".gif", format="GIF", append_images=frames,
+               save_all=True, duration=500, loop=0) #/home/pcallmer/Temporal4DFlowNet/results/plots
 
 
 

@@ -267,8 +267,9 @@ def plot_regression(gt, prediction, frame_idx, save_as = None):
     if save_as is not None: plt.savefig(f"{save_as}_LRYplot.png")
     plt.subplot(1, 3, 3)
     plot_regression_points(hr_w_vals, sr_w_vals, hr_w_bounds, sr_w_bounds, direction='w')
+    plt.tight_layout()
     if save_as is not None: plt.savefig(f"{save_as}_LRZplot.png")
-
+    
     # fig, axs = plt.subplots(nrows=1, ncols=3)
     # plt.subplot(1, 3, 1)
     # plot_regression_points()
@@ -497,7 +498,7 @@ def show_temporal_development_line(gt, lr, pred, mask, axis, indices, save_as = 
     plt.xticks([])
     plt.yticks([])
 
-    plt.savefig(save_as)
+    plt.savefig(save_as,bbox_inches='tight')
 
 def show_quiver( u, v, w, mask,save_as = "3DFlow.png"):
     x_len, y_len, z_len = u.shape
@@ -531,12 +532,13 @@ def show_quiver( u, v, w, mask,save_as = "3DFlow.png"):
     plt.clf()
 
 
-def show_timeframes(gt,lr,  pred,mask, rel_error, dt,  timepoints, axis, idx, save_as = "Frame_comparison.png"):
+def show_timeframes(gt,lr,  pred,mask, rel_error, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v,save_as = "Frame_comparison.png"):
     '''
     Plots a series of frames next to eachother to compare 
     '''
     plt.clf()
     T = len(timepoints)
+    N = 3 + len(comparison_lst)
     i = 1
     for j,t in enumerate(timepoints):
         
@@ -546,39 +548,49 @@ def show_timeframes(gt,lr,  pred,mask, rel_error, dt,  timepoints, axis, idx, sa
         lr_slice = np.zeros_like(gt_slice)
         if t%2 == 0: lr_slice = get_slice(lr, t//2, axis=axis, slice_idx=idx )
         
-        min_v = np.min([np.min(pred_slice ), np.min(gt_slice), np.min(lr_slice)])
-        max_v = np.max([np.max(pred_slice), np.max(gt_slice), np.max(lr_slice)])  
+        # min_v = np.min([np.min(pred_slice ), np.min(gt_slice), np.min(lr_slice)])
+        # max_v = np.max([np.max(pred_slice), np.max(gt_slice), np.max(lr_slice)])  
 
-        plt.subplot(T, 3, i)
+        plt.subplot(T, N, i)
 
         if t%2 == 0:
-            plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap='jet')
+            plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap='jet', aspect='auto')
             if i == 1: plt.title("LR")
             plt.xticks([])
             plt.yticks([])
             plt.ylabel('frame = '+ str(t))
             
         else:
+            #plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap='jet', aspect='auto')
             plt.axis('off')
         
 
         i +=1
-        plt.subplot(T, 3, i)
-        plt.imshow(gt_slice, vmin = min_v, vmax = max_v, cmap='jet')
+        plt.subplot(T, N, i)
+        plt.imshow(gt_slice, vmin = min_v, vmax = max_v, cmap='jet', aspect='auto')
         if i == 2: plt.title("GT")
         plt.xticks([])
         plt.yticks([])
 
         i +=1
-        plt.subplot(T, 3, i)
-        plt.imshow(pred_slice, vmin = min_v, vmax = max_v, cmap='jet')
+        plt.subplot(T, N, i)
+        plt.imshow(pred_slice, vmin = min_v, vmax = max_v, cmap='jet',aspect='auto')
         if i == 3: plt.title("SR")
         plt.xticks([])
         plt.yticks([])
+        for comp, name in zip(comparison_lst, comparison_name):
+            i +=1
+            plt.subplot(T, N, i)
+            plt.imshow(get_slice(comp,t, axis=axis, slice_idx=idx), vmin = min_v, vmax = max_v, cmap='jet', aspect='auto')
+            if i-1 == (i-1)%N: plt.title(name)
+            plt.xticks([])
+            plt.yticks([])
+
         i +=1
 
-    
-    plt.savefig(save_as)
+    plt.subplots_adjust(hspace=0.05, wspace=0.05)
+    #plt.tight_layout()
+    plt.savefig(save_as,bbox_inches='tight')
     plt.clf()
 
     mask[np.where(mask !=0)] = 1
@@ -586,22 +598,23 @@ def show_timeframes(gt,lr,  pred,mask, rel_error, dt,  timepoints, axis, idx, sa
     lr = np.multiply(lr, mask)
     pred = np.multiply(pred, mask)
 
-    i=1
+    N = 4
+    i = 1
     for j,t in enumerate(timepoints):
         
         gt_slice = get_slice(gt, t,  axis=axis, slice_idx=idx )
         pred_slice = get_slice(pred, t, axis=axis, slice_idx=idx )
         err_slice = get_slice(rel_error, t, axis=axis, slice_idx=idx )
-        dt_slice = get_slice(dt, t, axis=axis, slice_idx=idx )
-        print("shape dt:", dt.shape, dt_slice.shape, gt_slice.shape )
+        #dt_slice = get_slice(dt, t, axis=axis, slice_idx=idx )
+        #print("shape dt:", dt.shape, dt_slice.shape, gt_slice.shape )
 
         lr_slice = np.zeros_like(gt_slice)
         if t%2 == 0: lr_slice = get_slice(lr, t//2, axis= axis, slice_idx= idx )
 
-        min_v = np.min([np.min(pred_slice ), np.min(gt_slice), np.min(lr_slice)])
-        max_v = np.max([np.max(pred_slice), np.max(gt_slice), np.max(lr_slice)])  
+        #min_v = np.min([np.min(pred_slice ), np.min(gt_slice), np.min(lr_slice)])
+        #max_v = np.max([np.max(pred_slice), np.max(gt_slice), np.max(lr_slice)])  
 
-        plt.subplot(T, 5, i)
+        plt.subplot(T, N, i)
         if t%2 == 0:
             plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap='jet')
             if i == 1: plt.title("LR")
@@ -612,36 +625,34 @@ def show_timeframes(gt,lr,  pred,mask, rel_error, dt,  timepoints, axis, idx, sa
             plt.axis('off')
 
         i += 1
-        plt.subplot(T, 5, i)
+        plt.subplot(T, N, i)
         plt.imshow(gt_slice, vmin = min_v, vmax = max_v, cmap='jet')
         if i == 2: plt.title("GT")
         plt.xticks([])
         plt.yticks([])
 
         i += 1
-        plt.subplot(T, 5, i)
+        plt.subplot(T, N, i)
         plt.imshow(pred_slice, vmin = min_v, vmax = max_v, cmap='jet')
         if i == 3: plt.title("SR")
         plt.xticks([])
         plt.yticks([])
 
-        
-
         i += 1
-        plt.subplot(T, 5, i)
+        plt.subplot(T, N, i)
         plt.imshow(err_slice, cmap='jet')
         if i == 4: plt.title("Relative error")
         plt.xticks([])
         plt.yticks([])
 
-        i +=1
-        plt.subplot(T, 5, i)
-        plt.imshow(dt_slice, cmap='jet')
-        if i == 5: plt.title("|dt|")
-        plt.xticks([])
-        plt.yticks([])
+        # i +=1
+        # plt.subplot(T, 5, i)
+        # plt.imshow(dt_slice, cmap='jet')
+        # if i == 5: plt.title("|dt|")
+        # plt.xticks([])
+        # plt.yticks([])
 
-        plt.colorbar()
+        # plt.colorbar()
         
 
         
@@ -650,7 +661,9 @@ def show_timeframes(gt,lr,  pred,mask, rel_error, dt,  timepoints, axis, idx, sa
 
     save_under = save_as[:-4]+ "_fluidregion.png"
     print("save with only fluid region visible", save_under)
-    plt.savefig(save_under)
+    #plt.tight_layout()
+    plt.subplots_adjust(hspace=0, wspace=0)
+    plt.savefig(save_under,bbox_inches='tight')
     #plt.clf()
 
 
@@ -775,20 +788,19 @@ def temporal_cubic_interpolation(lr, hr_shape):
     return interpolate
 
 
-def create_temporal_comparison_gif(lr, hr, pred, vel):
+def create_temporal_comparison_gif(lr, hr, pred, vel, save_as):
 
     v_lr = lr[vel]
     v_hr = hr[vel]
     v_pred = pred[vel]
-    print(v_hr)
 
     v_NN = temporal_NN_interpolation(v_lr,v_hr.shape )
 
-    combined_image = np.concatenate((v_NN, v_hr, v_pred), axis = 2)
+    combined_image = np.concatenate((v_NN, v_hr, v_pred), axis = 3)
     print(combined_image.shape)
     idx = 30
 
-    generate_gif_volume(combined_image[:,idx, :, : ], axis = 0, save_as = "Temporal_Comparison")
+    generate_gif_volume(combined_image[:,idx, :, : ], axis = 0, save_as = save_as)
 
 
 

@@ -1,8 +1,9 @@
 import numpy as np
 import os
+import csv
 from Network.PatchHandler3D_temporal import PatchHandler4D, PatchHandler4D_all_axis
 from Network.TrainerController_temporal import TrainerController_temporal
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+# os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 def load_indexes(index_file):
     """
@@ -11,16 +12,25 @@ def load_indexes(index_file):
     indexes = np.genfromtxt(index_file, delimiter=',', skip_header=True, dtype='unicode') # 'unicode' or None
     return indexes
 
+def write_settings_into_csv_file(filename,name, training_file, validation_file, test_file, epochs,batch_size,patch_size, low_resblock, high_resblock, notes):
+    print("Write settings into overview file")
+    fieldnames = ["Name","training_file","validation_file","test_file","epochs","batch_size","patch_size","res_increase","low_resblock","high_resblock","notes"]
+    with open(filename, mode='a', newline='') as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+            writer.writerow({'Name':name, "training_file":training_file, "validation_file":validation_file, "test_file":test_file, "epochs":epochs, "batch_size":batch_size, "patch_size":patch_size, "res_increase":res_increase, "low_resblock":low_resblock, "high_resblock":high_resblock, "notes":notes })
+
 if __name__ == "__main__":
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal14MODEL23_2mm_step2_all_axis_extended.csv'.format(data_dir) 
-    validate_file = '{}/Temporal14MODEL1_2mm_step2_all_axis_extended.csv'.format(data_dir)
+    training_file = '{}/Temporal14MODEL23_2mm_step2_all_axis_extended_radial.csv'.format(data_dir) 
+    validate_file = '{}/Temporal14MODEL1_2mm_step2_all_axis_extended_radial.csv'.format(data_dir)
 
     QUICKSAVE = True
-    benchmark_file = '{}/Temporal14MODEL4_2mm_step2_all_axis_extended.csv'.format(data_dir)
+    benchmark_file = '{}/Temporal14MODEL4_2mm_step2_all_axis_extended_radial.csv'.format(data_dir)
     
+    overview_csv = 'Temporal4DFlowNet/results/Overview_models.csv'
+
     restore = False
     if restore:
         model_dir = "4DFlowNet/models/4DFlowNet"
@@ -34,8 +44,8 @@ if __name__ == "__main__":
 
     # Hyperparameters optimisation variables
     initial_learning_rate = 2e-4
-    epochs =  100
-    batch_size = 15
+    epochs =  70
+    batch_size = 32
     mask_threshold = 0.6
 
     # Network setting
@@ -45,6 +55,9 @@ if __name__ == "__main__":
     # Residual blocks, default (8 LR ResBlocks and 4 HR ResBlocks)
     low_resblock = 8
     hi_resblock = 4
+
+    #notes: if something about this training is more 'special' is can be added to the overview csv file
+    notes= ''
 
     # Load data file and indexes
     trainset = load_indexes(training_file)
@@ -86,5 +99,9 @@ if __name__ == "__main__":
         print(f"Restoring model {model_file}...")
         network.restore_model(model_dir, model_file)
         print("Learning rate", network.optimizer.lr.numpy())
+    
+    # write into csv file
 
+    write_settings_into_csv_file(overview_csv,network.unique_model_name, os.path.basename(training_file) , os.path.basename(validate_file), os.path.basename(benchmark_file), epochs,batch_size,patch_size, low_resblock, hi_resblock, notes)
+    exit()
     network.train_network(trainset, valset, n_epoch=epochs, testset=testset)

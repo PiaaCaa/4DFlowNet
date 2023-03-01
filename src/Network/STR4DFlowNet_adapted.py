@@ -1,10 +1,20 @@
 import tensorflow as tf
 
+'''
+This is adapted with code copied from Derek Long: https://github.com/dlon450/4DFlowNetv2
+'''
+
 class STR4DFlowNet():
-    def __init__(self, res_increase):
+    def __init__(self, res_increase, block='resnet_block'):
         self.res_increase = res_increase
+        self.block = block
 
     def build_network(self, u, v, w, u_mag, v_mag, w_mag, low_resblock=8, hi_resblock=4, channel_nr=64):
+        network_blocks = {
+            'resnet_block': resnet_block,
+            'dense_block': dense_block,
+            'csp_block': csp_block
+        }
         channel_nr = 64
 
         speed = (u ** 2 + v ** 2 + w ** 2) ** 0.5
@@ -27,16 +37,22 @@ class STR4DFlowNet():
         
         #TODO here could derekt code be inserted
 
-        # res blocks
+        # # res blocks
+        # rb = concat_layer
+        # for _ in range(low_resblock):
+        #     rb = resnet_block(rb, "ResBlock", channel_nr, pad=padding)
+
+        # initial low res blocks
         rb = concat_layer
-        for _ in range(low_resblock):
-            rb = resnet_block(rb, "ResBlock", channel_nr, pad=padding)
+        rb = network_blocks[self.block](rb, low_resblock, channel_nr=channel_nr, pad=padding)
 
         rb = upsample3d_temporal(rb, self.res_increase)
             
-        # refinement in HR
-        for _ in range(hi_resblock):
-            rb = resnet_block(rb, "ResBlock", channel_nr, pad=padding)
+        # # refinement in HR
+        # for _ in range(hi_resblock):
+        #     rb = resnet_block(rb, "ResBlock", channel_nr, pad=padding)
+        
+        rb = network_blocks[self.block](rb, hi_resblock, channel_nr=channel_nr, pad=padding)
 
         # 3 separate path version
         u_path = conv3d(rb, 3, channel_nr, padding, 'relu')
@@ -115,18 +131,30 @@ def conv3d(x, kernel_size, filters, padding='SYMMETRIC', activation=None, initia
     return x
 #TODO change resnet block and __init__
 
-#TODO added these, check if this makes sense
-def resnet_block(x, block_name='ResBlock', channel_nr=64, scale = 1, pad='SAME'):
-    tmp = conv3d(x, kernel_size=3, filters=channel_nr, padding=pad, activation=None, use_bias=False, initialization=None)
-    tmp = tf.keras.layers.LeakyReLU(alpha=0.2)(tmp)
+# #TODO added these, check if this makes sense
+# def resnet_block(x, block_name='ResBlock', channel_nr=64, scale = 1, pad='SAME'):
+#     tmp = conv3d(x, kernel_size=3, filters=channel_nr, padding=pad, activation=None, use_bias=False, initialization=None)
+#     tmp = tf.keras.layers.LeakyReLU(alpha=0.2)(tmp)
 
-    tmp = conv3d(tmp, kernel_size=3, filters=channel_nr, padding=pad, activation=None, use_bias=False, initialization=None)
+#     tmp = conv3d(tmp, kernel_size=3, filters=channel_nr, padding=pad, activation=None, use_bias=False, initialization=None)
 
-    tmp = x + tmp * scale
-    tmp = tf.keras.layers.LeakyReLU(alpha=0.2)(tmp)
+#     tmp = x + tmp * scale
+#     tmp = tf.keras.layers.LeakyReLU(alpha=0.2)(tmp)
 
-    return tmp
+#     return tmp
 
+def resnet_block(x, num_layers, block_name='ResBlock', channel_nr=64, scale = 1, pad='SAME'):
+    for _ in range(num_layers):
+        tmp = conv3d(x, kernel_size=3, filters=channel_nr, padding=pad, activation=None, use_bias=False, initialization=None)
+        tmp = tf.keras.layers.LeakyReLU(alpha=0.2)(tmp)
+
+        tmp = conv3d(tmp, kernel_size=3, filters=channel_nr, padding=pad, activation=None, use_bias=False, initialization=None)
+
+        tmp = x + tmp * scale
+        x = tf.keras.layers.LeakyReLU(alpha=0.2)(tmp)
+    return x
+
+#copied from derek
 def conv_block(x, block_name='ConvBlock', channel_nr=64, pad='SAME'):
     tmp = conv3d(x, kernel_size=3, filters=channel_nr, padding=pad, activation=None, use_bias=False, initialization=None)
     tmp = tf.keras.layers.LeakyReLU(alpha=0.2)(tmp)
@@ -135,6 +163,7 @@ def conv_block(x, block_name='ConvBlock', channel_nr=64, pad='SAME'):
 
     return tmp
 
+#copied from derek
 def dense_block(x, num_layers, block_name='DenseBlock', channel_nr=64, scale = 1, pad='SAME'):
     k = channel_nr//4
     for _ in range(int(num_layers)):
@@ -143,6 +172,7 @@ def dense_block(x, num_layers, block_name='DenseBlock', channel_nr=64, scale = 1
     
     return x
 
+#copied from derek
 def csp_block(x, num_layers, block_name='CSPBlock', channel_nr=64, scale = 1, pad='SAME'):
     k = channel_nr//4
     tmp = x[:,:,:,:,:k]
