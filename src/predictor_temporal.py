@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import time
 import os
-from Network.STR4DFlowNet import STR4DFlowNet
+from Network.STR4DFlowNet_adapted import STR4DFlowNet
 from Network.PatchGenerator import PatchGenerator
 from utils import prediction_utils
 from utils.ImageDataset_temporal import ImageDataset_temporal
@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 import h5py
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
-def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock):
+def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock, block):
     # Prepare input
     input_shape = (patch_size,patch_size,patch_size,1)
     u = tf.keras.layers.Input(shape=input_shape, name='u')
@@ -24,26 +24,25 @@ def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock
     input_layer = [u,v,w,u_mag, v_mag, w_mag]
 
     # network & output
-    net = STR4DFlowNet(res_increase)
+    net = STR4DFlowNet(res_increase, block)
     prediction = net.build_network(u, v, w, u_mag, v_mag, w_mag, low_resblock, hi_resblock)
     model = tf.keras.Model(input_layer, prediction)
 
     return model
 
-
-
 if __name__ == '__main__':
     # Define directories and filenames
-    model_name = '20230217-0602' 
-    set_name = 'Test'
-    data_model= '4'
+    model_name = '20230301-1704' 
+    set_name = 'Validation'
+    data_model= '1'
+    step = 2
 
     # set filenamaes and directories
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
-    filename = f'M{data_model}_2mm_step2_static_TLR.h5'
+    filename = f'M{data_model}_2mm_step{step}_static_noise.h5'
  
     output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
-    output_filename = f'{set_name}set_result_model{data_model}_2mm_step2_{model_name[-4::]}_temporal_.h5'
+    output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'
     
     model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
@@ -54,8 +53,9 @@ if __name__ == '__main__':
     round_small_values = True
 
     # Network
-    low_resblock=8
-    hi_resblock=4
+    low_resblock= 8
+    hi_resblock = 4
+    block = 'csp_block' # # 'resnet_block' 'dense_block' csp_block
 
     # Setting up
     input_filepath = '{}/{}'.format(data_dir, filename)
@@ -63,7 +63,6 @@ if __name__ == '__main__':
 
     assert(not os.path.exists(output_filepath)) #STOP if output file is already created
 
-    #TODO adapt it to temporal problem
     pgen = PatchGenerator(patch_size, res_increase)
     dataset = ImageDataset_temporal()
 
@@ -76,7 +75,7 @@ if __name__ == '__main__':
     
     print(f"Loading 4DFlowNet: {res_increase}x upsample")
     # Load the network
-    network = prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock)
+    network = prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock, block)
     network.load_weights(model_path)
 
     if not os.path.isdir(output_dir):

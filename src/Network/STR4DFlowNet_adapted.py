@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 '''
-This is adapted with code copied from Derek Long: https://github.com/dlon450/4DFlowNetv2
+This is adapted with code partwise copied from Derek Long: https://github.com/dlon450/4DFlowNetv2
 '''
 
 class STR4DFlowNet():
@@ -129,19 +129,7 @@ def conv3d(x, kernel_size, filters, padding='SYMMETRIC', activation=None, initia
         assert padding in ['SAME', 'VALID']
         x = tf.keras.layers.Conv3D(filters, kernel_size, activation=activation, kernel_initializer=initialization, use_bias=use_bias, kernel_regularizer=reg_l2)(x)
     return x
-#TODO change resnet block and __init__
 
-# #TODO added these, check if this makes sense
-# def resnet_block(x, block_name='ResBlock', channel_nr=64, scale = 1, pad='SAME'):
-#     tmp = conv3d(x, kernel_size=3, filters=channel_nr, padding=pad, activation=None, use_bias=False, initialization=None)
-#     tmp = tf.keras.layers.LeakyReLU(alpha=0.2)(tmp)
-
-#     tmp = conv3d(tmp, kernel_size=3, filters=channel_nr, padding=pad, activation=None, use_bias=False, initialization=None)
-
-#     tmp = x + tmp * scale
-#     tmp = tf.keras.layers.LeakyReLU(alpha=0.2)(tmp)
-
-#     return tmp
 
 def resnet_block(x, num_layers, block_name='ResBlock', channel_nr=64, scale = 1, pad='SAME'):
     for _ in range(num_layers):

@@ -4,16 +4,6 @@ import random as rnd
 from utils import prediction_utils
 from utils import evaluate_utils
 
-def create_temporal_mask(mask, n_frames):
-    '''
-    from static mask create temporal mask of shape (n_frames, h, w, d)
-    '''
-    assert(len(mask.shape) == 3), " shape: " + str(mask.shape) # shape of mask is assumed to be 3 dimensional
-    temporal_mask = np.zeros((n_frames, mask.shape[0], mask.shape[1], mask.shape[2]))
-    for i in range(n_frames):
-        temporal_mask[i, :, :, :] = mask
-    return temporal_mask
-
 if __name__ == "__main__": 
     gt_file = 'Temporal4DFlowNet/data/CARDIAC/M3_2mm_step5_static.h5'
     lr_file = 'Temporal4DFlowNet/data/CARDIAC/M3_2mm_step2_static_TLR.h5'

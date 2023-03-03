@@ -64,66 +64,28 @@ class PatchHandler4D():
         hr_patch_size = self.patch_size * self.res_increase
         
         # ============ get the patch ============ 
-        #TODO change indices here such that it can be loaded
-        #TODO changer later for better applications but now: format is (t, h, w, d) such that [x_start, idx, y_start, z_start]
-        #TODO idea: change csv with another information about the normal axis of the given slice. Then we can permute input such that it fits the requirements
-        #NO INCREASE IN Y AND Z
+        #TODO  format is (t, h, w, d) such that [x_start, idx, y_start, z_start]
+        # NO INCREASE IN Y AND Z
         patch_t_index  = np.index_exp[x_start:x_start+patch_size,idx, y_start:y_start+patch_size, z_start:z_start+patch_size]
         hr_t_patch_index = np.index_exp[x_start*self.res_increase :x_start*self.res_increase +hr_patch_size,idx, y_start:y_start+patch_size, z_start:z_start+patch_size]
         mask_t_index = np.index_exp[x_start*self.res_increase :x_start*self.res_increase +hr_patch_size,idx  ,y_start:y_start+patch_size, z_start:z_start+patch_size ]
         # mask_index = np.index_exp[0, x_start*self.res_increase :x_start*self.res_increase +hr_patch_size ,y_start*self.res_increase :y_start*self.res_increase +hr_patch_size , z_start*self.res_increase :z_start*self.res_increase +hr_patch_size ]
         u_patch, u_hr_patch, mag_u_patch, v_patch, v_hr_patch, mag_v_patch, w_patch, w_hr_patch, mag_w_patch, venc, mask_patch = self.load_vectorfield(hd5path, lr_hd5path, idx, mask_t_index, patch_t_index, hr_t_patch_index)
         
-        # # ============ apply rotation ============ 
-        # if is_rotate > 0:
-        #     u_patch, v_patch, w_patch = self.apply_rotation(u_patch, v_patch, w_patch, rotation_degree_idx, rotation_plane, True)
-        #     u_hr_patch, v_hr_patch, w_hr_patch = self.apply_rotation(u_hr_patch, v_hr_patch, w_hr_patch, rotation_degree_idx, rotation_plane, True)
-        #     mag_u_patch, mag_v_patch, mag_w_patch = self.apply_rotation(mag_u_patch, mag_v_patch, mag_w_patch, rotation_degree_idx, rotation_plane, False)
-        #     mask_patch = self.rotate_object(mask_patch, rotation_degree_idx, rotation_plane)
-            
+   
         # Expand dims (for InputLayer)
         return u_patch[...,tf.newaxis], v_patch[...,tf.newaxis], w_patch[...,tf.newaxis], \
                     mag_u_patch[...,tf.newaxis], mag_v_patch[...,tf.newaxis], mag_w_patch[...,tf.newaxis], \
                     u_hr_patch[...,tf.newaxis], v_hr_patch[...,tf.newaxis], w_hr_patch[...,tf.newaxis], \
                     venc, mask_patch
                     
-    # def rotate_object(self, img, rotation_idx, plane_nr):
-    #     if plane_nr==1:
-    #         ax = (0,1)
-    #     elif plane_nr==2:
-    #         ax = (0,2)
-    #     elif plane_nr==3:
-    #         ax = (1,2)
-    #     else:
-    #         # Unspecified rotation plane, return original
-    #         return img
-    #     #TODO comment back and adjust to temporal problem
-    #     #img = np.rot90(img, k=rotation_idx, axes=ax)
-    #     return img
-
-    # def apply_rotation(self, u, v, w, rotation_idx, plane_nr, is_phase_image):
-    #     #TODO change for temproal component
-    #     # if rotation_idx == 1:
-    #     #     # print("90 degrees, plane", plane_nr)
-    #     #     u,v,w = rotate90(u,v,w, plane_nr, rotation_idx, is_phase_image)
-    #     # elif rotation_idx == 2:
-    #     #     # print("180 degrees, plane", plane_nr)
-    #     #     u,v,w = rotate180_3d(u,v,w, plane_nr, is_phase_image)
-    #     # elif rotation_idx == 3:
-    #     #     # print("270 degrees, plane", plane_nr)
-    #     #     u,v,w = rotate90(u,v,w, plane_nr, rotation_idx, is_phase_image)
-
-    #     return u, v, w
-
+    
     def create_temporal_mask(self, mask, n_frames):
         '''
         from static mask create temporal mask of shape (n_frames, h, w, d)
         '''
         assert(len(mask.shape) == 3), " shape: " + str(mask.shape) # shape of mask is assumed to be 3 dimensional
-        temporal_mask = np.zeros((n_frames, mask.shape[0], mask.shape[1], mask.shape[2]))
-        for i in range(n_frames):
-            temporal_mask[i, :, :, :] = mask
-        return temporal_mask
+        return np.repeat(np.expand_dims(mask, 0), n_frames, axis=0)
 
     def load_vectorfield(self, hd5path, lr_hd5path, idx, mask_index, patch_index, hr_patch_index):
         '''
@@ -329,15 +291,13 @@ class PatchHandler4D_all_axis():
         hires_images = np.asarray(hires_images)
         lowres_images = np.asarray(lowres_images)
         mag_images = np.asarray(mag_images)
-        #rint("mask shape_", mask.shape)
+
         if reverse: #reverse images shape now (3, t, x, y) (or other combinations of x, y, z)
             hires_images = hires_images[:, :, ::-1, :] 
             lowres_images = lowres_images[:, :, ::-1, :] 
             mag_images = mag_images[:, :, ::-1, :] 
             mask = mask[:, ::-1,:] # mask shape (t, x, y)
             
-
-        #print("shapes:", hires_images.shape, lowres_images.shape, mag_images.shape)
         
         # Normalize the values 
         hires_images = self._normalize(hires_images, global_venc) # Velocity normalized to -1 .. 1

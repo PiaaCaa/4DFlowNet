@@ -730,16 +730,13 @@ def create_temporal_mask(mask, n_frames):
     from static mask create temporal mask of shape (n_frames, h, w, d)
     '''
     assert(len(mask.shape) == 3), " shape: " + str(mask.shape) # shape of mask is assumed to be 3 dimensional
-    temporal_mask = np.zeros((n_frames, mask.shape[0], mask.shape[1], mask.shape[2]))
-    for i in range(n_frames):
-        temporal_mask[i, :, :, :] = mask
-    return temporal_mask
+    return np.repeat(np.expand_dims(mask, 0), n_frames, axis=0)
 
 
 def temporal_linear_interpolation(lr, hr_shape):
     '''
     Linear interpolation in time, from (t, h, w, d) to (2t, h, w, d)
-    Be aware that if the hr shape is twice as high the last frame will be set to zero, since it it not in between slices
+    Be aware that if the hr shape is twice as high the last frame will be set to zero, since it it not in-between slices
     '''
     # only temporal resolution increases 
     t_lr = np.arange(0, lr.shape[0])
