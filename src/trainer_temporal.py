@@ -58,7 +58,7 @@ if __name__ == "__main__":
     block= 'csp_block' # 'resnet_block' 'dense_block' csp_block
 
     #notes: if something about this training is more 'special' is can be added to the overview csv file
-    notes= 'First training with cspnet blocks (Densenet)'
+    notes= 'To delete: Testrun upsamling'
 
     # Load data file and indexes
     trainset = load_indexes(training_file)
@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     # ------- Main Network ------
     print(f"4DFlowNet Patch {patch_size}, lr {initial_learning_rate}, batch {batch_size}")
-    network = TrainerController_temporal(patch_size, res_increase, initial_learning_rate, QUICKSAVE, network_name, low_resblock, hi_resblock, block)
+    network = TrainerController_temporal(patch_size, res_increase, initial_learning_rate, QUICKSAVE, network_name, low_resblock, hi_resblock, block, upsampling_block =  'Conv3Dtranspose')
     network.init_model_dir()
 
     if restore:

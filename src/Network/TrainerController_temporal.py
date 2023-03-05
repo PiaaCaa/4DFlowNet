@@ -15,7 +15,7 @@ from . import utility, h5util, loss_utils
 
 class TrainerController_temporal:
     # constructor
-    def __init__(self, patch_size, res_increase, initial_learning_rate=1e-4, quicksave_enable=True, network_name='4DFlowNet', low_resblock=8, hi_resblock=4, block = 'resnet_block'):
+    def __init__(self, patch_size, res_increase, initial_learning_rate=1e-4, quicksave_enable=True, network_name='4DFlowNet', low_resblock=8, hi_resblock=4, block = 'resnet_block', upsampling_block = 'default'):
         """
             TrainerController constructor
             Setup all the placeholders, network graph, loss functions and optimizer here.
@@ -47,7 +47,7 @@ class TrainerController_temporal:
         w_mag = tf.keras.layers.Input(shape=input_shape, name='w_mag')
 
         input_layer = [u,v,w,u_mag, v_mag, w_mag]
-        net = STR4DFlowNet(res_increase, block=self.block)
+        net = STR4DFlowNet(res_increase, block=self.block, upsampling_block=upsampling_block )
         self.predictions = net.build_network(u, v, w, u_mag, v_mag, w_mag, low_resblock, hi_resblock)
         self.model = tf.keras.Model(input_layer, self.predictions)
 
@@ -296,6 +296,7 @@ class TrainerController_temporal:
                 self.train_step(data_pairs)
                 message = f"Epoch {epoch+1} Train batch {i+1}/{total_batch_train} | loss: {self.loss_metrics['train_loss'].result():.5f} ({self.loss_metrics['train_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs"
                 print(f"\r{message}", end='')
+                exit()
                 
             # --- Validation ---
             for i, (data_pairs) in enumerate(valset):

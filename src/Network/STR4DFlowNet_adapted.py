@@ -5,9 +5,10 @@ This is adapted with code partwise copied from Derek Long: https://github.com/dl
 '''
 
 class STR4DFlowNet():
-    def __init__(self, res_increase, block='resnet_block'):
+    def __init__(self, res_increase, block='resnet_block', upsampling_block = 'default'):
         self.res_increase = res_increase
         self.block = block
+        self.upsampling_block = upsampling_block
 
     def build_network(self, u, v, w, u_mag, v_mag, w_mag, low_resblock=8, hi_resblock=4, channel_nr=64):
         network_blocks = {
@@ -15,6 +16,7 @@ class STR4DFlowNet():
             'dense_block': dense_block,
             'csp_block': csp_block
         }
+
         channel_nr = 64
 
         speed = (u ** 2 + v ** 2 + w ** 2) ** 0.5
@@ -35,22 +37,11 @@ class STR4DFlowNet():
         concat_layer = conv3d(concat_layer, 1, channel_nr, padding, 'relu')
         concat_layer = conv3d(concat_layer, 3, channel_nr, padding, 'relu')
         
-        #TODO here could derekt code be inserted
-
-        # # res blocks
-        # rb = concat_layer
-        # for _ in range(low_resblock):
-        #     rb = resnet_block(rb, "ResBlock", channel_nr, pad=padding)
-
         # initial low res blocks
         rb = concat_layer
         rb = network_blocks[self.block](rb, low_resblock, channel_nr=channel_nr, pad=padding)
 
-        rb = upsample3d_temporal(rb, self.res_increase)
-            
-        # # refinement in HR
-        # for _ in range(hi_resblock):
-        #     rb = resnet_block(rb, "ResBlock", channel_nr, pad=padding)
+        rb = upsample3d_temporal(rb, self.res_increase, self.upsampling_block)
         
         rb = network_blocks[self.block](rb, hi_resblock, channel_nr=channel_nr, pad=padding)
 
@@ -70,7 +61,7 @@ class STR4DFlowNet():
         return b_out
 
 
-def upsample3d_temporal(input_tensor, res_increase):
+def upsample3d_temporal(input_tensor, res_increase, upsampling = 'default'):
     """
         Resize the image by linearly interpolating the input
         using TF '``'resize_bilinear' function.
@@ -84,32 +75,39 @@ def upsample3d_temporal(input_tensor, res_increase):
     
     # We need this option for the bilinear resize to prevent shifting bug
     align = True 
+    if upsampling == 'upsampling3D':
+        output_tensor = tf.keras.layers.UpSampling3D(size=(2, 1, 1))(input_tensor)
+    elif upsampling == 'Conv3Dtranspose':
+        b_size, t_size, y_size, z_size, c_size = input_tensor.shape
+        ##TODO change this to real padding, same of valida padding
+        output_tensor = tf.keras.layers.Conv3DTranspose(filters = c_size,kernel_size = 3, strides = (2, 1, 1) ,padding = 'same')(input_tensor) 
+    else:
 
-    b_size, t_size, y_size, z_size, c_size = input_tensor.shape
+        b_size, t_size, y_size, z_size, c_size = input_tensor.shape
 
-    t_size_new, y_size_new, z_size_new = t_size * res_increase, y_size , z_size
+        t_size_new, y_size_new, z_size_new = t_size * res_increase, y_size , z_size
 
-    if res_increase == 1:
-        # already in the target shape
-        return input_tensor
+        if res_increase == 1:
+            # already in the target shape
+            return input_tensor
 
-    # resize y-z
-    squeeze_b_x = tf.reshape(input_tensor, [-1, y_size, z_size, c_size], name='reshape_bx')
-    #resize_b_x = tf.compat.v1.image.resize_bilinear(squeeze_b_x, [y_size_new, z_size_new], align_corners=align)
-    resize_b_x = tf.image.resize(squeeze_b_x, [y_size_new, z_size_new])#, method=ResizeMethod.BILINEAR)
-    resume_b_x = tf.reshape(resize_b_x, [-1, t_size, y_size_new, z_size_new, c_size], name='resume_bx')
+        # resize y-z
+        squeeze_b_x = tf.reshape(input_tensor, [-1, y_size, z_size, c_size], name='reshape_bx')
+        #resize_b_x = tf.compat.v1.image.resize_bilinear(squeeze_b_x, [y_size_new, z_size_new], align_corners=align)
+        resize_b_x = tf.image.resize(squeeze_b_x, [y_size_new, z_size_new])#, method=ResizeMethod.BILINEAR)
+        resume_b_x = tf.reshape(resize_b_x, [-1, t_size, y_size_new, z_size_new, c_size], name='resume_bx')
 
-    #Reorient
-    reoriented = tf.transpose(resume_b_x, [0, 3, 2, 1, 4])
-    
-    #   squeeze and 2d resize
-    #TODO: check, since it works only if reoriented has same input shape as input tensor
-    squeeze_b_z = tf.reshape(reoriented, [-1, y_size_new, t_size, c_size], name='reshape_bz')
-    #resize_b_z = tf.compat.v1.image.resize_bilinear(squeeze_b_z, [y_size_new, x_size_new], align_corners=align)
-    resize_b_z = tf.image.resize(squeeze_b_z, [y_size_new, t_size_new])#, method=ResizeMethod.BILINEAR)
-    resume_b_z = tf.reshape(resize_b_z, [-1, z_size_new, y_size_new, t_size_new, c_size], name='resume_bz')
-    
-    output_tensor = tf.transpose(resume_b_z, [0, 3, 2, 1, 4])
+        #Reorient
+        reoriented = tf.transpose(resume_b_x, [0, 3, 2, 1, 4])
+        
+        #   squeeze and 2d resize
+        #TODO: check, since it works only if reoriented has same input shape as input tensor
+        squeeze_b_z = tf.reshape(reoriented, [-1, y_size_new, t_size, c_size], name='reshape_bz')
+        #resize_b_z = tf.compat.v1.image.resize_bilinear(squeeze_b_z, [y_size_new, x_size_new], align_corners=align)
+        resize_b_z = tf.image.resize(squeeze_b_z, [y_size_new, t_size_new])#, method=ResizeMethod.BILINEAR)
+        resume_b_z = tf.reshape(resize_b_z, [-1, z_size_new, y_size_new, t_size_new, c_size], name='resume_bz')
+        
+        output_tensor = tf.transpose(resume_b_z, [0, 3, 2, 1, 4])
     return output_tensor
 
 

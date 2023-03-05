@@ -137,7 +137,19 @@ def calculate_relative_error_normalized(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi
 
     return mean_err
 
+def calculate_rmse(pred,gt, binary_mask):
+    '''
+    Calculate root mean squared error between prediction and ground truth for each frame
+    i.e. rmse(t) = sqrt((pred - gt)**2/N), where N number of point in fluid region
+    '''
 
+    points_in_mask = np.where(binary_mask !=0)
+    reshaped_pred = pred[:, points_in_mask[0], points_in_mask[1], points_in_mask[2]].reshape(gt.shape[0], -1)
+    reshaped_gt     = gt[:, points_in_mask[0], points_in_mask[1], points_in_mask[2]].reshape(gt.shape[0], -1)
+
+    rmse = np.sqrt(np.sum((reshaped_pred - reshaped_gt)**2, axis = 1)/reshaped_pred.shape[1])
+
+    return rmse
 
 def calculate_pointwise_error(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_mask):
     '''
