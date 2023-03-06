@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 import h5py
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
-def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock, block):
+def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock, block, upsampling_block):
     # Prepare input
     input_shape = (patch_size,patch_size,patch_size,1)
     u = tf.keras.layers.Input(shape=input_shape, name='u')
@@ -24,7 +24,7 @@ def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock
     input_layer = [u,v,w,u_mag, v_mag, w_mag]
 
     # network & output
-    net = STR4DFlowNet(res_increase, block)
+    net = STR4DFlowNet(res_increase, block, upsampling_block=upsampling_block)
     prediction = net.build_network(u, v, w, u_mag, v_mag, w_mag, low_resblock, hi_resblock)
     model = tf.keras.Model(input_layer, prediction)
 
@@ -35,7 +35,7 @@ def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock
 
 if __name__ == '__main__':
     # Define directories and filenames
-    model_name = '20230301-1654' #this model: training 2, 3, validation: 1, test:4
+    model_name = '20230305-1001' #this model: training 2, 3, validation: 1, test:4
     set_name = 'Test'
     data_model= '4'
     step = 2
@@ -56,9 +56,10 @@ if __name__ == '__main__':
     round_small_values = True
 
     # Network
-    low_resblock=8
-    hi_resblock=4
-    block = 'dense_block' # # 'resnet_block' 'dense_block' csp_block
+    low_resblock=4
+    hi_resblock= 2
+    block = 'resnet_block' # # 'resnet_block' 'dense_block' csp_block
+    upsampling_block = 'Default'#'Conv3Dtranspose' #'Conv3Dtranspose'
 
     # Setting up
     input_filepath = '{}/{}'.format(data_dir, filename)
@@ -97,7 +98,7 @@ if __name__ == '__main__':
         
         print(f"Loading 4DFlowNet: {res_increase}x upsample")
         # Load the network
-        network = prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock, block)
+        network = prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock, block, upsampling_block)
         network.load_weights(model_path)
 
         volume = np.zeros((3, u_combined.shape[0],  u_combined.shape[1], u_combined.shape[2],  u_combined.shape[3] ))

@@ -296,7 +296,6 @@ class TrainerController_temporal:
                 self.train_step(data_pairs)
                 message = f"Epoch {epoch+1} Train batch {i+1}/{total_batch_train} | loss: {self.loss_metrics['train_loss'].result():.5f} ({self.loss_metrics['train_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs"
                 print(f"\r{message}", end='')
-                exit()
                 
             # --- Validation ---
             for i, (data_pairs) in enumerate(valset):

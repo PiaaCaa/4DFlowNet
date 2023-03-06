@@ -55,14 +55,15 @@ if __name__ == "__main__":
     # Residual blocks, default (8 LR ResBlocks and 4 HR ResBlocks)
     low_resblock = 8
     hi_resblock = 4
-    block= 'csp_block' # 'resnet_block' 'dense_block' csp_block
+    block= 'resnet_block' # 'resnet_block' 'dense_block' csp_block
+    upsampling_block = 'Conv3Dtranspose'
 
     #notes: if something about this training is more 'special' is can be added to the overview csv file
-    notes= 'To delete: Testrun upsamling'
+    notes= 'Upsampling layer: Conv3DTranspose'
 
     # Load data file and indexes
     trainset = load_indexes(training_file)
-    valset = load_indexes(validate_file)
+    valset =   load_indexes(validate_file)
     
     # ----------------- TensorFlow stuff -------------------
     # TRAIN dataset iterator
@@ -93,7 +94,7 @@ if __name__ == "__main__":
 
     # ------- Main Network ------
     print(f"4DFlowNet Patch {patch_size}, lr {initial_learning_rate}, batch {batch_size}")
-    network = TrainerController_temporal(patch_size, res_increase, initial_learning_rate, QUICKSAVE, network_name, low_resblock, hi_resblock, block, upsampling_block =  'Conv3Dtranspose')
+    network = TrainerController_temporal(patch_size, res_increase, initial_learning_rate, QUICKSAVE, network_name, low_resblock, hi_resblock, block, upsampling_block =  upsampling_block)
     network.init_model_dir()
 
     if restore:
