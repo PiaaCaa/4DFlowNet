@@ -260,13 +260,14 @@ def plot_regression(gt, prediction, frame_idx, save_as = None):
 
     def plot_regression_points(hr_vals, sr_vals, hr_vals_bounds, sr_vals_bounds, direction = 'u'):
         dimension = 2 #TODO
-        plt.scatter(hr_vals, sr_vals, s=0.3, c=["black"])
-        plt.scatter(hr_vals_bounds, sr_vals_bounds, s=0.3, c=["red"])
-        plt.plot(np.linspace(np.min(hr_vals), np.max(hr_vals)), np.linspace(np.min(hr_vals), np.max(hr_vals)), '--', color= 'grey')
+        plt.scatter(hr_vals, sr_vals, s=0.3, c=["black"], label = 'inner region')
+        plt.scatter(hr_vals_bounds, sr_vals_bounds, s=0.3, c=["red"], label = 'boudary points')
+        plt.plot(np.linspace(np.min(hr_vals), np.max(hr_vals)), np.linspace(np.min(hr_vals), np.max(hr_vals)), '--', color= 'grey', label = 'ideal line 1-1')
         # plt.title(f"V_{dimension}")
         plt.title(direction)
         plt.xlabel("V HR (m/s)")
         plt.ylabel("V SR (m/s)")
+        plt.legend()
 
     
     print(f"Plotting regression lines...")
