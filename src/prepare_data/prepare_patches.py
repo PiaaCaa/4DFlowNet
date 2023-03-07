@@ -40,10 +40,11 @@ if __name__ == "__main__":
     
     
     base_path = 'Temporal4DFlowNet/data/CARDIAC'
-    lr_file = 'M4_2mm_step2_static_noise_radial.h5' #LowRes velocity data
-    hr_file = 'M4_2mm_step2_static.h5' #HiRes velocity data
-    output_filename = f'{base_path}/Temporal{patch_size}MODEL4_2mm_step2_all_axis_extended_radial.csv'
+    lr_file = 'M4_2mm_step2_static_dynamic_noise.h5' #LowRes velocity data
+    hr_file = 'M4_2mm_step2_static_dynamic.h5' #HiRes velocity data
+    output_filename = f'{base_path}/Temporal{patch_size}MODEL4_2mm_step2_all_axis_extended_dynamic_mask.csv'
 
+    #TODO check the compatibility in the test iteratoor
     
     # Load the data
     input_filepath = f'{base_path}/{lr_file}'
@@ -59,10 +60,14 @@ if __name__ == "__main__":
 
     # because the data is homogenous in 1 table, we only need the first data
     with h5py.File(input_filepath, mode = 'r' ) as hdf5:
-        if len(hdf5['mask'].shape) == 4:
-            mask = np.asarray(hdf5['mask'][0])
+        if len(hdf5['mask'].shape) == 4 and hdf5['mask'].shape[0]==1:  
+            mask = np.asarray(hdf5['mask']).squeeze()
+            mask = pd.create_temporal_mask(mask, T)
+        elif len(hdf5['mask'].shape) == 4:   
+            mask = np.asarray(hdf5['mask'])
         else:
             mask = np.asarray(hdf5['mask'])
+            mask = pd.create_temporal_mask(mask, T)
     
         frames = hdf5["u"].shape[0]
 
@@ -71,7 +76,6 @@ if __name__ == "__main__":
 
     # Do the thresholding
     binary_mask = (mask >= mask_threshold) * 1
-    if temporal_preparation: binary_mask = pd.create_temporal_mask(binary_mask, frames)
 
     if temporal_preparation:
         

@@ -5,7 +5,7 @@ This is adapted with code partwise copied from Derek Long: https://github.com/dl
 '''
 
 class STR4DFlowNet():
-    def __init__(self, res_increase, block='resnet_block', upsampling_block = 'default'):
+    def __init__(self, res_increase, block='resnet_block', upsampling_block = 'default', ):
         self.res_increase = res_increase
         self.block = block
         self.upsampling_block = upsampling_block
@@ -139,6 +139,49 @@ def resnet_block(x, num_layers, block_name='ResBlock', channel_nr=64, scale = 1,
         tmp = x + tmp * scale
         x = tf.keras.layers.LeakyReLU(alpha=0.2)(tmp)
     return x
+
+def u_net_block(x, num_layers, block_name = 'UnetBlock', channel_nr = 64, pad = 'SAME', use_BN = False):
+    
+    def conv_unet_block(x, num_filters, use_BN):
+        tmp = conv3d(x, kernel_size=3, filters=num_filters, padding=pad, activation=None, use_bias=False, initialization=None)
+        if use_BN:
+            tmp = tf.keras.layers.BatchNormalization()
+        tmp = tf.keras.layers.LeakyReLU(alpha=0.2)(tmp)
+
+        tmp = conv3d(x, kernel_size=3, filters=num_filters, padding=pad, activation=None, use_bias=False, initialization=None)
+        if use_BN:
+            tmp = tf.keras.layers.BatchNormalization()
+        tmp = tf.keras.layers.LeakyReLU(alpha=0.2)(tmp)
+        return tmp
+        
+    def upsampling_block(x, skip_features, num_filters, use_BN):
+        tmp = tf.keras.layers.Conv3DTranspose(filters = num_filters,kernel_size = 3, strides = (2, 1, 1),padding = 'same')(tmp) 
+        tmp = tf.keras.layers.Concatenate()[tmp, skip_features]
+        tmp = conv_unet_block(x, num_filters, use_BN)
+        return tmp
+        
+
+    def downsampling_block(x, num_filters, use_BN):
+        tmp = conv_unet_block(x, num_filters, use_BN)
+        p = tf.keras.layers.MaxPooling3D(pool_size=(2, 2, 2), strides=None, padding=pad)
+        return tmp, p
+
+    filter_nums  = [channel_nr*(2**i) for i in range(1, num_layers+1)]
+    inputs = conv3d(x, kernel_size=3, filters=channel_nr, padding=pad, activation=None, use_bias=False, initialization=None)
+
+    #this is a trial for two downsampling blocks
+    s1, p1 = downsampling_block(inputs, filter_nums[0] , use_BN)
+    s2, p2 = downsampling_block(p1, filter_nums[1], use_BN)
+
+    b1 = conv_unet_block(p2, filter_nums[2], use_BN)
+
+    d1 = upsampling_block(b1, s2, filter_nums[1], use_BN)
+    d2 = upsampling_block(d1, s1, filter_nums[0], use_BN)
+    
+    output = conv_unet_block(d2, filter_nums[0], use_BN)
+    return output
+
+
 
 #copied from derek
 def conv_block(x, block_name='ConvBlock', channel_nr=64, pad='SAME'):

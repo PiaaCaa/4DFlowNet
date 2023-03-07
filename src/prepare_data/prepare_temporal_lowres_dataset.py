@@ -59,8 +59,8 @@ if __name__ == '__main__':
     # Config
     base_path = 'Temporal4DFlowNet/data/CARDIAC'
     # Put your path to Hires Dataset
-    input_filepath  =  f'{base_path}/M4_2mm_step2_static.h5'
-    output_filename = f'{base_path}/M4_2mm_step2_static_noise_radial.h5' 
+    input_filepath  =  f'{base_path}/M3_2mm_step2_static_dynamic.h5'
+    output_filename = f'{base_path}/M3_2mm_step2_static_dynamic_noise.h5' 
     # Downsample rate 
     downsample = 2
 
@@ -75,7 +75,7 @@ if __name__ == '__main__':
     base_venc_multiplier = 1.1 # Default venc is set to 10% above vmax
 
     # For radial downsampling the average of the adjacent pixels are taken and the noise is added
-    use_radial_downsamling = True
+    use_radial_downsamling = False
     radia_downsamping_avg_pixel = 3 # number of pixels to be averaged over, should be odd
 
     # Possible magnitude and venc values

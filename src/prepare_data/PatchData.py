@@ -14,16 +14,17 @@ def write_header_temporal(filename):
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
 
-#TODO there has to be a more efficent way
+
 def create_temporal_mask(mask, n_frames):
     '''
     from static mask create temporal mask of shape (n_frames, h, w, d)
     '''
     assert(len(mask.shape) == 3), " shape: " + str(mask.shape) # shape of mask is assumed to be 3 dimensional
-    temporal_mask = np.zeros((n_frames, mask.shape[0], mask.shape[1], mask.shape[2]))
-    for i in range(n_frames):
-        temporal_mask[i, :, :, :] = mask
-    return temporal_mask
+    return np.repeat(np.expand_dims(mask, 0), n_frames, axis=0)
+    # temporal_mask = np.zeros((n_frames, mask.shape[0], mask.shape[1], mask.shape[2]))
+    # for i in range(n_frames):
+    #     temporal_mask[i, :, :, :] = mask
+    # return temporal_mask
     
 def generate_random_patches(input_filename, target_filename, output_filename, index, n_patch, binary_mask, patch_size, minimum_coverage, empty_patch_allowed, apply_all_rotation=True):
     empty_patch_counter = 0

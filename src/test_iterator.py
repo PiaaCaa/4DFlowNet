@@ -87,7 +87,7 @@ if __name__ == "__main__":
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal14MODEL23_2mm_step2_all_axis_extended.csv'.format(data_dir)
+    training_file = '{}/Temporal14MODEL23_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
    
     # Hyperparameters optimisation variables
     epochs =  1
@@ -113,7 +113,7 @@ if __name__ == "__main__":
             
             a = data_pairs
             #check if datapairs align
-            #check_compatibility(a)
+            check_compatibility(a)
             message = f"Iteration {i+1}   - batch {time.time()-start_loop:.4f} sec {time.time()-start_time:.1f} secs"
             print(f"\r{message}", end='')
             print(' ________________________')

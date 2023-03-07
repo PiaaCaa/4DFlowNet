@@ -225,7 +225,6 @@ class PatchHandler4D_all_axis():
             mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
 
         
-        
         u_patch, u_hr_patch, mag_u_patch, v_patch, v_hr_patch, mag_v_patch, w_patch, w_hr_patch, mag_w_patch, venc, mask_patch = self.load_vectorfield(hd5path, lr_hd5path, idx, mask_t_index, patch_t_index, hr_t_patch_index, reverse)
         
         # Expand dims (for InputLayer)
@@ -240,10 +239,11 @@ class PatchHandler4D_all_axis():
         from static mask create temporal mask of shape (n_frames, h, w, d)
         '''
         assert(len(mask.shape) == 3), " shape: " + str(mask.shape) # shape of mask is assumed to be 3 dimensional
-        temporal_mask = np.zeros((n_frames, mask.shape[0], mask.shape[1], mask.shape[2]))
-        for i in range(n_frames):
-            temporal_mask[i, :, :, :] = mask
-        return temporal_mask
+        return np.repeat(np.expand_dims(mask, 0), n_frames, axis=0)
+        # temporal_mask = np.zeros((n_frames, mask.shape[0], mask.shape[1], mask.shape[2]))
+        # for i in range(n_frames):
+        #     temporal_mask[i, :, :, :] = mask
+        # return temporal_mask
 
     def load_vectorfield(self, hd5path, lr_hd5path, idx, mask_index, patch_index, hr_patch_index, reverse):
         '''
