@@ -13,6 +13,6 @@ data/UCSF_data
 data/CARDIAC
 data/example_data
 venv_setup.txt
-output.err
-output.out
 outputfiles/*
+*.out
+*.err
