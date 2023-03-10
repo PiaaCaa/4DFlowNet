@@ -83,7 +83,7 @@ if __name__ == "__main__":
     #check that dimension fits
     assert(gt["u"].shape == pred["u"].shape)  ,str(pred["u"].shape) + str(gt["u"].shape) # dimensions need to be the same
     
-    #show_quiver(gt["u"][4, :, :, :], gt["v"][4, :, :, :], gt["w"][4, :, :, :],gt["mask"], save_as=f'{result_dir}/plots/test_quiver.png')
+    #calculate velocity values in 1% and 99% quantile for plotting without noise
     min_v = {}
     max_v = {}
     for vel in vel_colnames:
@@ -105,8 +105,7 @@ if __name__ == "__main__":
         interpolate_NN[vel] = temporal_NN_interpolation(lr[vel], gt[vel].shape)
         interpolate_NN[f'{vel}_fluid'] = np.multiply(interpolate_NN[vel], gt['mask'])
 
-    show_temporal_development_line(gt["u"], interpolate_linear["u"], pred["u"],gt["mask"], axis=3, indices=(20,20), save_as=f'{eval_dir}/{set_name}_temporal_development.png')
-    plt.clf()
+    
     
     T_peak_flow = np.unravel_index(np.argmax(gt["u"]), shape =gt["u"].shape)[0]
     print("Peak flow frame", T_peak_flow)
@@ -140,8 +139,12 @@ if __name__ == "__main__":
     show_timeframes(gt["v"], lr["v"], pred["v"],gt["mask"],error_pointwise_cap ,[interpolate_linear["v"], interpolate_cubic["v"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["v"],max_v =max_v["v"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VY.png')
     show_timeframes(gt["w"], lr["w"], pred["w"],gt["mask"],error_pointwise_cap ,[interpolate_linear["w"], interpolate_cubic["w"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["w"],max_v =max_v["w"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VZ.png')
     plt.clf()
+
+    show_temporal_development_line(gt["u"], interpolate_linear["u"], pred["u"],gt["mask"], axis=3, indices=(20,20), save_as=f'{eval_dir}/{set_name}_temporal_development.png')
+    plt.clf()
     #evaluate where the higest shift (temporal derivative) is for each frame
-    
+    #show_quiver(gt["u"][4, :, :, :], gt["v"][4, :, :, :], gt["w"][4, :, :, :],gt["mask"], save_as=f'{result_dir}/plots/test_quiver.png')
+
     #save
     if save_relative_error_file:
         prediction_utils.save_to_h5(f'{eval_dir}/{evaluation_filename}', "dt_u", dt["u"], compression='gzip')
@@ -154,7 +157,7 @@ if __name__ == "__main__":
         # prediction_utils.save_to_h5(f'{eval_dir}/{evaluation_filename}', "mask_u", mask_pred, compression='gzip')
     
     plt.clf()
-    plot_regression(gt, pred, frame_idx = T_peak_flow, save_as=f'{result_dir}/plots/{set_name}_regression_')
+    plot_correlation(gt, pred, frame_idx = T_peak_flow, save_as=f'{result_dir}/plots/{set_name}_regression_')
     plt.clf()
 
     # plot_comparison_temporal(lr, gt, pred, frame_idx = 8, axis=1, slice_idx = 40, save_as=f'{eval_dir}/{set_name}_visualize_interporalion_comparison.png')

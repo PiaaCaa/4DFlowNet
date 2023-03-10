@@ -31,8 +31,6 @@ def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock
     return model
 
 
-
-
 if __name__ == '__main__':
     # Define directories and filenames
     model_name = '20230307-1817' #this model: training 2, 3, validation: 1, test:4
@@ -145,7 +143,7 @@ if __name__ == '__main__':
                 # Denormalized
                 v = v * dataset.venc 
                 if round_small_values:
-                    # print(f"Zero out velocity component less than {dataset.velocity_per_px}")
+                    print(f"Zero out velocity component less than {dataset.velocity_per_px}")
                     # remove small velocity values
                     v[np.abs(v) < dataset.velocity_per_px] = 0
                 
