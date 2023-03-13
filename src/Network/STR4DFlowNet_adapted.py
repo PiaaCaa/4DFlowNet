@@ -75,7 +75,7 @@ def upsample3d_temporal(input_tensor, res_increase, upsampling = 'default'):
     
     # We need this option for the bilinear resize to prevent shifting bug
     align = True 
-    if upsampling == 'upsampling3D':
+    if upsampling == 'Upsampling3D':
         output_tensor = tf.keras.layers.UpSampling3D(size=(2, 1, 1))(input_tensor)
     elif upsampling == 'Conv3Dtranspose':
         b_size, t_size, y_size, z_size, c_size = input_tensor.shape

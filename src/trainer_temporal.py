@@ -55,11 +55,11 @@ if __name__ == "__main__":
     # Residual blocks, default (8 LR ResBlocks and 4 HR ResBlocks)
     low_resblock = 8
     hi_resblock = 4
-    block= 'resnet_block' # 'resnet_block' 'dense_block' csp_block
-    upsampling_block = 'default'#'Conv3Dtranspose'
+    block=   'resnet_block'# # 'resnet_block' 'dense_block' 'csp_block'
+    upsampling_block = 'Conv3Dtranspose'#'default'#'Conv3Dtranspose' 'Upsampling3D
 
     #notes: if something about this training is more 'special' is can be added to the overview csv file
-    notes= 'Retraining on dynamical mask'
+    notes= 'Dynamical mask: Conv3Dtranpose'
 
     # Load data file and indexes
     trainset = load_indexes(training_file)
