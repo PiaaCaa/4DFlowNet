@@ -13,6 +13,10 @@ import scipy
 from scipy.signal import convolve2d
 from scipy.ndimage import convolve
 from scipy.interpolate import CubicSpline, RegularGridInterpolator
+from scipy.ndimage import binary_erosion
+# Erode mask to find boundary
+# from skimage.morphology import binary_erosion
+
 
 from matplotlib import pyplot as plt
 # from sklearn.metrics import r2_score
@@ -166,21 +170,28 @@ def get_fluid_region_points_frame(data_frame, binary_mask):
 
 
 
-def calculate_rmse(pred,gt, binary_mask):
+def calculate_rmse(pred,gt, binary_mask, return_variance= False):
     '''
     Calculate root mean squared error between prediction and ground truth for each frame
     i.e. rmse(t) = sqrt((pred - gt)**2/N), where N number of point in fluid region
     '''
+    if len(pred.shape)==3: pred = np.expand_dims(pred, 0)
+    if len(gt.shape)==3:  gt = np.expand_dims(gt, 0)
+    
     if len(binary_mask.squeeze().shape) ==3:
         binary_mask = create_temporal_mask(binary_mask, pred.shape[0])
     
+
     points_in_mask = np.where(binary_mask !=0)
 
     reshaped_pred = pred[:, points_in_mask[1], points_in_mask[2], points_in_mask[3]].reshape(gt.shape[0], -1)
     reshaped_gt     = gt[:, points_in_mask[1], points_in_mask[2], points_in_mask[3]].reshape(gt.shape[0], -1)
 
     rmse = np.sqrt(np.sum((reshaped_pred - reshaped_gt)**2, axis = 1)/reshaped_pred.shape[1])
-
+    
+    if return_variance:
+        var = np.std((reshaped_pred - np.repeat(np.expand_dims(np.mean(reshaped_gt, axis=1), -1), reshaped_pred.shape[1], axis = 1))**2, axis = 1) #std = sqrt(mean(x)), where x = abs(a - a.mean())**2.
+        return rmse, var
     return rmse
 
 def calculate_pointwise_error(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_mask):
@@ -323,7 +334,7 @@ def plot_correlation(gt, prediction, bounds, frame_idx, save_as = None):
         # plt.title(f"V_{dimension}")
         plt.title(direction)
         plt.xlabel("V HR (m/s)")
-        plt.ylabel("V SR (m/s)")
+        plt.ylabel("V prediction (m/s)")
         plt.legend(loc = 'lower right')
 
     def get_corr_line_and_r2(hr_vals, sr_vals, x_range):
@@ -340,16 +351,16 @@ def plot_correlation(gt, prediction, bounds, frame_idx, save_as = None):
 
     plt.subplot(1, 3, 1)
     plot_regression_points(hr_u_vals, sr_u_vals, hr_u_bounds, sr_u_bounds,direction='u')
-    if save_as is not None: plt.savefig(f"{save_as}_LRXplot.png")
+    if save_as is not None: plt.savefig(f"{save_as}_LRXplot.svg")
 
     plt.subplot(1 ,3, 2)
     plot_regression_points(hr_v_vals, sr_v_vals, hr_v_bounds, sr_v_bounds,direction='v')
-    if save_as is not None: plt.savefig(f"{save_as}_LRYplot.png")
+    if save_as is not None: plt.savefig(f"{save_as}_LRYplot.svg")
 
     plt.subplot(1, 3, 3)
     plot_regression_points(hr_w_vals, sr_w_vals, hr_w_bounds, sr_w_bounds, direction='w')
     plt.tight_layout()
-    if save_as is not None: plt.savefig(f"{save_as}_LRZplot.png")
+    if save_as is not None: plt.savefig(f"{save_as}_LRZplot.svg")
     
     # fig, axs = plt.subplots(nrows=1, ncols=3)
     # plt.subplot(1, 3, 1)
@@ -377,6 +388,17 @@ def get_slice(data, frame, axis, slice_idx):
     else: 
         print("Invalid axis! Axis must be 0, 1 or 2")
 
+def get_indices(frames, axis, slice_idx):
+    if axis == 0 :
+        return np.index_exp[frames, slice_idx, :, :]
+    elif axis == 1:
+        return np.index_exp[frames, :, slice_idx, :]
+    elif axis == 2:
+        return np.index_exp[frames, :, :, slice_idx]
+    else: 
+        print("Invalid axis! Axis must be 0, 1 or 2")
+
+
 def crop_center(img,cropx,cropy):
     #from https://stackoverflow.com/questions/39382412/crop-center-portion-of-a-numpy-image
     y,x = img.shape
@@ -386,17 +408,25 @@ def crop_center(img,cropx,cropy):
 
 def get_boundaries(binary_mask):
     '''
-    returns a 2d array with same shape as binary mask, 1: boundary point, 0 no boundary point
-    Uses finite difference convolutions on mask to extract boundaries
+    input
     '''
+    #TODO make more efficient for static mask
+    assert(len(binary_mask.squeeze().shape)==4)
+    core_mask = np.zeros_like(binary_mask)
+    boundary_mask = np.zeros_like(binary_mask)
 
-    kernel_x = np.array([[-1, 0, 1]])
-    kernel_y = kernel_x.transpose()
+    for t in range(binary_mask.shape[0]):
+        core_mask[t, :, :, :] = binary_erosion(binary_mask[t, :, :, :])
+        boundary_mask[t, :, :, :] = binary_mask[t, :, :, :] - core_mask[t, :, :, :]
 
-    boundary = convolve2d(binary_mask, kernel_x, mode ='same') + convolve2d(binary_mask, kernel_y, mode = 'same' )
-    boundary[np.where(boundary !=0)] = 1
 
-    return boundary
+    # kernel_x = np.array([[-1, 0, 1]])
+    # kernel_y = kernel_x.transpose()
+
+    # boundary = np.abs(convolve2d(binary_mask, kernel_x, mode ='same')) + np.abs(convolve2d(binary_mask, kernel_y, mode = 'same' ))
+    # boundary[np.where(boundary !=0)] = 1
+    assert(np.linalg.norm(binary_mask - (boundary_mask + core_mask))== 0 ) 
+    return boundary_mask, core_mask
 
 
 def plot_spatial_comparison(low_res, ground_truth, prediction, frame_idx = 9, axis=1, slice_idx = 50):
