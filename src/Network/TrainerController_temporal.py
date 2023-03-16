@@ -15,7 +15,7 @@ from . import utility, h5util, loss_utils
 
 class TrainerController_temporal:
     # constructor
-    def __init__(self, patch_size, res_increase, initial_learning_rate=1e-4, quicksave_enable=True, network_name='4DFlowNet', low_resblock=8, hi_resblock=4, block = 'resnet_block', upsampling_block = 'default'):
+    def __init__(self, patch_size, res_increase, initial_learning_rate=1e-4, quicksave_enable=True, network_name='4DFlowNet', n_low_resblock=8, n_hi_resblock=4, low_res_block = 'resnet_block', high_res_block= 'resnet_block', upsampling_block = 'default'):
         """
             TrainerController constructor
             Setup all the placeholders, network graph, loss functions and optimizer here.
@@ -33,7 +33,8 @@ class TrainerController_temporal:
         self.network_name = network_name
 
         #block structure (Res, dense or cps) Net
-        self.block = block
+        self.low_res_block= low_res_block
+        self.high_res_block=  high_res_block
 
         input_shape = (patch_size,patch_size,patch_size,1)
 
@@ -47,8 +48,8 @@ class TrainerController_temporal:
         w_mag = tf.keras.layers.Input(shape=input_shape, name='w_mag')
 
         input_layer = [u,v,w,u_mag, v_mag, w_mag]
-        net = STR4DFlowNet(res_increase, block=self.block, upsampling_block=upsampling_block )
-        self.predictions = net.build_network(u, v, w, u_mag, v_mag, w_mag, low_resblock, hi_resblock)
+        net = STR4DFlowNet(res_increase,low_res_block=low_res_block, high_res_block=high_res_block,  upsampling_block=upsampling_block )
+        self.predictions = net.build_network(u, v, w, u_mag, v_mag, w_mag, n_low_resblock, n_hi_resblock)
         self.model = tf.keras.Model(input_layer, self.predictions)
 
         #self.model.summary()
