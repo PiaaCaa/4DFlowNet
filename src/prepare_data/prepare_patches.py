@@ -30,7 +30,7 @@ def load_data_shape(input_filepath):
 
 if __name__ == "__main__": 
     temporal_preparation = True
-    patch_size = 14 # Patch size, this will be checked to make sure the generated patches do not go out of bounds
+    patch_size = 16 # Patch size, this will be checked to make sure the generated patches do not go out of bounds
     n_patch = 20    # number of patch per time frame
     n_empty_patch_allowed = 0 # max number of empty patch per frame
     all_rotation = False # When true, include 90,180, and 270 rotation for each patch. When False, only include 1 random rotation.
@@ -60,13 +60,8 @@ if __name__ == "__main__":
 
     # because the data is homogenous in 1 table, we only need the first data
     with h5py.File(input_filepath, mode = 'r' ) as hdf5:
-        if len(hdf5['mask'].shape) == 4 and hdf5['mask'].shape[0]==1:  
-            mask = np.asarray(hdf5['mask']).squeeze()
-            mask = pd.create_temporal_mask(mask, T)
-        elif len(hdf5['mask'].shape) == 4:   
-            mask = np.asarray(hdf5['mask'])
-        else:
-            mask = np.asarray(hdf5['mask'])
+        mask = np.asarray(hdf5['mask']).squeeze()
+        if (len(mask.shape) == 4 and mask.shape[0]==1) or len(mask.shape) == 3:  
             mask = pd.create_temporal_mask(mask, T)
     
         frames = hdf5["u"].shape[0]

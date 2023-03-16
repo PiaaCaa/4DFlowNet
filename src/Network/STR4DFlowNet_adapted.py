@@ -209,7 +209,7 @@ def u_net_block(x, num_layers, block_name = 'UnetBlock', channel_nr = 64, pad = 
     def upsampling_block(x, skip_features, num_filters, use_BN):
         tmp = tf.keras.layers.Conv3DTranspose(filters = num_filters,kernel_size = 3, strides = (2, 2, 2),padding = 'same')(x) 
         print(tmp.shape, skip_features.shape)
-        tmp = tf.keras.layers.concatenate([tmp, skip_features])#tf.keras.layers.Concatenate()[tmp, skip_features]
+        tmp = tf.keras.layers.concatenate([tmp, skip_features]) #axis ?? #tf.keras.layers.Concatenate()[tmp, skip_features]
         tmp = conv_unet_block(tmp, num_filters, use_BN)
         return tmp
         
