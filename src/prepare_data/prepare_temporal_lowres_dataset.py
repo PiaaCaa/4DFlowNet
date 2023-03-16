@@ -84,11 +84,12 @@ if __name__ == '__main__':
 
     # Load the mask once
     with h5py.File(input_filepath, mode = 'r' ) as hf:
-        #mask = np.asarray(hf['mask'])#[0])
-        mask = np.asarray(hf['mask'])
         # Some h5 files have 4D mask with 1 in the temporal dimension while others are already 3D
-        if len(mask.shape) == 4: 
-            mask = mask[0]
+        #create temporal mask, either already loaded or with static temporal mask
+        mask = np.asarray(hf['mask']).squeeze()
+        if len(mask.shape) == 3: 
+            mask = np.repeat(np.expand_dims(mask, 0), hf['u'].shape[0], axis=0)
+
         data_count = len(hf.get("u"))
         
         hr_u =     np.zeros_like(hf["u"])
@@ -112,12 +113,13 @@ if __name__ == '__main__':
         
         # Load the velocity U V W from H5
         with h5py.File(input_filepath, mode = 'r' ) as hf:
-            mask = np.asarray(hf['mask'])
+            mask = np.asarray(hf['mask']).squeeze()
             # Some h5 files have 4D mask with 1 in the temporal dimension while others are already 3D
-            if len(mask.shape) == 4: 
-                mask = mask[0]
+            if len(mask.shape) == 3: 
+                mask = np.repeat(np.expand_dims(mask, 0), hf['u'].shape[0], axis=0)
             
             if use_radial_downsamling:
+                    print(f"_____Radial downsampling with avaging over {radia_downsamping_avg_pixel} pixels")
                     hr_u_frame = np.zeros_like(hf['u'][idx])
                     hr_v_frame = np.zeros_like(hf['v'][idx])
                     hr_w_frame = np.zeros_like(hf['w'][idx])
@@ -188,17 +190,17 @@ if __name__ == '__main__':
         
         
         # attention: is just adding noise NOT downsampling image
-        hr_u[idx, :, :, :], mag_u =  fft.downsample_phase_img(hr_u_frame, mag_image, venc_u, crop_ratio, targetSNRdb, temporal_downsampling=True)   
-        hr_v[idx, :, :, :], mag_v =  fft.downsample_phase_img(hr_v_frame, mag_image, venc_v, crop_ratio, targetSNRdb, temporal_downsampling=True)   
-        hr_w[idx, :, :, :], mag_w =  fft.downsample_phase_img(hr_w_frame, mag_image, venc_w, crop_ratio, targetSNRdb, temporal_downsampling=True)   
+        hr_u[idx, :, :, :], hr_mag_u[idx, :, :, :] =  fft.downsample_phase_img(hr_u_frame, mag_image[idx], venc_u, crop_ratio, targetSNRdb, temporal_downsampling=True)   
+        hr_v[idx, :, :, :], hr_mag_v[idx, :, :, :] =  fft.downsample_phase_img(hr_v_frame, mag_image[idx], venc_v, crop_ratio, targetSNRdb, temporal_downsampling=True)   
+        hr_w[idx, :, :, :], hr_mag_w[idx, :, :, :] =  fft.downsample_phase_img(hr_w_frame, mag_image[idx], venc_w, crop_ratio, targetSNRdb, temporal_downsampling=True)   
 
         print("Peak signal to noise ratio:", peak_signal_to_noise_ratio(hr_u_frame, hr_u[idx, :, :, :]), " db")
         # hr_u[idx, :, :, :], mag_u = hr_u_frame, mag_image
         # hr_v[idx, :, :, :], mag_v = hr_v_frame, mag_image
         # hr_w[idx, :, :, :], mag_w = hr_w_frame, mag_image
-        hr_mag_u[idx, :, :, :] = mag_u
-        hr_mag_v[idx, :, :, :] = mag_v
-        hr_mag_w[idx, :, :, :] = mag_w
+        # hr_mag_u[idx, :, :, :] = mag_u
+        # hr_mag_v[idx, :, :, :] = mag_v
+        # hr_mag_w[idx, :, :, :] = mag_w
 
         # only every second (even) needed for downsampling 
         if idx % 2 == 0: 
