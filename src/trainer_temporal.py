@@ -23,11 +23,11 @@ if __name__ == "__main__":
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal14MODEL23_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir) 
-    validate_file = '{}/Temporal14MODEL1_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
+    training_file = '{}/Temporal16MODEL4_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir) 
+    validate_file = '{}/Temporal16MODEL4_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
 
     QUICKSAVE = True
-    benchmark_file = '{}/Temporal14MODEL4_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
+    benchmark_file = '{}/Temporal16MODEL4_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
     
     overview_csv = 'Temporal4DFlowNet/results/Overview_models.csv'
 
@@ -50,13 +50,15 @@ if __name__ == "__main__":
 
     # Network setting
     network_name = 'Temporal4DFlowNet'
-    patch_size = 14
+    patch_size = 16
     res_increase = 2
     # Residual blocks, default (8 LR ResBlocks and 4 HR ResBlocks)
-    low_resblock = 8
-    hi_resblock = 4
-    block= 'resnet_block' # 'resnet_block' 'dense_block' csp_block
-    upsampling_block = 'default'#'Conv3Dtranspose'
+    n_low_resblock = 8
+    n_hi_resblock = 4
+    low_res_block  = 'resnet_block' # 'resnet_block' 'dense_block' csp_block
+    high_res_block = 'unet_block'##'resnet_block'
+    upsampling_block = 'linear' #'default'#'Conv3Dtranspose', 'linear'  'nearest_neigbor'   'Conv3DTranspose'
+           
 
     #notes: if something about this training is more 'special' is can be added to the overview csv file
     notes= 'Retraining on dynamical mask'
@@ -94,7 +96,7 @@ if __name__ == "__main__":
 
     # ------- Main Network ------
     print(f"4DFlowNet Patch {patch_size}, lr {initial_learning_rate}, batch {batch_size}")
-    network = TrainerController_temporal(patch_size, res_increase, initial_learning_rate, QUICKSAVE, network_name, low_resblock, hi_resblock, block, upsampling_block =  upsampling_block)
+    network = TrainerController_temporal(patch_size, res_increase, initial_learning_rate, QUICKSAVE, network_name, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block =  upsampling_block)
     network.init_model_dir()
 
     if restore:
@@ -104,6 +106,6 @@ if __name__ == "__main__":
     
     # write into csv file
 
-    write_settings_into_csv_file(overview_csv,network.unique_model_name, os.path.basename(training_file) , os.path.basename(validate_file), os.path.basename(benchmark_file), epochs,batch_size,patch_size, low_resblock, hi_resblock, notes)
+    write_settings_into_csv_file(overview_csv,network.unique_model_name, os.path.basename(training_file) , os.path.basename(validate_file), os.path.basename(benchmark_file), epochs,batch_size,patch_size, n_low_resblock, n_hi_resblock, notes)
     
     network.train_network(trainset, valset, n_epoch=epochs, testset=testset)
