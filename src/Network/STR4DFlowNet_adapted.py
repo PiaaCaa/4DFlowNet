@@ -66,6 +66,7 @@ class STR4DFlowNet():
 
         b_out = tf.keras.layers.concatenate([u_path, v_path, w_path])
 
+        
         return b_out
 
 
@@ -195,7 +196,12 @@ def u_net_block(x, num_layers, block_name = 'UnetBlock', channel_nr = 64, pad = 
         '''
         Convolution block
         '''
-        tmp = resnet_block(x, num_layers=2, channel_nr=num_filters)
+        print('num filters:', num_filters, x.shape)
+        tmp = conv3d(x, kernel_size=3, filters=num_filters, padding=pad, activation=None, use_bias=False, initialization=None)
+        if use_BN:
+            tmp = tf.keras.layers.BatchNormalization()(tmp)
+        tmp = tf.keras.layers.LeakyReLU(alpha=0.2)(tmp)
+        tmp = resnet_block(tmp, num_layers=2, channel_nr=num_filters, pad = pad)
         # tmp = conv3d(x, kernel_size=3, filters=num_filters, padding=pad, activation=None, use_bias=False, initialization=None)
         # if use_BN:
         #     tmp = tf.keras.layers.BatchNormalization()(tmp)
@@ -219,7 +225,8 @@ def u_net_block(x, num_layers, block_name = 'UnetBlock', channel_nr = 64, pad = 
         p = tf.keras.layers.MaxPooling3D(pool_size=(2, 2, 2), strides=None, padding = 'same')(tmp)
         return tmp, p
 
-    filter_nums  = [channel_nr*(2**i) for i in range(1, num_layers+1)]
+    filter_nums  = [channel_nr*(2**i) for i in range(0, num_layers+1)]
+    print('filter nums:', filter_nums)
     inputs = conv3d(x, kernel_size=3, filters=channel_nr, padding=pad, activation=None, use_bias=False, initialization=None)
 
     #this is a trial for two downsampling blocks
