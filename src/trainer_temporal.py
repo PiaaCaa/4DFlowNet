@@ -23,8 +23,8 @@ if __name__ == "__main__":
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal16MODEL4_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir) 
-    validate_file = '{}/Temporal16MODEL4_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
+    training_file = '{}/Temporal16MODEL23_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir) 
+    validate_file = '{}/Temporal16MODEL1_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
 
     QUICKSAVE = True
     benchmark_file = '{}/Temporal16MODEL4_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
@@ -57,11 +57,11 @@ if __name__ == "__main__":
     n_hi_resblock = 4
     low_res_block  = 'resnet_block' # 'resnet_block' 'dense_block' csp_block
     high_res_block = 'unet_block'##'resnet_block'
-    upsampling_block = 'linear' #'default'#'Conv3Dtranspose', 'linear'  'nearest_neigbor'   'Conv3DTranspose'
+    upsampling_block = 'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
            
 
     #notes: if something about this training is more 'special' is can be added to the overview csv file
-    notes= 'Dynamical mask: Conv3Dtranpose'
+    notes= 'Dynamical mask: ResNet - Unet (incl. Resnetblocks)'
 
     # Load data file and indexes
     trainset = load_indexes(training_file)

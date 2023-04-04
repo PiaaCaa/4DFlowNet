@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 import h5py
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
-def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock, block, upsampling_block):
+def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block):
     # Prepare input
     input_shape = (patch_size,patch_size,patch_size,1)
     u = tf.keras.layers.Input(shape=input_shape, name='u')
@@ -24,8 +24,8 @@ def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock
     input_layer = [u,v,w,u_mag, v_mag, w_mag]
 
     # network & output
-    net = STR4DFlowNet(res_increase, block, upsampling_block=upsampling_block)
-    prediction = net.build_network(u, v, w, u_mag, v_mag, w_mag, low_resblock, hi_resblock)
+    net = STR4DFlowNet(res_increase,low_res_block=low_res_block, high_res_block=high_res_block,  upsampling_block=upsampling_block )
+    prediction = net.build_network(u, v, w, u_mag, v_mag, w_mag, n_low_resblock, n_hi_resblock)
     model = tf.keras.Model(input_layer, prediction)
 
     return model
@@ -33,10 +33,10 @@ def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock
 
 if __name__ == '__main__':
     # Define directories and filenames
-    model_name = '20230313-0949' #this model: training 2, 3, validation: 1, test:4
-    set_names = ['Test','Validation', 'Training', 'Training']
-    data_models= ['4', '1', '2', '3']
-    steps = [2, 2, 2, 2]
+    model_name = '20230316-1149' #this model: training 2, 3, validation: 1, test:4
+    set_names = ['Test','Validation']#, 'Training', 'Training']
+    data_models= ['4', '1' ]#, '2', '3']
+    steps = [2, 2]#, 2, 2]
 
     for set_name, data_model, step in zip(set_names, data_models, steps):
 
@@ -50,16 +50,17 @@ if __name__ == '__main__':
         model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
         # Params
-        patch_size = 14
+        patch_size = 16
         res_increase = 2
         batch_size = 16
         round_small_values = True
 
         # Network
-        low_resblock=8
-        hi_resblock= 4
-        block = 'csp_block'#'resnet_block'#'csp_block'#'resnet_block' # # 'resnet_block' 'dense_block' csp_block
-        upsampling_block = 'Default'#'Conv3Dtranspose'#'Default'#'Conv3Dtranspose' #'Conv3Dtranspose'
+        n_low_resblock = 8
+        n_hi_resblock = 4
+        low_res_block  = 'resnet_block' # 'resnet_block' 'dense_block' csp_block
+        high_res_block = 'unet_block'##'resnet_block'
+        upsampling_block = 'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
 
         # Setting up
         input_filepath = '{}/{}'.format(data_dir, filename)
@@ -98,7 +99,9 @@ if __name__ == '__main__':
             
             print(f"Loading 4DFlowNet: {res_increase}x upsample")
             # Load the network
-            network = prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock, block, upsampling_block)
+            network = prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block)
+            #low_res_block, high_res_block
+            #res_increase,low_res_block=low_res_block, high_res_block=high_res_block,  upsampling_block=upsampling_block 
             network.load_weights(model_path)
 
             volume = np.zeros((3, u_combined.shape[0],  u_combined.shape[1], u_combined.shape[2],  u_combined.shape[3] ))
