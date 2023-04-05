@@ -11,7 +11,7 @@ import time
 import shutil
 import os
 from .SR4DFlowNet import SR4DFlowNet
-from . import utility, h5util, loss_utils
+from ...Network import utility, h5util, loss_utils
 
 class TrainerController:
     # constructor

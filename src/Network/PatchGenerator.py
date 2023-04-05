@@ -1,6 +1,6 @@
 import numpy as np
 import h5py
-from utils import ImageDataset
+from Temporal4DFlowNet.src.spatial_SR.utils import ImageDataset
 
 class PatchGenerator():
     def __init__(self, patch_size, res_increase, include_all_axis = False):

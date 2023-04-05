@@ -33,7 +33,7 @@ def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resb
 
 if __name__ == '__main__':
     # Define directories and filenames
-    model_name = '20230316-1149' #this model: training 2, 3, validation: 1, test:4
+    model_name = '20230404-1418' #this model: training 2, 3, validation: 1, test:4
     set_names = ['Test','Validation']#, 'Training', 'Training']
     data_models= ['4', '1' ]#, '2', '3']
     steps = [2, 2]#, 2, 2]
@@ -58,9 +58,9 @@ if __name__ == '__main__':
         # Network
         n_low_resblock = 8
         n_hi_resblock = 4
-        low_res_block  = 'resnet_block' # 'resnet_block' 'dense_block' csp_block
-        high_res_block = 'unet_block'##'resnet_block'
-        upsampling_block = 'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
+        low_res_block  = 'resnet_block'     # 'resnet_block' 'dense_block' csp_block
+        high_res_block = 'resnet_block'       #'resnet_block'
+        upsampling_block = 'linear'         #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
 
         # Setting up
         input_filepath = '{}/{}'.format(data_dir, filename)
@@ -79,7 +79,6 @@ if __name__ == '__main__':
                 os.makedirs(output_dir)
 
         axis = [0, 1, 2]
-        
 
         with h5py.File(input_filepath, mode = 'r' ) as h5:
             lr_shape = h5.get("u").shape

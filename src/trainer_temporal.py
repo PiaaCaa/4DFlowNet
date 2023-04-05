@@ -12,12 +12,13 @@ def load_indexes(index_file):
     indexes = np.genfromtxt(index_file, delimiter=',', skip_header=True, dtype='unicode') # 'unicode' or None
     return indexes
 
-def write_settings_into_csv_file(filename,name, training_file, validation_file, test_file, epochs,batch_size,patch_size, low_resblock, high_resblock, notes):
+def write_settings_into_csv_file(filename,name, training_file, validation_file, test_file, epochs,batch_size,patch_size, low_resblock, high_resblock, upsampling_type, low_block_type, high_block_type, post_block_type, sampling, notes):
     print("Write settings into overview file")
-    fieldnames = ["Name","training_file","validation_file","test_file","epochs","batch_size","patch_size","res_increase","low_resblock","high_resblock","notes"]
+    fieldnames = ["Name","training_file","validation_file","test_file","epochs","batch_size","patch_size","res_increase","low_resblock","high_resblock","upsampling_type", "low_block_type", "high_block_type", "post_block_type", "sampling",  "notes"]
     with open(filename, mode='a', newline='') as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-            writer.writerow({'Name':name, "training_file":training_file, "validation_file":validation_file, "test_file":test_file, "epochs":epochs, "batch_size":batch_size, "patch_size":patch_size, "res_increase":res_increase, "low_resblock":low_resblock, "high_resblock":high_resblock, "notes":notes })
+            writer.writerow({'Name':name, "training_file":training_file, "validation_file":validation_file, "test_file":test_file, "epochs":epochs, "batch_size":batch_size, "patch_size":patch_size, "res_increase":res_increase, "low_resblock":low_resblock, "high_resblock":high_resblock, 
+                             "upsampling_type": upsampling_type, 'low_block_type': low_block_type, 'high_block_type':high_block_type, 'post_block_type':post_block_type, 'sampling':sampling, "notes":notes })
 
 if __name__ == "__main__":
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
@@ -56,12 +57,14 @@ if __name__ == "__main__":
     n_low_resblock = 8
     n_hi_resblock = 4
     low_res_block  = 'resnet_block' # 'resnet_block' 'dense_block' csp_block
-    high_res_block = 'unet_block'##'resnet_block'
-    upsampling_block = 'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
+    high_res_block = 'resnet_block' ##'resnet_block'
+    upsampling_block = 'Conv3DTranspose'#'nearest_neigbor'#'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
+    post_processing_block = None
+    sampling ='Cartesian'
            
 
     #notes: if something about this training is more 'special' is can be added to the overview csv file
-    notes= 'Dynamical mask: ResNet - Unet (incl. Resnetblocks)'
+    notes= 'Dynamical mask: ResNet - ResNet, upsampling:Conv3Dtranspose'
 
     # Load data file and indexes
     trainset = load_indexes(training_file)
@@ -96,7 +99,7 @@ if __name__ == "__main__":
 
     # ------- Main Network ------
     print(f"4DFlowNet Patch {patch_size}, lr {initial_learning_rate}, batch {batch_size}")
-    network = TrainerController_temporal(patch_size, res_increase, initial_learning_rate, QUICKSAVE, network_name, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block =  upsampling_block)
+    network = TrainerController_temporal(patch_size, res_increase, initial_learning_rate, QUICKSAVE, network_name, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block =  upsampling_block, post_processing_block=post_processing_block)
     network.init_model_dir()
 
     if restore:
@@ -106,6 +109,6 @@ if __name__ == "__main__":
     
     # write into csv file
 
-    write_settings_into_csv_file(overview_csv,network.unique_model_name, os.path.basename(training_file) , os.path.basename(validate_file), os.path.basename(benchmark_file), epochs,batch_size,patch_size, n_low_resblock, n_hi_resblock, notes)
+    write_settings_into_csv_file(overview_csv,network.unique_model_name, os.path.basename(training_file) , os.path.basename(validate_file), os.path.basename(benchmark_file), epochs,batch_size,patch_size, n_low_resblock, n_hi_resblock,upsampling_block, low_res_block, high_res_block, post_processing_block, sampling, notes)
     
     network.train_network(trainset, valset, n_epoch=epochs, testset=testset)

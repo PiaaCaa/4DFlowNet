@@ -5,11 +5,12 @@ This is adapted with code partwise copied from Derek Long: https://github.com/dl
 '''
 
 class STR4DFlowNet():
-    def __init__(self, res_increase, high_res_block='resnet_block',low_res_block='resnet_block', upsampling_block = 'default', ):
+    def __init__(self, res_increase, high_res_block='resnet_block',low_res_block='resnet_block', upsampling_block = 'default', post_processing_block = None):
         self.res_increase = res_increase
         self.high_res_block = high_res_block
         self.low_res_block = low_res_block
         self.upsampling_block = upsampling_block
+        self.post_processing_block= post_processing_block
 
     def build_network(self, u, v, w, u_mag, v_mag, w_mag, low_resblock=8, hi_resblock=4, channel_nr=64):
         network_blocks = {
@@ -54,14 +55,25 @@ class STR4DFlowNet():
         rb = network_blocks[self.high_res_block](rb, hi_resblock, channel_nr=channel_nr, pad=padding)
 
         # 3 separate path version
-        u_path = conv3d(rb, 3, channel_nr, padding, 'relu')
-        u_path = conv3d(u_path, 3, 1, padding, None)
+        if self.post_processing_block is None:
+            u_path = conv3d(rb, 3, channel_nr, padding, 'relu')
+            u_path = conv3d(u_path, 3, 1, padding, None)
 
-        v_path = conv3d(rb, 3, channel_nr, padding, 'relu')
-        v_path = conv3d(v_path, 3, 1, padding, None)
+            v_path = conv3d(rb, 3, channel_nr, padding, 'relu')
+            v_path = conv3d(v_path, 3, 1, padding, None)
 
-        w_path = conv3d(rb, 3, channel_nr, padding, 'relu')
-        w_path = conv3d(w_path, 3, 1, padding, None)
+            w_path = conv3d(rb, 3, channel_nr, padding, 'relu')
+            w_path = conv3d(w_path, 3, 1, padding, None)
+        else:
+            #assume that it will be only one post processing block, i.e. # blocks = 1
+            u_path = network_blocks[self.post_processing_block](rb, 1, channel_nr=channel_nr, pad = padding )
+            u_path = conv3d(u_path, 3, 1, padding, None)
+
+            v_path = network_blocks[self.post_processing_block](rb, 1, channel_nr=channel_nr, pad = padding )
+            v_path = conv3d(v_path, 3, 1, padding, None)
+
+            w_path = network_blocks[self.post_processing_block](rb, 1, channel_nr=channel_nr, pad = padding )
+            w_path = conv3d(w_path, 3, 1, padding, None)
         
 
         b_out = tf.keras.layers.concatenate([u_path, v_path, w_path])
