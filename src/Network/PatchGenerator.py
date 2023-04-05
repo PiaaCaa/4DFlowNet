@@ -1,6 +1,6 @@
 import numpy as np
 import h5py
-from Temporal4DFlowNet.src.spatial_SR.utils import ImageDataset
+from utils import ImageDataset_temporal
 
 class PatchGenerator():
     def __init__(self, patch_size, res_increase, include_all_axis = False):
@@ -13,7 +13,7 @@ class PatchGenerator():
         # we make sure we pad it on the far side of x,y,z so the division will match
         self.padding = (0,0,0) 
 
-    def patchify(self, dataset: ImageDataset):
+    def patchify(self, dataset: ImageDataset_temporal):
         """
             Create overlapping patch of size of patch_size
             On LR, we exclude 2 px from each side, effectively the size being used is patch_size-4
