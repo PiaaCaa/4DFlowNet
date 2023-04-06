@@ -2,10 +2,10 @@ import tensorflow as tf
 import numpy as np
 import time
 import os
-from Network.SR4DFlowNet import SR4DFlowNet
+from Temporal4DFlowNet.src.spatial_SR.Network.SR4DFlowNet import SR4DFlowNet
 from Network.PatchGenerator import PatchGenerator
 from utils import prediction_utils
-from utils.ImageDataset import ImageDataset
+from Temporal4DFlowNet.src.spatial_SR.utils.ImageDataset import ImageDataset
 from matplotlib import pyplot as plt
 import h5py
 os.environ["CUDA_VISIBLE_DEVICES"]="1"

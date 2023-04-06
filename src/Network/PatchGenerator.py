@@ -1,18 +1,19 @@
 import numpy as np
 import h5py
-from utils import ImageDataset
+from utils import ImageDataset_temporal
 
 class PatchGenerator():
-    def __init__(self, patch_size, res_increase):
+    def __init__(self, patch_size, res_increase, include_all_axis = False):
         self.patch_size = patch_size
         #TODO changed here
         #self.effective_patch_size = patch_size - 4# we strip down 2 from each sides (on LR)
         self.effective_patch_size = patch_size - 4
         self.res_increase = res_increase
+        self.all_axis = include_all_axis
         # we make sure we pad it on the far side of x,y,z so the division will match
         self.padding = (0,0,0) 
 
-    def patchify(self, dataset: ImageDataset):
+    def patchify(self, dataset: ImageDataset_temporal):
         """
             Create overlapping patch of size of patch_size
             On LR, we exclude 2 px from each side, effectively the size being used is patch_size-4
@@ -56,10 +57,17 @@ class PatchGenerator():
         """
             Pad image to the right, until it is exactly divisible by patch size
         """
+        if self.all_axis:
+            
+            img = img[::2, :, :]  # from shape (T, X, Y) to (1/2 T, X, Y) (or other combinations of X; Y; Z)
+
         side_pad = (self.patch_size-self.effective_patch_size) // 2
         
         # mandatory padding
-        img = np.pad(img, ((side_pad, side_pad),(side_pad, side_pad),(side_pad, side_pad)), 'constant')
+        #TODO pad temporal side with mirroring
+        #img = np.pad(img, ((side_pad, side_pad),(side_pad, side_pad),(side_pad, side_pad)), 'constant')
+        img = np.pad(img, ((0, 0),(side_pad, side_pad),(side_pad, side_pad)), 'constant')
+        img = np.pad(img, ((side_pad, side_pad),(0, 0),(0, 0)), 'wrap')
         
         res_x = (img.shape[0] % self.effective_patch_size)
         if (res_x > (2* side_pad)):
@@ -128,8 +136,8 @@ class PatchGenerator():
         side_pad_hr =  side_pad * self.res_increase # size pad hr = 0
         #TODO adapt to other axis
         side_pad_hr_spatial = side_pad # no increase in spatial domain 
-        patch_size_thr = patches.shape[1]  # patchsize = 20
-        patch_size_shr = patches.shape[2]
+        patch_size_thr = patches.shape[1]  # patchsize = 20 # temproal high resolution
+        patch_size_shr = patches.shape[2]   # spatial high resolution
 
         n = patch_size_thr-side_pad_hr # n=20
         n_spatial = patch_size_shr - side_pad_hr_spatial

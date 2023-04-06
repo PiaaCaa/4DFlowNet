@@ -1,23 +1,11 @@
 #!/bin/bash
-#SBATCH --gpus 2
+#SBATCH --gpus 1
 #SBATCH -N 1
-#SBATCH -t 2:00:00
+#SBATCH -t 01:15:00
 #SBATCH --mail-type ALL
-#SBATCH --output /path-to-save-output/output.out
-#SBATCH --error patch-to-save-error/output.err
+#SBATCH --mail-user pcallmer@kth.se
+#SBATCH --output /proj/multipress/users/x_piaca/Temporal4DFlowNet/outputfiles/output.out
+#SBATCH --error /proj/multipress/users/x_piaca/Temporal4DFlowNet/outputfiles/output.err
 
-cd patch-to-run-file
-singularity run –nv tensorflow_2.6.1-gpu.sif python myfile.py
-
-
-
-
-
-
-
-
-
-
-
-
-
+cd  /proj/multipress/users/x_piaca/
+singularity run --nv tensorflow_2.6.1-gpu.sif python Temporal4DFlowNet/src/predictor_temporal_all_axis.py

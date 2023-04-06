@@ -76,7 +76,8 @@ def calculate_relative_error(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_ma
     relative_speed_loss = diff_speed / (actual_speed + epsilon)
     
     # Make sure the range is between 0 and 1
-    relative_speed_loss = tf.clip_by_value(relative_speed_loss, 0., 1.)
+    #relative_speed_loss = tf.clip_by_value(relative_speed_loss, 0., 1.)
+    relative_speed_loss = tf.tanh(relative_speed_loss)
 
     # Apply correction, only use the diff speed if actual speed is zero
     condition = tf.not_equal(actual_speed, tf.constant(0.))

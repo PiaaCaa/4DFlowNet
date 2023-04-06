@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.log
+*.out
+*.err
+*.sbatch
 models/
 4DFlowNet/*
 .vscode/
@@ -13,3 +16,4 @@ data/UCSF_data
 data/CARDIAC
 data/example_data
 venv_setup.txt
+outputfiles/*

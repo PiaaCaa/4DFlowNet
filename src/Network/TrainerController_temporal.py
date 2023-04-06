@@ -10,12 +10,12 @@ import datetime
 import time
 import shutil
 import os
-from .STR4DFlowNet import STR4DFlowNet
+from .STR4DFlowNet_adapted import STR4DFlowNet
 from . import utility, h5util, loss_utils
 
 class TrainerController_temporal:
     # constructor
-    def __init__(self, patch_size, res_increase, initial_learning_rate=1e-4, quicksave_enable=True, network_name='4DFlowNet', low_resblock=8, hi_resblock=4):
+    def __init__(self, patch_size, res_increase, initial_learning_rate=1e-4, quicksave_enable=True, network_name='4DFlowNet', n_low_resblock=8, n_hi_resblock=4, low_res_block = 'resnet_block', high_res_block= 'resnet_block', upsampling_block = 'default', post_processing_block = None):
         """
             TrainerController constructor
             Setup all the placeholders, network graph, loss functions and optimizer here.
@@ -32,6 +32,11 @@ class TrainerController_temporal:
         # Network
         self.network_name = network_name
 
+        #block structure (Res, dense or cps) Net
+        self.low_res_block= low_res_block
+        self.high_res_block=  high_res_block
+        self.post_processing_block = post_processing_block
+
         input_shape = (patch_size,patch_size,patch_size,1)
 
         # Prepare Input 
@@ -44,8 +49,8 @@ class TrainerController_temporal:
         w_mag = tf.keras.layers.Input(shape=input_shape, name='w_mag')
 
         input_layer = [u,v,w,u_mag, v_mag, w_mag]
-        net = STR4DFlowNet(res_increase)
-        self.predictions = net.build_network(u, v, w, u_mag, v_mag, w_mag, low_resblock, hi_resblock)
+        net = STR4DFlowNet(res_increase,low_res_block=low_res_block, high_res_block=high_res_block,  upsampling_block=upsampling_block, post_processing_block=self.post_processing_block )
+        self.predictions = net.build_network(u, v, w, u_mag, v_mag, w_mag, n_low_resblock, n_hi_resblock)
         self.model = tf.keras.Model(input_layer, self.predictions)
 
         #self.model.summary()
@@ -126,7 +131,7 @@ class TrainerController_temporal:
         total_loss = mse + divergence_loss
 
         # return all losses for logging
-        return  total_loss, mse, divergence_loss
+        return  tf.reduce_mean(total_loss), mse, divergence_loss
 
     def calculate_regularizer_loss(self):
         """
@@ -196,7 +201,7 @@ class TrainerController_temporal:
         utility.log_to_file(self.logfile, f'epoch, {stat_names}, learning rate, elapsed (sec), best_model, benchmark_err, benchmark_rel_err, benchmark_mse, benchmark_divloss\n')
 
         print("Copying source code to model directory...")
-        base_path = "4DFlowNet/src/"
+        base_path = "Temporal4DFlowNet/src/"
 
         # Copy all the source file to the model dir for backup
         directory_to_backup = [base_path +".", base_path+ "Network"]
@@ -293,7 +298,7 @@ class TrainerController_temporal:
                 self.train_step(data_pairs)
                 message = f"Epoch {epoch+1} Train batch {i+1}/{total_batch_train} | loss: {self.loss_metrics['train_loss'].result():.5f} ({self.loss_metrics['train_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs"
                 print(f"\r{message}", end='')
-
+                
             # --- Validation ---
             for i, (data_pairs) in enumerate(valset):
                 self.test_step(data_pairs)

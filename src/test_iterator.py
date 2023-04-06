@@ -3,7 +3,7 @@ import tensorflow as tf
 import time
 import h5py
 # from Network.PatchHandler3D import PatchHandler3D
-from Network.PatchHandler3D_temporal import PatchHandler4D
+from Network.PatchHandler3D_temporal import PatchHandler4D, PatchHandler4D_all_axis
 from matplotlib import pyplot as plt
 
 def load_indexes(index_file):
@@ -43,7 +43,8 @@ def check_compatibility(datapair):
     hr_w_downsampled = simple_temporal_downsampling(hr_w, downsample=2)
 
     hr_u_mask = np.ones_like(hr_u_downsampled)
-    tol = 10**(-10)
+    tol = 1e-8
+    tol = 1e-8
     hr_u_mask[np.where(np.abs(hr_u_downsampled) < tol)] = 0
     
     hr_u_downsampled = np.multiply(hr_u_downsampled, mask )
@@ -61,19 +62,19 @@ def check_compatibility(datapair):
     
     # check u 
     # just consider values above 1, since noise is added on data
-    if np.linalg.norm(lr_u - hr_u_downsampled) >=1 :
+    if np.linalg.norm(lr_u - hr_u_downsampled) >= 1 :
         print("LR u is not compatible with downsampled high res image!! ")
         print('Norm of difference: ', np.linalg.norm(lr_u - hr_u_downsampled))
         print("Count nonzero", np.count_nonzero(lr_u - hr_u_downsampled))
         print('Norm of difference: ', np.linalg.norm(lr_u - hr_u_downsampled))
 
     #check v
-    if np.linalg.norm(lr_v - hr_v_downsampled) >=1:
+    if np.linalg.norm(lr_v - hr_v_downsampled) >= 1 :
         print("LR v is not compatible with downsampled high res image!! ")
         print('Norm of difference: ', np.linalg.norm(lr_v - hr_v_downsampled))
     
     #check w
-    if np.linalg.norm(np.asarray(lr_w) - hr_w_downsampled) >=1:
+    if np.linalg.norm(np.asarray(lr_w) - hr_w_downsampled)>= 1 :
         print("LR w is not compatible with downsampled high res image!! ")
         print('Norm of difference: ', np.linalg.norm(lr_w - hr_w_downsampled))
 
@@ -86,13 +87,13 @@ if __name__ == "__main__":
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal10MODEL12_2_temporal.csv'.format(data_dir)
+    training_file = '{}/Temporal14MODEL23_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
    
     # Hyperparameters optimisation variables
     epochs =  1
-    batch_size = 5
+    batch_size = 15
 
-    patch_size = 10
+    patch_size = 14
     res_increase = 2
     
 
@@ -101,7 +102,7 @@ if __name__ == "__main__":
     
     # ----------------- TensorFlow stuff -------------------
     # TRAIN dataset iterator
-    z = PatchHandler4D(data_dir, patch_size, res_increase, batch_size)
+    z = PatchHandler4D_all_axis(data_dir, patch_size, res_increase, batch_size)
     trainset = z.initialize_dataset(trainset, shuffle=True, n_parallel=2)
 
     for epoch in range(epochs):

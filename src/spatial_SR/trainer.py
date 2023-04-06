@@ -1,7 +1,7 @@
 import numpy as np
 import os
-from Network.PatchHandler3D import PatchHandler3D
-from Network.TrainerController import TrainerController
+from Temporal4DFlowNet.src.spatial_SR.Network.PatchHandler3D import PatchHandler3D
+from Temporal4DFlowNet.src.spatial_SR.Network.TrainerController import TrainerController
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 def load_indexes(index_file):

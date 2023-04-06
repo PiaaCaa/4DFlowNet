@@ -44,13 +44,14 @@ class ImageDataset_temporal():
             results[np.abs(results) < self.velocity_per_px] = 0
         return results
 
-    def get_dataset_len(self, filepath):
+    def get_dataset_len(self, filepath, axis=0):
         with h5py.File(filepath, 'r') as hl:
-            #TODO changed here from 0 to 1
-            data_size = hl[self.velocity_colnames[0]].shape[1]
+            data_size = hl[self.velocity_colnames[0]].shape[axis +1]
+            
+                
         return data_size
    
-    def load_vectorfield(self, filepath, idx):
+    def load_vectorfield(self, filepath, idx, axis = 0): 
         '''
             Override the load u v w data by adding some padding in xy planes
         '''
@@ -65,10 +66,17 @@ class ImageDataset_temporal():
             if self.dx_colname in hl:
                 dx = hl.get(self.dx_colname)[idx]
 
-            for i in range(len(self.velocity_colnames)):     
-                #TODO change this to other dimension/axis         
-                w = np.asarray(hl.get(self.velocity_colnames[i])[:, idx, :, :])
-                mag_w = np.asarray(hl.get(self.mag_colnames[i])[:, idx, :, :])
+            for i in range(len(self.velocity_colnames)):           
+                if axis ==0:
+                    w = np.asarray(hl.get(self.velocity_colnames[i])[:, idx, :, :])
+                    mag_w = np.asarray(hl.get(self.mag_colnames[i]) [:, idx, :, :])
+                elif axis == 1:
+                    w = np.asarray(hl.get(self.velocity_colnames[i])[:, :, idx,  :])
+                    mag_w = np.asarray(hl.get(self.mag_colnames[i]) [:, :, idx,  :])
+                elif axis == 2:
+                    w = np.asarray(hl.get(self.velocity_colnames[i])[:, :, :, idx])
+                    mag_w = np.asarray(hl.get(self.mag_colnames[i]) [:, :, :, idx])
+                
                 #TODO is this correct with the venc parameter?
                 w_venc = np.asarray(hl.get(self.venc_colnames[i]))#)[idx])
             

@@ -61,8 +61,9 @@ def add_complex_signal_noise(imgfft, targetSNRdb):
     noise_power = signal_power / snr
 
     if add_complex_noise:
+        
         sigma  = np.sqrt(noise_power)
-        # print('Target SNR ', targetSNRdb, "db, sigma(complex)", sigma)
+        # print('Target SNR ', targetSNRdb, "db, sigma(complex)", sigma, "shape:" ,imgfft.shape)
 
         # add the noise to the complex signal directly
         gauss_noise = np.random.normal(0, sigma, imgfft.shape)
