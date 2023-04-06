@@ -8,7 +8,7 @@ from utils import prediction_utils
 from utils.ImageDataset_temporal import ImageDataset_temporal
 from matplotlib import pyplot as plt
 import h5py
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+# os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block):
     # Prepare input
@@ -33,7 +33,7 @@ def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resb
 
 if __name__ == '__main__':
     # Define directories and filenames
-    model_name = '20230404-1418' #this model: training 2, 3, validation: 1, test:4
+    model_name = '20230405-1419'#'20230404-1418' #this model: training 2, 3, validation: 1, test:4
     set_names = ['Test','Validation']#, 'Training', 'Training']
     data_models= ['4', '1' ]#, '2', '3']
     steps = [2, 2]#, 2, 2]
@@ -55,12 +55,12 @@ if __name__ == '__main__':
         batch_size = 16
         round_small_values = True
 
-        # Network
-        n_low_resblock = 8
-        n_hi_resblock = 4
+        # Network - default 8-4
+        n_low_resblock = 4
+        n_hi_resblock = 8
         low_res_block  = 'resnet_block'     # 'resnet_block' 'dense_block' csp_block
         high_res_block = 'resnet_block'       #'resnet_block'
-        upsampling_block = 'linear'         #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
+        upsampling_block = 'linear'#'Conv3DTranspose'#'nearest_neigbor'#'linear'         #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
 
         # Setting up
         input_filepath = '{}/{}'.format(data_dir, filename)
