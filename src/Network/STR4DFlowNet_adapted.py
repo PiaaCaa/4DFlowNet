@@ -66,13 +66,13 @@ class STR4DFlowNet():
             w_path = conv3d(w_path, 3, 1, padding, None)
         else:
             #assume that it will be only one post processing block, i.e. # blocks = 1
-            u_path = network_blocks[self.post_processing_block](rb, 1, channel_nr=channel_nr, pad = padding )
+            u_path = network_blocks[self.post_processing_block](rb, 2, channel_nr=channel_nr, pad = padding )
             u_path = conv3d(u_path, 3, 1, padding, None)
 
-            v_path = network_blocks[self.post_processing_block](rb, 1, channel_nr=channel_nr, pad = padding )
+            v_path = network_blocks[self.post_processing_block](rb, 2, channel_nr=channel_nr, pad = padding )
             v_path = conv3d(v_path, 3, 1, padding, None)
 
-            w_path = network_blocks[self.post_processing_block](rb, 1, channel_nr=channel_nr, pad = padding )
+            w_path = network_blocks[self.post_processing_block](rb, 2, channel_nr=channel_nr, pad = padding )
             w_path = conv3d(w_path, 3, 1, padding, None)
         
 
@@ -208,7 +208,7 @@ def u_net_block(x, num_layers, block_name = 'UnetBlock', channel_nr = 64, pad = 
         '''
         Convolution block
         '''
-        print('num filters:', num_filters, x.shape)
+        # print('num filters:', num_filters,'shape', x.shape)
         tmp = conv3d(x, kernel_size=3, filters=num_filters, padding=pad, activation=None, use_bias=False, initialization=None)
         if use_BN:
             tmp = tf.keras.layers.BatchNormalization()(tmp)
@@ -227,7 +227,7 @@ def u_net_block(x, num_layers, block_name = 'UnetBlock', channel_nr = 64, pad = 
         
     def upsampling_block(x, skip_features, num_filters, use_BN):
         tmp = tf.keras.layers.Conv3DTranspose(filters = num_filters,kernel_size = 3, strides = (2, 2, 2),padding = 'same')(x) 
-        # print(tmp.shape, skip_features.shape)
+        print('after convT:', tmp.shape, skip_features.shape)
         tmp = tf.keras.layers.concatenate([tmp, skip_features]) #axis ?? #tf.keras.layers.Concatenate()[tmp, skip_features]
         tmp = conv_unet_block(tmp, num_filters, use_BN)
         return tmp
@@ -238,17 +238,22 @@ def u_net_block(x, num_layers, block_name = 'UnetBlock', channel_nr = 64, pad = 
         return tmp, p
 
     filter_nums  = [channel_nr*(2**i) for i in range(0, num_layers+1)]
-    print('filter nums:', filter_nums)
+    # print('filter nums:', filter_nums)
     inputs = conv3d(x, kernel_size=3, filters=channel_nr, padding=pad, activation=None, use_bias=False, initialization=None)
 
     #this is a trial for two downsampling blocks
     s1, p1 = downsampling_block(inputs, filter_nums[0] , use_BN)
+    print("shape output block 1, not downsampled:",s1.shape, " downsampled:", p1.shape )
     s2, p2 = downsampling_block(p1, filter_nums[1], use_BN)
+    print("shape output block 2, not downsampled:",s2.shape, " downsampled:", p2.shape )
 
     b1 = conv_unet_block(p2, filter_nums[2], use_BN)
+    print("shape output block smallest:",b1.shape )
 
     d1 = upsampling_block(b1, s2, filter_nums[1], use_BN)
+    print("shape output block 3,upsample block ",d1.shape)
     d2 = upsampling_block(d1, s1, filter_nums[0], use_BN)
+    print("shape output block 4,upsample block ",d2.shape)
     
     output = conv_unet_block(d2, filter_nums[0], use_BN)
     return output
