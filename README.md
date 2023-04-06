@@ -8,11 +8,8 @@ This is an extension of the repository [4DFlowNet](https://gitlab.eecs.umich.edu
 This implemenational in focusing on increasing the temporal resolution of the CFD 4D Flow MRI data. 
 
 
-
 # Example results
-![alt text][logo]
-
-[logo]: https://github.com/PiaaCaa/Temporal4DFlowNet/tree/develop-temporal-extended/Animate_w_Validation_1_fluid.gif "Logo Title Text 2"
+![] (https://github.com/PiaaCaa/Temporal4DFlowNet/blob/a16cccf9abaabab4c63476ad921801bbfa0cf648/Animate_w_Validation_1_fluid.gif)
 
 
 <!-- Below are example prediction results from an actual 4D Flow MRI of a bifurcation phantom dataset. 
