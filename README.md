@@ -9,7 +9,7 @@ This implemenational in focusing on increasing the temporal resolution of the CF
 
 
 # Example results
-![] (https://github.com/PiaaCaa/Temporal4DFlowNet/blob/a16cccf9abaabab4c63476ad921801bbfa0cf648/Animate_w_Validation_1_fluid.gif)
+![Animate_w_Validation_1_fluid](https://user-images.githubusercontent.com/102809405/230336042-8f6a6f9a-49e5-42e5-82f0-8b75d91a1a43.gif)
 
 
 <!-- Below are example prediction results from an actual 4D Flow MRI of a bifurcation phantom dataset. 
