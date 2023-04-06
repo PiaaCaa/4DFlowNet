@@ -11,10 +11,6 @@ This implemenational in focusing on increasing the temporal resolution of the CF
 
 # Example results
 
-![alt text][logo]
-
-[logo]: https://github.com/PiaaCaa/Temporal4DFlowNet/tree/develop-temporal-extended/example.gif "Logo Title Text 2"
-
 <!-- Below are example prediction results from an actual 4D Flow MRI of a bifurcation phantom dataset. 
 
 LowRes input (voxel size 4mm)
