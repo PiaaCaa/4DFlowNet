@@ -221,6 +221,7 @@ def calculate_pointwise_error(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_m
     error_absolut["u"] = np.sqrt(u_diff)
     error_absolut["v"] = np.sqrt(v_diff)
     error_absolut["w"] = np.sqrt(w_diff)
+    error_absolut["speed"] = np.abs(np.sqrt(np.square(u_pred) + np.square(v_pred) + np.square(w_pred)) - actual_speed)
 
     return relative_speed_loss, error_absolut
 
@@ -910,6 +911,13 @@ def temporal_cubic_interpolation(lr, hr_shape):
 
     return interpolate
 
+
+def temporal_sinc_interpolation(lr, hr_shape):
+    '''
+    TODO
+    '''
+    a = 1
+    return None
 
 def create_temporal_comparison_gif(lr, hr, pred, vel, save_as):
 
