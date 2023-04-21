@@ -34,8 +34,8 @@ if __name__ == "__main__":
 
     restore = False
     if restore:
-        model_dir = "4DFlowNet/models/4DFlowNet"
-        model_file = "4DFlowNet-best.h5"
+        model_dir = "Temporal4DFlowNet/models/Temporal4DFlowNet_20230406-1601"
+        model_file = "Temporal4DFlowNet-best.h5"
 
     # Adapt how patches are saved for temporal domain if True a different loading scheme is used
     load_patches_all_axis = True
@@ -58,13 +58,13 @@ if __name__ == "__main__":
     n_hi_resblock = 4
     low_res_block  = 'resnet_block' # 'resnet_block' 'dense_block' csp_block
     high_res_block = 'resnet_block' ##'resnet_block'
-    upsampling_block = 'Conv3DTranspose'#'nearest_neigbor'#'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
-    post_processing_block = None
-    sampling ='Cartesian'
+    upsampling_block = 'linear' #'Conv3DTranspose'#'nearest_neigbor'#'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
+    post_processing_block = None# 'unet_block'#None#'unet_block'
+    sampling = 'Cartesian' # this is not used for training but saved in the csv file for a better overview of what data it was trained on 
            
 
     #notes: if something about this training is more 'special' is can be added to the overview csv file
-    notes= 'Dynamical mask: ResNet - ResNet, upsampling:Conv3Dtranspose'
+    notes= 'Dynamical mask: Tryout - restore 20230406-1601 and continue training'
 
     # Load data file and indexes
     trainset = load_indexes(training_file)
