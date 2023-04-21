@@ -2,9 +2,9 @@ import h5py
 import numpy as np
 
 class ImageDataset_temporal():
-    def __init__(self):
+    def __init__(self, venc_colnames = ['venc_u', 'venc_v', 'venc_w']):
         self.velocity_colnames   = ['u', 'v', 'w']
-        self.venc_colnames = ['venc_u', 'venc_v', 'venc_w']
+        self.venc_colnames = venc_colnames#['u_max', 'v_max', 'w_max']#['venc_u', 'venc_v', 'venc_w']
         self.mag_colnames  = ['mag_u', 'mag_v', 'mag_w']
         self.dx_colname = 'dx'
 
@@ -46,7 +46,7 @@ class ImageDataset_temporal():
 
     def get_dataset_len(self, filepath, axis=0):
         with h5py.File(filepath, 'r') as hl:
-            data_size = hl[self.velocity_colnames[0]].shape[axis +1]
+            data_size = np.asarray(hl[self.velocity_colnames[0]]).squeeze().shape[axis +1]
             
                 
         return data_size
@@ -63,19 +63,21 @@ class ImageDataset_temporal():
 
         # Load the U, V, W component of LR, and MAG
         with h5py.File(filepath, 'r') as hl:
-            if self.dx_colname in hl:
-                dx = hl.get(self.dx_colname)[idx]
+            
+            #not really used?
+            # if self.dx_colname in hl:
+            #     dx = hl.get(self.dx_colname)[idx]
 
             for i in range(len(self.velocity_colnames)):           
                 if axis ==0:
-                    w = np.asarray(hl.get(self.velocity_colnames[i])[:, idx, :, :])
-                    mag_w = np.asarray(hl.get(self.mag_colnames[i]) [:, idx, :, :])
+                    w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[:, idx, :, :]
+                    mag_w =  np.asarray(hl.get(self.mag_colnames[i])).squeeze()[:, idx, :, :]
                 elif axis == 1:
-                    w = np.asarray(hl.get(self.velocity_colnames[i])[:, :, idx,  :])
-                    mag_w = np.asarray(hl.get(self.mag_colnames[i]) [:, :, idx,  :])
+                    w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[:, :, idx,  :]
+                    mag_w =  np.asarray(hl.get(self.mag_colnames[i])).squeeze()[:, :, idx,  :]
                 elif axis == 2:
-                    w = np.asarray(hl.get(self.velocity_colnames[i])[:, :, :, idx])
-                    mag_w = np.asarray(hl.get(self.mag_colnames[i]) [:, :, :, idx])
+                    w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[:, :, :, idx]
+                    mag_w =  np.asarray(hl.get(self.mag_colnames[i])).squeeze()[:, :, :, idx]
                 
                 #TODO is this correct with the venc parameter?
                 w_venc = np.asarray(hl.get(self.venc_colnames[i]))#)[idx])
