@@ -77,49 +77,8 @@ class STR4DFlowNet():
         
 
         b_out = tf.keras.layers.concatenate([u_path, v_path, w_path])
-
-        
         return b_out
 
-
-# def upsample3d_temporal(input_tensor, res_increase, upsampling = 'default'):
-    
-#     # We need this option for the bilinear resize to prevent shifting bug
-#     align = True 
-#     if upsampling == 'upsampling3D':
-#         output_tensor = tf.keras.layers.UpSampling3D(size=(2, 1, 1))(input_tensor)
-#     elif upsampling == 'Conv3Dtranspose':
-#         b_size, t_size, y_size, z_size, c_size = input_tensor.shape
-#         ##TODO change this to real padding, same of valida padding
-#         output_tensor = tf.keras.layers.Conv3DTranspose(filters = c_size,kernel_size = 3, strides = (2, 1, 1) ,padding = 'same')(input_tensor) 
-#     else:
-
-#         b_size, t_size, y_size, z_size, c_size = input_tensor.shape
-
-#         t_size_new, y_size_new, z_size_new = t_size * res_increase, y_size , z_size
-
-#         if res_increase == 1:
-#             # already in the target shape
-#             return input_tensor
-
-#         # resize y-z
-#         squeeze_b_x = tf.reshape(input_tensor, [-1, y_size, z_size, c_size], name='reshape_bx')
-#         #resize_b_x = tf.compat.v1.image.resize_bilinear(squeeze_b_x, [y_size_new, z_size_new], align_corners=align)
-#         resize_b_x = tf.image.resize(squeeze_b_x, [y_size_new, z_size_new])#, method=ResizeMethod.BILINEAR)
-#         resume_b_x = tf.reshape(resize_b_x, [-1, t_size, y_size_new, z_size_new, c_size], name='resume_bx')
-
-#         #Reorient
-#         reoriented = tf.transpose(resume_b_x, [0, 3, 2, 1, 4])
-        
-#         #   squeeze and 2d resize
-#         #TODO: check, since it works only if reoriented has same input shape as input tensor
-#         squeeze_b_z = tf.reshape(reoriented, [-1, y_size_new, t_size, c_size], name='reshape_bz')
-#         #resize_b_z = tf.compat.v1.image.resize_bilinear(squeeze_b_z, [y_size_new, x_size_new], align_corners=align)
-#         resize_b_z = tf.image.resize(squeeze_b_z, [y_size_new, t_size_new])#, method=ResizeMethod.BILINEAR)
-#         resume_b_z = tf.reshape(resize_b_z, [-1, z_size_new, y_size_new, t_size_new, c_size], name='resume_bz')
-        
-#         output_tensor = tf.transpose(resume_b_z, [0, 3, 2, 1, 4])
-#     return output_tensor
 
 def upsample3d_NN(input_tensor, res_increase):
     

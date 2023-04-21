@@ -61,10 +61,12 @@ if __name__ == '__main__':
     input_filepath = '{}/{}'.format(data_dir, filename)
     output_filepath = '{}/{}'.format(output_dir, output_filename)
 
+    venc_colnames = ['u_max', 'v_max', 'w_max']
+
     assert(not os.path.exists(output_filepath)) #STOP if output file is already created
 
     pgen = PatchGenerator(patch_size, res_increase,include_all_axis = True)
-    dataset = ImageDataset_temporal()
+    dataset = ImageDataset_temporal(venc_colnames=['u_max', 'v_max', 'w_max'])
     
 
     print("Path exists:", os.path.exists(input_filepath), os.path.exists(model_path))
