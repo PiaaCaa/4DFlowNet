@@ -35,17 +35,18 @@ if __name__ == '__main__':
     # Define directories and filenames
     model_name = '20230405-1417'
 
+    #/proj/multipress/users/x_piaca/Temporal4DFlowNet/data/PIA/THORAX/P01/h5/P01.h5
     # set filenamaes and directories
-    data_dir = 'Temporal4DFlowNet/data/PIA/BARCELONA/h5'
-    filename = 'sample_patient.h5' #TODO double check this if the right mask is used
+    data_dir = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/data/PIA/THORAX/P01/h5'
+    filename = 'P01.h5' #TODO double check this if the right mask is used
 
-    output_dir = f'Temporal4DFlowNet/results/in_vivo/BARCELONA'
+    output_dir = f'Temporal4DFlowNet/results/in_vivo/THORAX'
     output_filename = f'{model_name}_temporal.h5'
     
     model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
     # Params
-    patch_size = 14
+    patch_size = 12
     res_increase = 2
     batch_size = 16
     round_small_values = True
@@ -79,6 +80,8 @@ if __name__ == '__main__':
 
     with h5py.File(input_filepath, mode = 'r' ) as h5:
         lr_shape = np.asarray(h5.get("u")).squeeze().shape
+        print("Shape of in-vivo data", lr_shape)
+        N_frames, _, _, _ = lr_shape
 
     #TODO make this nicer
     u_combined = np.zeros(lr_shape)
@@ -151,6 +154,14 @@ if __name__ == '__main__':
                 v = np.expand_dims(v, axis=0)
                 # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'{dataset.velocity_colnames[i]}__axis{a}', v, compression='gzip')
                 print('Original volume: ', volume.shape, 'shape of predicition', v.shape)
+                if v.shape[1] != N_frames:
+                    print('reshaped v from: ', v.shape)
+                    if v.shape[1] < N_frames:
+                        v = np.pad(v, (0, 0), (0, N_frames - v.shape[1]), (0, 0), (0, 0))
+                    else:
+                        v = v[:, :N_frames, :, :]
+                    print(v.shape)
+                #volume u/v/w, T, X, Y, Z
                 if a == 0:      volume[i, :, nrow,  :,      :] = v
                 elif a == 1:    volume[i, :, :,     nrow,   :] = v
                 elif a == 2:    volume[i, :, :,     :,   nrow] = v
