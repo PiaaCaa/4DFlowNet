@@ -268,7 +268,6 @@ class PatchHandler4D_all_axis():
             try:
                 mask = hl.get(self.mask_colname)[mask_index] # Mask value [0 .. 1]
             except:
-                #TODO this probably has to be chnaged if structure changes
                 mask_temp = self.create_temporal_mask(np.asarray(hl.get(self.mask_colname)).squeeze(),  hl.get(self.hr_colnames[i]).shape[0])
                 mask = mask_temp[mask_index] 
             mask = (mask >= self.mask_threshold) * 1.

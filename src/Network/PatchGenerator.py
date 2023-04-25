@@ -58,13 +58,12 @@ class PatchGenerator():
             Pad image to the right, until it is exactly divisible by patch size
         """
         if self.all_axis:
-            
             img = img[::2, :, :]  # from shape (T, X, Y) to (1/2 T, X, Y) (or other combinations of X; Y; Z)
 
         side_pad = (self.patch_size-self.effective_patch_size) // 2
         
         # mandatory padding
-        #TODO pad temporal side with mirroring
+        
         #img = np.pad(img, ((side_pad, side_pad),(side_pad, side_pad),(side_pad, side_pad)), 'constant')
         img = np.pad(img, ((0, 0),(side_pad, side_pad),(side_pad, side_pad)), 'constant')
         img = np.pad(img, ((side_pad, side_pad),(0, 0),(0, 0)), 'wrap')
@@ -134,7 +133,7 @@ class PatchGenerator():
 
         side_pad = (self.patch_size - self.effective_patch_size) // 2
         side_pad_hr =  side_pad * self.res_increase # size pad hr = 0
-        #TODO adapt to other axis
+        
         side_pad_hr_spatial = side_pad # no increase in spatial domain 
         patch_size_thr = patches.shape[1]  # patchsize = 20 # temproal high resolution
         patch_size_shr = patches.shape[2]   # spatial high resolution

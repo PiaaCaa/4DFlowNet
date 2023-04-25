@@ -869,6 +869,15 @@ def temporal_linear_interpolation(lr, hr_shape):
 
     return interpolate
 
+def temporal_linear_interpolation_np(lr, hr_shape):
+    T, x, y, z = hr_shape
+    interpolate = np.zeros((T, x, y, z))
+    print(lr.shape, interpolate.shape)
+    interpolate[::2, :, :, :] = lr
+    for t in range(0, T-2, 2):
+        interpolate[1+t, :, :, :] = (interpolate[t, :, :, :] + interpolate[1+t+1, :, :, :]) /2
+
+    return interpolate
 
 def temporal_NN_interpolation(lr, hr_shape):
     '''
