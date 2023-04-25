@@ -3,15 +3,17 @@ import h5py
 from utils import ImageDataset_temporal
 
 class PatchGenerator():
-    def __init__(self, patch_size, res_increase, include_all_axis = False):
+    def __init__(self, patch_size, res_increase, include_all_axis = False, downsample_input_first = True):
         self.patch_size = patch_size
         #TODO changed here
         #self.effective_patch_size = patch_size - 4# we strip down 2 from each sides (on LR)
         self.effective_patch_size = patch_size - 4
         self.res_increase = res_increase
         self.all_axis = include_all_axis
+        self.downsample_input_first = downsample_input_first
         # we make sure we pad it on the far side of x,y,z so the division will match
         self.padding = (0,0,0) 
+        if not downsample_input_first: print("Data will NOT get downsampled first for prediction")
 
     def patchify(self, dataset: ImageDataset_temporal):
         """
@@ -57,7 +59,7 @@ class PatchGenerator():
         """
             Pad image to the right, until it is exactly divisible by patch size
         """
-        if self.all_axis:
+        if (self.all_axis and self.downsample_input_first):
             
             img = img[::2, :, :]  # from shape (T, X, Y) to (1/2 T, X, Y) (or other combinations of X; Y; Z)
 
@@ -173,6 +175,7 @@ class PatchGenerator():
         if self.padding[2] > 0:
             end_results = end_results[:, :, :-self.padding[2]]
 
+        print("____patchup shape: ", end_results.shape, "__________________________")
         return end_results     
     
     
