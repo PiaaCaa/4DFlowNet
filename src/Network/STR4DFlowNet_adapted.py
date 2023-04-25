@@ -18,6 +18,7 @@ class STR4DFlowNet():
             'dense_block': dense_block,
             'csp_block': csp_block, 
             'unet_block': u_net_block, 
+            'lstm_block':lstm_block,
         }
 
         upsampling_blocks = {
@@ -246,3 +247,13 @@ def csp_block(x, num_layers, block_name='CSPBlock', channel_nr=64, scale = 1, pa
         tmp = tf.concat([tmp, output], axis=-1)
     tmp = tf.concat([x[:,:,:,:,k:], tmp], axis=-1)
     return tmp
+
+def lstm_block(x, num_layers, block_name='LSTM_block', channel_nr=64, scale = 1, pad='SAME'):
+    print('______LSTM_______________')
+    print('Input shape', x.shape)
+    tmp = tf.keras.layers.ConvLSTM2D(channel_nr, 3, use_bias = False, return_sequences = True, padding = 'same')(x)
+    print('1 stage shape', tmp.shape)
+    tmp = tf.keras.layers.ConvLSTM2D(channel_nr, 3, use_bias = False, return_sequences = True, padding = 'same')(tmp)
+    print('Output LSTM shape', tmp.shape)
+    return tmp
+

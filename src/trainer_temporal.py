@@ -56,7 +56,7 @@ if __name__ == "__main__":
     # Residual blocks, default (8 LR ResBlocks and 4 HR ResBlocks)
     n_low_resblock = 8
     n_hi_resblock = 4
-    low_res_block  = 'resnet_block' # 'resnet_block' 'dense_block' csp_block
+    low_res_block  = 'lstm_block' # 'resnet_block' 'dense_block' csp_block
     high_res_block = 'resnet_block' ##'resnet_block'
     upsampling_block = 'linear' #'Conv3DTranspose'#'nearest_neigbor'#'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
     post_processing_block = None# 'unet_block'#None#'unet_block'

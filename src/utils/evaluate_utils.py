@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import time
 import os
+import cv2
 from Network.PatchGenerator import PatchGenerator
 from utils import prediction_utils
 import h5py
@@ -20,6 +21,62 @@ from matplotlib import pyplot as plt
 # from sklearn.metrics import r2_score
 # import matplotlib
 # matplotlib.rcParams['text.usetex'] = True
+
+
+def normalize_to_0_1(data):
+    return (np.array(data, dtype=float)- np.min(data))/(np.max(data)-np.min(data))
+
+def signal_to_noise_ratio_db(Px, Pn):
+    #TODO
+    return 10*np.log(Px/Pn)
+
+
+def signaltonoise(a, axis=0, ddof=0):
+    '''
+    source: https://stackoverflow.com/questions/63177236/how-to-calculate-signal-to-noise-ratio-using-python
+    '''
+    a = np.asanyarray(a)
+    m = a.mean(axis)
+    sd = a.std(axis=axis, ddof=ddof)
+    return np.where(sd == 0, 0, m/sd)
+
+def signaltonoise_db(a, axis=0, ddof=0):
+    return 20*np.log10(np.abs(signaltonoise(a, axis, ddof)))
+
+def peak_signal_to_noise_ratio(img, noisy_img):
+    #TODO
+    ''' 
+    Compute PSNR with PSNR=20log10(max()/RMSE)
+    '''
+    mse = np.mean((img - noisy_img) ** 2)
+
+    max_pixel = np.max(img)-np.min(img) #since smallest values can be smaller than 0
+    print('Max pixel ', max_pixel )
+    psnr = 20*np.log10(max_pixel/np.sqrt(mse))
+    return psnr
+
+def cv2_psnr(img, noisy_img):
+    #TODO check against own method
+    return cv2.PSNR(img, noisy_img)   
+
+def power_of_signal():
+    #TODO
+    # SNRdb = 10 log SNR
+    # SNRdb / 10 = log SNR
+    # SNR = 10 ^ (SNRdb/10
+    # Pn = Pn / SNR
+    # Pn = variance
+    # Deconstruct the complex numbers into real and imaginary
+    mag_signal = np.abs(imgfft)
+    
+    signal_power = np.mean((mag_signal) ** 2)
+
+    logSNR = targetSNRdb / 10
+    snr = 10 ** logSNR
+
+    noise_power = signal_power / snr
+    return
+
 
 # Crop mask to match desired shape * downsample
 def crop_gt(gt, desired_shape):
@@ -147,6 +204,9 @@ def calculate_relative_error_normalized(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi
     mean_err = mean_err * 100
 
     return mean_err
+
+
+
 
 def get_fluid_region_points(data, binary_mask):
     '''
@@ -283,8 +343,8 @@ def plot_correlation(gt, prediction, bounds, frame_idx, save_as = None):
     
     mask[np.where(mask > mask_threshold)] = 1 
 
-    # idx_inner = np.where(mask == 1 )
-    # idx_bounds = np.where(bounds == 1)
+    idx_core = np.where((mask-bounds) == 1)
+    idx_bounds = np.where(bounds == 1)
 
     # # Use mask to find interesting samples
     #subtract bounds from mask such that mask only contains inner points
@@ -314,13 +374,13 @@ def plot_correlation(gt, prediction, bounds, frame_idx, save_as = None):
     sr_w_vals = sr_w[x_idx, y_idx, z_idx]
     sr_w_bounds = sr_w[x_idx_b, y_idx_b, z_idx_b]
 
-    def plot_regression_points(hr_vals, sr_vals, hr_vals_bounds, sr_vals_bounds,direction = 'u'):
+    def plot_regression_points(hr_vals, sr_vals, hr_vals_bounds, sr_vals_bounds,all_hr, all_sr, all_hr_bounds, all_sr_bounds, direction = 'u'):
         dimension = 2 #TODO
         N = 100
-        x_range = np.linspace(np.min(hr_vals), np.max(hr_vals), N)
+        x_range = np.linspace(np.min(all_hr), np.max(all_sr), N)
         
-        corr_line, text = get_corr_line_and_r2(hr_vals, sr_vals, x_range)
-        corr_line_bounds, text_bounds = get_corr_line_and_r2(hr_vals_bounds, sr_vals_bounds, x_range)
+        corr_line, text = get_corr_line_and_r2(all_hr, all_sr, x_range)
+        corr_line_bounds, text_bounds = get_corr_line_and_r2(all_hr_bounds, all_sr_bounds, x_range)
         #plot linear correlation line and parms
         plt.gca().text(0.05, 0.95, text,transform=plt.gca().transAxes, fontsize=10, verticalalignment='top')
         plt.gca().text(0.05, 0.85, text_bounds,transform=plt.gca().transAxes, fontsize=10, verticalalignment='top', color='r')
@@ -349,15 +409,15 @@ def plot_correlation(gt, prediction, bounds, frame_idx, save_as = None):
     print(f"Plotting correlation lines...")
 
     plt.subplot(1, 3, 1)
-    plot_regression_points(hr_u_vals, sr_u_vals, hr_u_bounds, sr_u_bounds,direction='u')
+    plot_regression_points(hr_u_vals, sr_u_vals, hr_u_bounds, sr_u_bounds,hr_u[idx_core], sr_u[idx_core], hr_u[idx_bounds], sr_u[idx_core],direction='u')
     if save_as is not None: plt.savefig(f"{save_as}_LRXplot.svg")
 
     plt.subplot(1 ,3, 2)
-    plot_regression_points(hr_v_vals, sr_v_vals, hr_v_bounds, sr_v_bounds,direction='v')
+    plot_regression_points(hr_v_vals, sr_v_vals, hr_v_bounds, sr_v_bounds,hr_v[idx_core], sr_v[idx_core], hr_v[idx_bounds], sr_v[idx_core],direction='v')
     if save_as is not None: plt.savefig(f"{save_as}_LRYplot.svg")
 
     plt.subplot(1, 3, 3)
-    plot_regression_points(hr_w_vals, sr_w_vals, hr_w_bounds, sr_w_bounds, direction='w')
+    plot_regression_points(hr_w_vals, sr_w_vals, hr_w_bounds, sr_w_bounds,hr_w[idx_core], sr_w[idx_core], hr_w[idx_bounds], sr_w[idx_core], direction='w')
     plt.tight_layout()
     if save_as is not None: plt.savefig(f"{save_as}_LRZplot.svg")
     

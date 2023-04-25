@@ -6,17 +6,9 @@ import fft_downsampling as fft
 import scipy.ndimage as ndimage
 from h5functions import save_to_h5
 from visualize_utils import generate_gif_volume
+from utils.evaluate_utils import
 
-def peak_signal_to_noise_ratio(img, noisy_img):
-    diff = img - noisy_img
-    m = np.mean(diff)
-    sd = np.std(noisy_img)
-    mse = np.mean((diff) ** 2)
-
-    max_pixel = np.max(noisy_img)
-    psnr = 20*np.log10(max_pixel/np.sqrt(mse))
-    return psnr
-                          
+                       
 
 def choose_venc():
     '''
