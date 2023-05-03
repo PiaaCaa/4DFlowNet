@@ -248,7 +248,8 @@ def csp_block(x, num_layers, block_name='CSPBlock', channel_nr=64, scale = 1, pa
     tmp = tf.concat([x[:,:,:,:,k:], tmp], axis=-1)
     return tmp
 
-def lstm_block(x, num_layers, block_name='LSTM_block', channel_nr=64, scale = 1, pad='SAME'):
+# very simple conv lstm block which takes sequences of 2D images and returns sequences of images again
+def lstm_block(x, num_layers, block_name='LSTMBlock', channel_nr=64, scale = 1, pad='SAME'):
     print('______LSTM_______________')
     print('Input shape', x.shape)
     tmp = tf.keras.layers.ConvLSTM2D(channel_nr, 3, use_bias = False, return_sequences = True, padding = 'same')(x)

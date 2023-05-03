@@ -6,7 +6,7 @@ import fft_downsampling as fft
 import scipy.ndimage as ndimage
 from h5functions import save_to_h5
 from visualize_utils import generate_gif_volume
-from utils.evaluate_utils import
+# from utils.evaluate_utils import
 
                        
 

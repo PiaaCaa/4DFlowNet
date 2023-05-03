@@ -37,11 +37,11 @@ if __name__ == '__main__':
 
     #/proj/multipress/users/x_piaca/Temporal4DFlowNet/data/PIA/THORAX/P01/h5/P01.h5
     # set filenamaes and directories
-    data_dir = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/data/PIA/BARCELONA/h5'
-    filename = 'sample_patient.h5' #TODO double check this if the right mask is used
+    data_dir = 'Temporal4DFlowNet/data/PIA/THORAX/P01/h5/'
+    filename = 'P01_cropped.h5' #TODO double check this if the right mask is used
 
-    output_dir = f'Temporal4DFlowNet/results/in_vivo/BARCELONA'
-    output_filename = f'Frame60_{model_name}_temporal_newshape.h5'
+    output_dir = f'Temporal4DFlowNet/results/in_vivo/Thorax'
+    output_filename = f'P01_{model_name}_temporal_newcropped.h5'
     
     model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     res_increase = 2
     batch_size = 16
     round_small_values = True
-    downsample_input_first = False # This is important for invivo data: either only upsample (visual evaluation) or downsample and compare to original
+    downsample_input_first = True # This is important for invivo data: either only upsample (visual evaluation) or downsample and compare to original
 
     # Network - default 8-4
     n_low_resblock = 4
