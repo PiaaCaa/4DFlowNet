@@ -3,7 +3,6 @@ import os
 import csv
 from Network.PatchHandler3D_temporal import PatchHandler4D, PatchHandler4D_all_axis
 from Network.TrainerController_temporal import TrainerController_temporal
-# os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 def load_indexes(index_file):
     """
@@ -21,31 +20,38 @@ def write_settings_into_csv_file(filename,name, training_file, validation_file, 
                              "upsampling_type": upsampling_type, 'low_block_type': low_block_type, 'high_block_type':high_block_type, 'post_block_type':post_block_type, 'sampling':sampling, "notes":notes })
 
 if __name__ == "__main__":
-    data_dir = 'Temporal4DFlowNet/data/CARDIAC'
+    data_dir = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal16MODEL23_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir) 
-    validate_file = '{}/Temporal16MODEL1_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
+    training_file = '{}/Temporal16MODEL23_2mm_step2_newmag.csv'.format(data_dir) 
+    validate_file = '{}/Temporal16MODEL1_2mm_step2_newmagP01.csv'.format(data_dir)
 
     QUICKSAVE = True
-    benchmark_file = '{}/Temporal16MODEL4_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
+    benchmark_file = '{}/Temporal16MODEL4_2mm_step2_newmagP02.csv'.format(data_dir)
+
+    # training_file = '{}/Temporal16MODEL23_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir) 
+    # validate_file = '{}/Temporal16MODEL1_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
+
+    # QUICKSAVE = True
+    # benchmark_file = '{}/Temporal16MODEL4_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
     
-    overview_csv = 'Temporal4DFlowNet/results/Overview_models.csv'
+    overview_csv = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/results/Overview_models.csv'
 
     restore = False
     if restore:
-        model_dir = "Temporal4DFlowNet/models/Temporal4DFlowNet_20230406-1601"
+        model_dir = "Temporal4DFlowNet/models/Temporal4DFlowNet_20230505-1837"
         model_file = "Temporal4DFlowNet-best.h5"
 
     # Adapt how patches are saved for temporal domain if True a different loading scheme is used
     load_patches_all_axis = True
 
+    print('Check, that all the files exist:', os.path.isfile(training_file), os.path.isfile(validate_file), os.path.isfile(benchmark_file), os.path.isfile(overview_csv))
     # if load_patches_all_axis:
     #     assert #TODO, check that title is correct, since it implied which kind of loading it uses
 
     # Hyperparameters optimisation variables
     initial_learning_rate = 2e-4
-    epochs =  70
+    epochs =  100
     batch_size = 32
     mask_threshold = 0.6
 
@@ -56,15 +62,15 @@ if __name__ == "__main__":
     # Residual blocks, default (8 LR ResBlocks and 4 HR ResBlocks)
     n_low_resblock = 8
     n_hi_resblock = 4
-    low_res_block  = 'lstm_block' # 'resnet_block' 'dense_block' csp_block
+    low_res_block  = 'resnet_block' # 'resnet_block' 'dense_block' csp_block
     high_res_block = 'resnet_block' ##'resnet_block'
     upsampling_block = 'linear' #'Conv3DTranspose'#'nearest_neigbor'#'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
-    post_processing_block = None# 'unet_block'#None#'unet_block'
+    post_processing_block = None #  'unet_block'#None#'unet_block'
     sampling = 'Cartesian' # this is not used for training but saved in the csv file for a better overview of what data it was trained on 
            
 
     #notes: if something about this training is more 'special' is can be added to the overview csv file
-    notes= 'Dynamical mask: Tryout - restore 20230406-1601 and continue training'
+    notes= 'Train with new magnitude without insilico mask included.'
 
     # Load data file and indexes
     trainset = load_indexes(training_file)

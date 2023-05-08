@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --gpus 1
 #SBATCH -N 1
-#SBATCH -t 10:00:00
+#SBATCH -t 09:00:00
 #SBATCH --mail-type ALL
 #SBATCH --mail-user pcallmer@kth.se
 #SBATCH --output /proj/multipress/users/x_piaca/Temporal4DFlowNet/outputfiles/output_train.out

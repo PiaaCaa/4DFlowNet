@@ -33,15 +33,14 @@ def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resb
 
 if __name__ == '__main__':
     # Define directories and filenames
-    model_name = '20230405-1417'
+    model_name = '20230507-2318'
 
-    #/proj/multipress/users/x_piaca/Temporal4DFlowNet/data/PIA/THORAX/P01/h5/P01.h5
     # set filenamaes and directories
-    data_dir = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/data/PIA/BARCELONA/h5'
-    filename = 'sample_patient.h5' #TODO double check this if the right mask is used
+    data_dir = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/data/PIA/THORAX/P01/h5'
+    filename = 'P01.h5' #TODO double check this if the right mask is used
 
-    output_dir = f'Temporal4DFlowNet/results/in_vivo/BARCELONA'
-    output_filename = f'Frame60_{model_name}_temporal_newshape.h5'
+    output_dir = f'Temporal4DFlowNet/results/in_vivo/THORAX'
+    output_filename = f'P01_{model_name}_temporal.h5'
     
     model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
@@ -49,15 +48,15 @@ if __name__ == '__main__':
     patch_size = 12
     res_increase = 2
     batch_size = 16
-    round_small_values = True
-    downsample_input_first = False # This is important for invivo data: either only upsample (visual evaluation) or downsample and compare to original
+    round_small_values = False
+    downsample_input_first = True # This is important for invivo data: either only upsample (visual evaluation) or downsample and compare to original
 
     # Network - default 8-4
     n_low_resblock = 4
     n_hi_resblock = 8
     low_res_block  = 'resnet_block'     # 'resnet_block' 'dense_block' csp_block
-    high_res_block = 'resnet_block'       #'resnet_block'
-    upsampling_block = 'linear'#'Conv3DTranspose'#'nearest_neigbor'#'linear'         #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
+    high_res_block = 'resnet_block'     
+    upsampling_block = 'linear'#'Conv3DTranspose'#'nearest_neigbor'#'linear'
 
     # Setting up
     input_filepath = '{}/{}'.format(data_dir, filename)
