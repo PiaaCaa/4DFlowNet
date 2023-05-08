@@ -164,6 +164,7 @@ def calculate_relative_error_normalized(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi
     epsilon = 1e-5 #TODO before 1e-5
 
     if len(binary_mask.squeeze().shape) ==3:
+        print('Create temporal mask to calculate relative error')
         binary_mask = create_temporal_mask(binary_mask, u_hi.shape[0])
 
     u_diff = np.square(u_pred - u_hi)
@@ -237,7 +238,9 @@ def calculate_rmse(pred,gt, binary_mask, return_variance= False):
     if len(gt.shape)==3:  gt = np.expand_dims(gt, 0)
     
     if len(binary_mask.squeeze().shape) ==3:
+        print('Create temporal mask for RMSE caculation', binary_mask.shape, pred.shape, gt.shape )
         binary_mask = create_temporal_mask(binary_mask, pred.shape[0])
+        print('Reshaped to', binary_mask.shape)
     
 
     points_in_mask = np.where(binary_mask !=0)
@@ -343,8 +346,8 @@ def plot_correlation(gt, prediction, bounds, frame_idx, save_as = None):
     
     mask[np.where(mask > mask_threshold)] = 1 
 
-    idx_core = np.where((mask-bounds) == 1)
-    idx_bounds = np.where(bounds == 1)
+    idx_core = np.where((mask[frame_idx]-bounds[frame_idx]) == 1)
+    idx_bounds = np.where(bounds[frame_idx] == 1)
 
     # # Use mask to find interesting samples
     #subtract bounds from mask such that mask only contains inner points
@@ -377,7 +380,7 @@ def plot_correlation(gt, prediction, bounds, frame_idx, save_as = None):
     def plot_regression_points(hr_vals, sr_vals, hr_vals_bounds, sr_vals_bounds,all_hr, all_sr, all_hr_bounds, all_sr_bounds, direction = 'u'):
         dimension = 2 #TODO
         N = 100
-        x_range = np.linspace(np.min(all_hr), np.max(all_sr), N)
+        x_range = np.linspace(np.min(all_hr), np.max(all_hr), N)
         
         corr_line, text = get_corr_line_and_r2(all_hr, all_sr, x_range)
         corr_line_bounds, text_bounds = get_corr_line_and_r2(all_hr_bounds, all_sr_bounds, x_range)
@@ -387,7 +390,7 @@ def plot_correlation(gt, prediction, bounds, frame_idx, save_as = None):
         plt.plot(x_range, corr_line_bounds, 'r--')
         plt.plot(x_range, corr_line, 'k--')
 
-        plt.scatter(hr_vals, sr_vals, s=0.3, c=["black"], label = 'inner region')
+        plt.scatter(hr_vals, sr_vals, s=0.3, c=["black"], label = 'core region')
         plt.scatter(hr_vals_bounds, sr_vals_bounds, s=0.3, c=["red"], label = 'boudary points')
         plt.plot(x_range, x_range, '--', color= 'grey', label = 'ideal line 1-1')
         # plt.title(f"V_{dimension}")
@@ -409,15 +412,15 @@ def plot_correlation(gt, prediction, bounds, frame_idx, save_as = None):
     print(f"Plotting correlation lines...")
 
     plt.subplot(1, 3, 1)
-    plot_regression_points(hr_u_vals, sr_u_vals, hr_u_bounds, sr_u_bounds,hr_u[idx_core], sr_u[idx_core], hr_u[idx_bounds], sr_u[idx_core],direction='u')
+    plot_regression_points(hr_u_vals, sr_u_vals, hr_u_bounds, sr_u_bounds,hr_u[idx_core], sr_u[idx_core], hr_u[idx_bounds], sr_u[idx_bounds],direction='u')
     if save_as is not None: plt.savefig(f"{save_as}_LRXplot.svg")
 
     plt.subplot(1 ,3, 2)
-    plot_regression_points(hr_v_vals, sr_v_vals, hr_v_bounds, sr_v_bounds,hr_v[idx_core], sr_v[idx_core], hr_v[idx_bounds], sr_v[idx_core],direction='v')
+    plot_regression_points(hr_v_vals, sr_v_vals, hr_v_bounds, sr_v_bounds,hr_v[idx_core], sr_v[idx_core], hr_v[idx_bounds], sr_v[idx_bounds],direction='v')
     if save_as is not None: plt.savefig(f"{save_as}_LRYplot.svg")
 
     plt.subplot(1, 3, 3)
-    plot_regression_points(hr_w_vals, sr_w_vals, hr_w_bounds, sr_w_bounds,hr_w[idx_core], sr_w[idx_core], hr_w[idx_bounds], sr_w[idx_core], direction='w')
+    plot_regression_points(hr_w_vals, sr_w_vals, hr_w_bounds, sr_w_bounds,hr_w[idx_core], sr_w[idx_core], hr_w[idx_bounds], sr_w[idx_bounds], direction='w')
     plt.tight_layout()
     if save_as is not None: plt.savefig(f"{save_as}_LRZplot.svg")
     
@@ -467,10 +470,10 @@ def crop_center(img,cropx,cropy):
 
 def get_boundaries(binary_mask):
     '''
-    input
+    returns boudary and core mask
     '''
     #TODO make more efficient for static mask
-    assert(len(binary_mask.squeeze().shape)==4)
+    assert(len(binary_mask.shape)==4)
     core_mask = np.zeros_like(binary_mask)
     boundary_mask = np.zeros_like(binary_mask)
 
