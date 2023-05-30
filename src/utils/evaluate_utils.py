@@ -15,7 +15,7 @@ from scipy.interpolate import CubicSpline, RegularGridInterpolator
 from scipy.ndimage import binary_erosion
 # Erode mask to find boundary
 # from skimage.morphology import binary_erosion
-
+from utils.colors import *
 
 from matplotlib import pyplot as plt
 # from sklearn.metrics import r2_score
@@ -30,14 +30,16 @@ def signal_to_noise_ratio_db(Px, Pn):
     #TODO
     return 10*np.log(Px/Pn)
 
+def signaltonoise_fluid_region(data, mask):
+    assert len(data.shape) == 3 # look at three dimensional data
+    return signaltonoise(normalize_to_0_1(data)[np.where(mask==1)], normalize_to_0_1(data)[np.where(mask ==0)], axis=0)
 
-def signaltonoise(a, axis=0, ddof=0):
+def signaltonoise(fluid_region, non_fluid_region, axis=0, ddof=0):
     '''
     source: https://stackoverflow.com/questions/63177236/how-to-calculate-signal-to-noise-ratio-using-python
     '''
-    a = np.asanyarray(a)
-    m = a.mean(axis)
-    sd = a.std(axis=axis, ddof=ddof)
+    m = fluid_region.mean(axis)
+    sd = non_fluid_region.std(axis=axis, ddof=ddof)
     return np.where(sd == 0, 0, m/sd)
 
 def signaltonoise_db(a, axis=0, ddof=0):
@@ -291,7 +293,7 @@ def calculate_pointwise_error(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_m
 
 def calculate_mean_speed(u_hi, v_hi, w_hi, binary_mask):
     '''
-    Calculate mean speed of given values. 
+    Calculate mean speed of given values. Assumption: Values are in m/sec and mean speed returned in cm/sec
     Important: Set values of u, v, w outside of fluid region to zero 
     '''
     if len(binary_mask.squeeze().shape) ==3:
@@ -386,13 +388,14 @@ def plot_correlation(gt, prediction, bounds, frame_idx, save_as = None):
         corr_line_bounds, text_bounds = get_corr_line_and_r2(all_hr_bounds, all_sr_bounds, x_range)
         #plot linear correlation line and parms
         plt.gca().text(0.05, 0.95, text,transform=plt.gca().transAxes, fontsize=10, verticalalignment='top')
-        plt.gca().text(0.05, 0.85, text_bounds,transform=plt.gca().transAxes, fontsize=10, verticalalignment='top', color='r')
-        plt.plot(x_range, corr_line_bounds, 'r--')
+        plt.gca().text(0.05, 0.85, text_bounds,transform=plt.gca().transAxes, fontsize=10, verticalalignment='top', color=KTH_colors['pink100'])
+        plt.plot(x_range, x_range, color= 'grey', label = 'diagonal line')
+        plt.plot(x_range, corr_line_bounds, '--', color = KTH_colors['pink100'])
         plt.plot(x_range, corr_line, 'k--')
 
         plt.scatter(hr_vals, sr_vals, s=0.3, c=["black"], label = 'core region')
-        plt.scatter(hr_vals_bounds, sr_vals_bounds, s=0.3, c=["red"], label = 'boudary points')
-        plt.plot(x_range, x_range, '--', color= 'grey', label = 'ideal line 1-1')
+        plt.scatter(hr_vals_bounds, sr_vals_bounds, s=0.3, c=[KTH_colors['pink100']], label = 'boudary points')
+        
         # plt.title(f"V_{dimension}")
         plt.title(direction)
         plt.xlabel("V HR (m/s)")
@@ -411,23 +414,43 @@ def plot_correlation(gt, prediction, bounds, frame_idx, save_as = None):
     
     print(f"Plotting correlation lines...")
 
-    plt.subplot(1, 3, 1)
-    plot_regression_points(hr_u_vals, sr_u_vals, hr_u_bounds, sr_u_bounds,hr_u[idx_core], sr_u[idx_core], hr_u[idx_bounds], sr_u[idx_bounds],direction='u')
+    
+    plt.clf()
+    plt.figure(figsize=(5, 5))
+    plot_regression_points(hr_u_vals, sr_u_vals, hr_u_bounds, sr_u_bounds,hr_u[idx_core], sr_u[idx_core], hr_u[idx_bounds], sr_u[idx_bounds],direction=r'$V_x$')
     if save_as is not None: plt.savefig(f"{save_as}_LRXplot.svg")
-
-    plt.subplot(1 ,3, 2)
-    plot_regression_points(hr_v_vals, sr_v_vals, hr_v_bounds, sr_v_bounds,hr_v[idx_core], sr_v[idx_core], hr_v[idx_bounds], sr_v[idx_bounds],direction='v')
+    
+    plt.clf()
+    plt.figure(figsize=(5, 5))
+    plot_regression_points(hr_v_vals, sr_v_vals, hr_v_bounds, sr_v_bounds,hr_v[idx_core], sr_v[idx_core], hr_v[idx_bounds], sr_v[idx_bounds],direction=r'$V_y$')
     if save_as is not None: plt.savefig(f"{save_as}_LRYplot.svg")
 
-    plt.subplot(1, 3, 3)
-    plot_regression_points(hr_w_vals, sr_w_vals, hr_w_bounds, sr_w_bounds,hr_w[idx_core], sr_w[idx_core], hr_w[idx_bounds], sr_w[idx_bounds], direction='w')
+    plt.clf()
+    plt.figure(figsize=(5, 5))
+    plot_regression_points(hr_w_vals, sr_w_vals, hr_w_bounds, sr_w_bounds,hr_w[idx_core], sr_w[idx_core], hr_w[idx_bounds], sr_w[idx_bounds], direction=r'$V_z$')
     plt.tight_layout()
     if save_as is not None: plt.savefig(f"{save_as}_LRZplot.svg")
+
+    plt.clf()
+    save_subplots = True
+    # plot subplots 
+    if save_subplots: 
+        plt.figure(figsize=(15, 5))
+        plt.subplot(1, 3, 1)
+        plot_regression_points(hr_u_vals, sr_u_vals, hr_u_bounds, sr_u_bounds,hr_u[idx_core], sr_u[idx_core], hr_u[idx_bounds], sr_u[idx_bounds],direction=r'$V_x$')
+        plt.subplot(1, 3, 2)
+        plot_regression_points(hr_v_vals, sr_v_vals, hr_v_bounds, sr_v_bounds,hr_v[idx_core], sr_v[idx_core], hr_v[idx_bounds], sr_v[idx_bounds],direction=r'$V_y$')
+        plt.subplot(1, 3, 3)
+        plot_regression_points(hr_w_vals, sr_w_vals, hr_w_bounds, sr_w_bounds,hr_w[idx_core], sr_w[idx_core], hr_w[idx_bounds], sr_w[idx_bounds], direction=r'$V_z$')
+        plt.tight_layout()
+        if save_as is not None: plt.savefig(f"{save_as}_LRXYZ_subplots.svg")
     
     # fig, axs = plt.subplots(nrows=1, ncols=3)
     # plt.subplot(1, 3, 1)
     # plot_regression_points()
     # axs[1].plot(xs, np.sqrt(xs))
+
+    
 
 
 
@@ -958,6 +981,10 @@ def temporal_NN_interpolation(lr, hr_shape):
     interp = RegularGridInterpolator((t_lr, x_lr, y_lr, z_lr), lr, method='nearest', bounds_error=False, fill_value=0)
     interpolate = interp((tg, xg, yg ,zg))
 
+    if (interpolate.shape[0] % lr.shape[0]) == 0:
+        print('Last frame at the boundary is the doublicate of the previous frame ')
+        interpolate[-1, :, :, :] = lr[-1, :, :, :]
+
     return interpolate
 
 def temporal_cubic_interpolation(lr, hr_shape):
@@ -990,6 +1017,35 @@ def temporal_sinc_interpolation(lr, hr_shape):
     '''
     a = 1
     return None
+
+ #help functions
+
+def temporal_linear_interpolation_np(lr, hr_shape):
+    T, x, y, z = hr_shape
+    interpolate = np.zeros((hr_shape))
+    interpolate[::2, :, :, :] = lr
+    for t in range(0, T-2, 2):
+        interpolate[1+t, :, :, :] = (interpolate[t, :, :, :] + interpolate[1+t+1, :, :, :]) /2
+
+    interpolate[-1, :, :, :] = interpolate[-2, :, :, :] 
+
+    return interpolate
+
+def spatial3D_NN_interpolation(lr, hr_shape, method = 'nearest'):
+
+    x_lr = np.arange(0, lr.shape[0])
+    y_lr = np.arange(0, lr.shape[1])
+    z_lr = np.arange(0, lr.shape[2])
+
+    x_hr = np.linspace(0, lr.shape[0],  int(hr_shape[0]))
+    y_hr = np.linspace(0, lr.shape[1],  int(hr_shape[1]))
+    z_hr = np.linspace(0, lr.shape[2],  int(hr_shape[2]))
+    
+    xg, yg ,zg = np.meshgrid(x_hr, y_hr, z_hr, indexing='ij', sparse=True)
+
+    interp = RegularGridInterpolator((x_lr, y_lr, z_lr), lr, method=method, bounds_error=False, fill_value=0)
+    interpolate = interp((xg, yg ,zg))
+    return interpolate
 
 def create_temporal_comparison_gif(lr, hr, pred, vel, save_as):
 
