@@ -33,9 +33,9 @@ def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resb
 
 if __name__ == '__main__':
     # Define directories and filenames
-    model_name = '20230405-1417'#'20230407-2246'#'20230404-1418' #this model: training 2, 3, validation: 1, test:4
-    set_names = ['Test','Validation']#, 'Training', 'Training']
-    data_models= ['4', '1' ]#, '2', '3']
+    model_name = '20230427-1204'#'20230405-1417'#'20230407-2246'#'20230404-1418' #this model: training 2, 3, validation: 1, test:4
+    set_names = ['Test', 'Validation']#, 'Training', 'Training']
+    data_models= ['4', '2']#, '2', '3']
     steps = [2, 2]#, 2, 2]
 
     for set_name, data_model, step in zip(set_names, data_models, steps):
@@ -46,7 +46,7 @@ if __name__ == '__main__':
         
     
         output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
-        output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal_norounding.h5'
+        output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'
         
         model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
@@ -54,7 +54,7 @@ if __name__ == '__main__':
         patch_size = 16
         res_increase = 2
         batch_size = 16
-        round_small_values = False
+        round_small_values = True
 
         # Network - default 8-4
         n_low_resblock = 8

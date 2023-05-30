@@ -86,7 +86,7 @@ class ImageDataset_temporal():
                 #TODO is this correct with the venc parameter?
                 w_venc = np.asarray(hl.get(self.venc_colnames[i]))#)[idx])
 
-                # mag_w = np.multiply(mag_w, mask)
+                # mag_w = mask*80.0 #np.multiply(mag_w, mask)
                 # add them to the list
                 lowres_images.append(w)
                 mag_images.append(mag_w)

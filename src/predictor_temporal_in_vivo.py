@@ -33,9 +33,8 @@ def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resb
 
 if __name__ == '__main__':
     # Define directories and filenames
-    model_name = '20230508-1433'
+    model_name = '20230507-2318'
 
-    #/proj/multipress/users/x_piaca/Temporal4DFlowNet/data/PIA/THORAX/P01/h5/P01.h5
     # set filenamaes and directories
     data_dir = 'Temporal4DFlowNet/data/PIA/THORAX/P05/h5/'
     filename = 'P05.h5' #TODO double check this if the right mask is used
@@ -56,7 +55,7 @@ if __name__ == '__main__':
     n_low_resblock = 4
     n_hi_resblock = 8
     low_res_block  = 'resnet_block'     # 'resnet_block' 'dense_block' csp_block
-    high_res_block = 'resnet_block'     #'resnet_block'
+    high_res_block = 'resnet_block'       #'resnet_block'
     upsampling_block = 'linear'#'Conv3DTranspose'#'nearest_neigbor'#'linear'         #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
 
     # Setting up
