@@ -42,7 +42,8 @@ if __name__ == '__main__':
 
         # set filenamaes and directories
         data_dir = 'Temporal4DFlowNet/data/CARDIAC'
-        filename = f'M{data_model}_2mm_step{step}_static_dynamic_noise.h5' #TODO double check this if the right mask is used
+        filename = f'M{data_model}_2mm_step{step}_static_dynamic_noise.h5' 
+        
     
         output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
         output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal_norounding.h5'

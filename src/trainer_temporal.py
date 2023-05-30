@@ -24,11 +24,11 @@ if __name__ == "__main__":
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal16MODEL23_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir) 
-    validate_file = '{}/Temporal16MODEL1_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
+    training_file = '{}/Temporal16MODEL23_2mm_step2_newmag_adapted.csv'.format(data_dir) 
+    validate_file = '{}/Temporal16MODEL1_2mm_step2_newmagP01_adapted.csv'.format(data_dir)
 
     QUICKSAVE = True
-    benchmark_file = '{}/Temporal16MODEL4_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
+    benchmark_file = '{}/Temporal16MODEL4_2mm_step2_newmagP02_adapted.csv'.format(data_dir)
     
     overview_csv = 'Temporal4DFlowNet/results/Overview_models.csv'
 
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     # Residual blocks, default (8 LR ResBlocks and 4 HR ResBlocks)
     n_low_resblock = 8
     n_hi_resblock = 4
-    low_res_block  = 'lstm_block' # 'resnet_block' 'dense_block' csp_block
+    low_res_block  = 'resnet_block' # 'resnet_block' 'dense_block' csp_block
     high_res_block = 'resnet_block' ##'resnet_block'
     upsampling_block = 'linear' #'Conv3DTranspose'#'nearest_neigbor'#'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
     post_processing_block = None# 'unet_block'#None#'unet_block'
