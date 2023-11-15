@@ -1,45 +1,59 @@
+from tvtk.api import tvtk, write_data
 import numpy as np
+from utils.evaluate_utils import get_boundaries, calculate_mean_speed
+import matplotlib.pyplot as plt
 import h5py
-import random as rnd
-from utils import prediction_utils
-from utils import evaluate_utils
 
-if __name__ == "__main__": 
-    gt_file = 'Temporal4DFlowNet/data/CARDIAC/M3_2mm_step5_static.h5'
-    lr_file = 'Temporal4DFlowNet/data/CARDIAC/M3_2mm_step2_static_TLR.h5'
+if __name__ == '__main__':
+    in_vivo_path = '/home/pcallmer/Temporal4DFlowNet/data/CARDIAC/M1_2mm_step2_static_dynamic_noise.h5'
+    data_original = {}
+    vel_colnames = ['u', 'v','w']
+    venc_colnames = [ 'u_max', 'v_max', 'w_max']
+    mag_colnames = [ 'mag_u', 'mag_v', 'mag_w']
+    vencs = {}
 
-    print("Testing first batch file")
-    print("If you can read this, completed sbatch file")
+    a = np.array([0, 1, 0])
+    print(np.equal(a, 1.0))
+    if False:
+        for m in ['1', '2', '3', '4']:
+            in_vivo_path = f'/home/pcallmer/Temporal4DFlowNet/data/CARDIAC/M{m}_2mm_step2_static_dynamic.h5'
+            with h5py.File(in_vivo_path, mode = 'r' ) as p1:
+                        # print(p1.keys())
+                        print('M', m)
+                        print('shape', p1['u'].shape)
+                        print(np.array(p1['dx']))
+                        mask =  np.asarray(p1['mask'])
+                        temporal_mask = mask.copy()
 
-    # patchify_file1 = 'Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333/Testset_result_model3_2_0333_temporal_new.h5'
-    # patchify_file2 = 'Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333/Testset_result_model3_2_0333_temporal.h5' #temporal_new_6_eff_pad_size.h5
-    # patchify_file3 = 'Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333/Testset_result_model3_2_0333_temporal_new_6_eff_pad_size.h5'
-    # save_differenc = 'Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333//Testset_result_model3_2_0333_temporal_diff.h5'
+                        # data_original['mask'] = temporal_mask
+                        for vel, venc, mag in zip(vel_colnames, venc_colnames, mag_colnames):
+                            data_original[vel] = np.asarray(p1[vel])
+                            data_original[f'{vel}_fluid'] = np.multiply(data_original[vel], temporal_mask)
+                        #     data_original[mag] = np.asarray(p1[mag])
 
-    # vel_volnames = ["u", "v", "w"]
-    # with h5py.File(patchify_file1, mode = 'r' ) as p1:
-    #     with h5py.File(patchify_file2, mode = 'r' ) as p2:
-    #         with h5py.File(patchify_file3, mode = 'r' ) as p3:
-    #             with h5py.File(gt_file, mode = 'r' ) as gt:
-    #                 mask = gt["mask"]
-    #                 temporal_mask = create_temporal_mask(mask, p1["u"].shape[1] )
+                        speed = np.sqrt(np.square(data_original['u']) + np.square(data_original['v']) + np.square(data_original['w']))
+                        mean_speed = calculate_mean_speed(data_original['u'], data_original['v'], data_original['w'], temporal_mask)
+                        plt.clf()
+                        plt.figure(figsize=(10,3))
+                        plt.plot(mean_speed, '.-', label = 'High resolution', color = 'black')
+                        plt.title('Mean speed')
+                        plt.xlabel('frame')
+                        plt.ylabel(' mean speed (cm/s)')
+                        plt.legend()
+                        plt.savefig(f'/home/pcallmer/Temporal4DFlowNet/results/data/mean_speed_M{m}.svg')
 
-    #                 for vel in vel_volnames:
-    #                     diff12 = np.abs(np.asarray(p1[vel]) -  np.asarray(p2[vel])).transpose((1, 0, 2, 3))
+                        # print('mean speed ', mean_speed)
+                        # print('mean speed ', np.average(mean_speed))
+                        # print('mean speed ', np.average(speed, weights=temporal_mask, axis = (1,2,3))*100)
+                        # print('mean speed diff', np.average(speed, weights=temporal_mask, axis = (1,2,3))*100 - mean_speed)
+                        print('mean speed min', np.min(mean_speed))
+                        print('mean speed max', np.max(mean_speed))
+                        print('mean speed mean', np.mean(mean_speed))
+                        print('mean speed std', np.std(mean_speed))
+                        print('mean speed median', np.median(mean_speed))
 
+                        print('max speed ', np.max(speed))
+                        print('min speed ', np.min(speed))
+                        print('mean speed ', np.mean(speed))
 
-    #                     diff12 = np.multiply(diff12, temporal_mask)
-
-    #                     # prediction_utils.save_to_h5(save_differenc, f"{vel}_diff_no_padd_new", diff23, compression='gzip')
-    #                     exit()
-    # with h5py.File(lr_file, mode = 'r' ) as p1:
-    #     for vel in vel_volnames:
-    #         print(p1[vel].shape)
-
-    #     print("mask shape",p1['mask'].shape)  
-    #test this branch
-    #evaluate_utils.plot_relative_error([gt_file, gt_file, gt_file], [patchify_file1, patchify_file2, patchify_file3], ["effective padsize (-4)","no effective padsize" ,"effective padsize (-6)"], save_as='Temporal4DFlowNet/results/Temporal4DFlowNet_20230210-0333/Error_comparison_patchify_testset.png')
-                        
-
-
-
+   
