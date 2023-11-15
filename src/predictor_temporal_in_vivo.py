@@ -8,7 +8,33 @@ from utils import prediction_utils
 from utils.ImageDataset_temporal import ImageDataset_temporal
 from matplotlib import pyplot as plt
 import h5py
+import timeit
+from scipy.interpolate import CubicSpline, RegularGridInterpolator
 # os.environ["CUDA_VISIBLE_DEVICES"]="1"
+
+def tbd_temporal_cubic_interpolation(lr, hr_shape):
+    '''
+    Cubic interpolation in time , from (t, h, w, d) to (2t, h, w, d)
+    '''
+    # x_lr = np.arange(0, lr.shape[0])
+    # x_hr = np.linspace(0, lr.shape[0]-0.5,  hr_shape[0])
+    # cs = CubicSpline(x_lr, lr, axis=0)
+
+    # interpolate = cs(x_hr)
+    t_lr = np.arange(0, lr.shape[0])
+    x_lr = np.arange(0, lr.shape[1])
+    y_lr = np.arange(0, lr.shape[2])
+    z_lr = np.arange(0, lr.shape[3])
+
+    t_hr = np.linspace(0, lr.shape[0]-0.5,  hr_shape[0])
+    
+    tg, xg, yg ,zg = np.meshgrid(t_hr, x_lr, y_lr, z_lr, indexing='ij', sparse=True)
+
+    interp = RegularGridInterpolator((t_lr, x_lr, y_lr, z_lr), lr, method='cubic', bounds_error=False, fill_value=0)
+    interpolate = interp((tg, xg, yg ,zg))
+
+    return interpolate
+
 
 def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block):
     # Prepare input
@@ -33,162 +59,179 @@ def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resb
 
 if __name__ == '__main__':
     # Define directories and filenames
-    model_name = '20230507-2318'
+    model_name = '20230602-1701' #'20230405-1417'#'20230602-1701'#'20230405-1417' ##'20230508-1433' #'20230405-1417' #
 
     # set filenamaes and directories
-    data_dir = 'Temporal4DFlowNet/data/PIA/THORAX/P01/h5/'
-    filename = 'P01_cropped.h5' #TODO double check this if the right mask is used
+    data_dir = 'Temporal4DFlowNet/data/PIA/THORAX/'
+    patients = ['P01'] #TODO double check this if the right mask is used
 
-    output_dir = f'Temporal4DFlowNet/results/in_vivo/Thorax'
-    output_filename = f'P01_{model_name}_temporal_newcropped.h5'
-    
-    model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
+    output_dir = f'Temporal4DFlowNet/results/in_vivo/THORAX'
 
-    # Params
-    patch_size = 12
-    res_increase = 2
-    batch_size = 16
-    round_small_values = True
-    downsample_input_first = True # This is important for invivo data: either only upsample (visual evaluation) or downsample and compare to original
-
-    # Network - default 8-4
-    n_low_resblock = 4
-    n_hi_resblock = 8
-    low_res_block  = 'resnet_block'     # 'resnet_block' 'dense_block' csp_block
-    high_res_block = 'resnet_block'     
-    upsampling_block = 'linear'#'Conv3DTranspose'#'nearest_neigbor'#'linear'
-
-    # Setting up
-    input_filepath = '{}/{}'.format(data_dir, filename)
-    output_filepath = '{}/{}'.format(output_dir, output_filename)
-
-    venc_colnames = ['u_max', 'v_max', 'w_max']
-
-    assert(not os.path.exists(output_filepath)) #STOP if output file is already created
-
-    pgen = PatchGenerator(patch_size, res_increase,include_all_axis = True, downsample_input_first = downsample_input_first)
-    dataset = ImageDataset_temporal(venc_colnames=['u_max', 'v_max', 'w_max'])
-    
-
-    print("Path exists:", os.path.exists(input_filepath), os.path.exists(model_path))
-    print("Outputfile exists already: ", os.path.exists(output_filename))
-
-    if not os.path.isdir(output_dir):
-            os.makedirs(output_dir)
-
-    axis = [0, 1, 2]
-
-    with h5py.File(input_filepath, mode = 'r' ) as h5:
-        lr_shape = np.asarray(h5.get("u")).squeeze().shape
-        print("Shape of in-vivo data", lr_shape)
-        N_frames, X, Y, Z = lr_shape
-
-    #TODO make this nicer
-    if downsample_input_first:
-        u_combined = np.zeros(lr_shape)
-        v_combined = np.zeros(lr_shape)
-        w_combined = np.zeros(lr_shape)
-    else:
-        N_frames = N_frames*2
-        u_combined = np.zeros((N_frames, X, Y, Z))
-        v_combined = np.zeros((N_frames, X, Y, Z))
-        w_combined = np.zeros((N_frames, X, Y, Z))
-
-    # Loop over all axis
-    for a in axis:
-        print("________________________________Predict patches with axis: ", a, " ____________________________________________________")
+    for patient in patients:
+        print('Patient:', patient)
+        t_0 = time.time()
+        # Change this for every new dataset
+        # Setting up
+        input_filepath = f'{data_dir}/{patient}/h5/{patient}.h5' #'{}/{}/h5/{}.h5'.format(data_dir, patient, patient)
+        output_filename = f'/{patient}_{model_name}_8_4_arch_50Frames_TEST_deletethislater.h5'
+        output_filepath = '{}/{}'.format(output_dir, output_filename)      
         
-        # Check the number of rows in the file
-        nr_rows = dataset.get_dataset_len(input_filepath, a)
-        print(f"Number of rows in dataset: {nr_rows}")
+        model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
+
+        # Params
+        patch_size = 16 # take larger patchsize for only upsampling operation
+        res_increase = 2
+        batch_size = 16
+        round_small_values = False
+        downsample_input_first = False # This is important for invivo data: either only upsample (visual evaluation) or downsample and compare to original
+
+        # Network - default 8-4
+        n_low_resblock = 8
+        n_hi_resblock = 4
+        low_res_block  = 'resnet_block'     # 'resnet_block' 'dense_block' 'csp_block'
+        high_res_block = 'resnet_block'     
+        upsampling_block = 'linear'         #'Conv3DTranspose' 'nearest_neigbor' 'linear'
+
+    
+        venc_colnames = ['u_max', 'v_max', 'w_max']
+
+        assert(not os.path.exists(output_filepath)) #STOP if output file is already created
+
+        pgen = PatchGenerator(patch_size, res_increase,include_all_axis = True, downsample_input_first = downsample_input_first)
+        dataset = ImageDataset_temporal(venc_colnames=['u_max', 'v_max', 'w_max'])
         
-        print(f"Loading 4DFlowNet: {res_increase}x upsample")
-        # Load the network
-        network = prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block)
-        #low_res_block, high_res_block
-        #res_increase,low_res_block=low_res_block, high_res_block=high_res_block,  upsampling_block=upsampling_block 
-        network.load_weights(model_path)
 
-        volume = np.zeros((3, u_combined.shape[0],  u_combined.shape[1], u_combined.shape[2],  u_combined.shape[3] ))
-        # loop through all the rows in the input file
-        for nrow in range(nr_rows):
-            print("\n--------------------------")
-            print(f"\nProcessed ({nrow+1}/{nr_rows}) - {time.ctime()}")
+        print("Path exists:", os.path.exists(input_filepath), os.path.exists(model_path))
+        print("Outputfile exists already: ", os.path.exists(output_filename))
 
-            # Load data file and indexes
-            dataset.load_vectorfield(input_filepath, nrow, axis = a)
-            print(f"Original image shape: {dataset.u.shape}")
+        if not os.path.isdir(output_dir):
+                os.makedirs(output_dir)
+
+        axis = [0, 1, 2]
+
+        with h5py.File(input_filepath, mode = 'r' ) as h5:
+            lr_shape = np.asarray(h5.get("u")).squeeze().shape
+            print("Shape of in-vivo data", lr_shape)
+            N_frames, X, Y, Z = lr_shape
+
+        #TODO make this nicer
+        if downsample_input_first:
+            u_combined = np.zeros(lr_shape)
+            v_combined = np.zeros(lr_shape)
+            w_combined = np.zeros(lr_shape)
+        else:
+            N_frames = N_frames*2
+            u_combined = np.zeros((N_frames, X, Y, Z))
+            v_combined = np.zeros((N_frames, X, Y, Z))
+            w_combined = np.zeros((N_frames, X, Y, Z))
+
+        # Loop over all axis
+        for a in axis:
+            print("________________________________Predict patches with axis: ", a, " ____________________________________________________")
             
-            velocities, magnitudes = pgen.patchify(dataset)
-            data_size = len(velocities[0])
-            print(f"Patchified. Nr of patches: {data_size} - {velocities[0].shape}")
+            # Check the number of rows in the file
+            nr_rows = dataset.get_dataset_len(input_filepath, a)
+            print(f"Number of rows in dataset: {nr_rows}")
+            
+            print(f"Loading 4DFlowNet: {res_increase}x upsample")
+            # Load the network
+            network = prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block)
+            #low_res_block, high_res_block
+            #res_increase,low_res_block=low_res_block, high_res_block=high_res_block,  upsampling_block=upsampling_block 
+            network.load_weights(model_path)
 
-            # Predict the patches
-            results = np.zeros((0,patch_size*res_increase, patch_size, patch_size, 3))
-            start_time = time.time()
+            volume = np.zeros((3, u_combined.shape[0],  u_combined.shape[1], u_combined.shape[2],  u_combined.shape[3] ))
+            # loop through all the rows in the input file
+            for nrow in range(nr_rows):
+                print("\n--------------------------")
+                print(f"\nProcessed ({nrow+1}/{nr_rows}) - {time.ctime()}")
 
-            for current_idx in range(0, data_size, batch_size):
+                # Load data file and indexes
+                dataset.load_vectorfield(input_filepath, nrow, axis = a)
+                print(f"Original image shape: {dataset.u.shape}")
+                
+                velocities, magnitudes = pgen.patchify(dataset)
+                data_size = len(velocities[0])
+                print(f"Patchified. Nr of patches: {data_size} - {velocities[0].shape}")
+
+                # Predict the patches
+                results = np.zeros((0,patch_size*res_increase, patch_size, patch_size, 3))
+                start_time = time.time()
+
+                for current_idx in range(0, data_size, batch_size):
+                    time_taken = time.time() - start_time
+                    print(f"\rProcessed {current_idx}/{data_size} Elapsed: {time_taken:.2f} secs.", end='\r')
+                    # Prepare the batch to predict
+                    patch_index = np.index_exp[current_idx:current_idx+batch_size]
+                    sr_images = network.predict([velocities[0][patch_index],
+                                            velocities[1][patch_index],
+                                            velocities[2][patch_index],
+                                            magnitudes[0][patch_index],
+                                            magnitudes[1][patch_index],
+                                            magnitudes[2][patch_index]])
+
+                    results = np.append(results, sr_images, axis=0)
+                # End of batch loop    
+                print("results:", results.shape)
+            
                 time_taken = time.time() - start_time
-                print(f"\rProcessed {current_idx}/{data_size} Elapsed: {time_taken:.2f} secs.", end='\r')
-                # Prepare the batch to predict
-                patch_index = np.index_exp[current_idx:current_idx+batch_size]
-                sr_images = network.predict([velocities[0][patch_index],
-                                        velocities[1][patch_index],
-                                        velocities[2][patch_index],
-                                        magnitudes[0][patch_index],
-                                        magnitudes[1][patch_index],
-                                        magnitudes[2][patch_index]])
+                print(f"\rProcessed {data_size}/{data_size} Elapsed: {time_taken:.2f} secs.")
 
-                results = np.append(results, sr_images, axis=0)
-            # End of batch loop    
-            print("results:", results.shape)
+                
+                for i in range (0,3):
+                    v = pgen._patchup_with_overlap(results[:,:,:,:,i], pgen.nr_x, pgen.nr_y, pgen.nr_z)
+                    
+                    # Denormalized
+                    v = v * dataset.venc 
+                    if round_small_values:
+                        print(f"Zero out velocity component less than {dataset.velocity_per_px}")
+                        # remove small velocity values
+                        v[np.abs(v) < dataset.velocity_per_px] = 0
+                    
+                    v = np.expand_dims(v, axis=0)
+                    # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'{dataset.velocity_colnames[i]}__axis{a}', v, compression='gzip')
+                    print('Original volume: ', volume.shape, 'shape of predicition', v.shape)
+                    if v.shape[1] != N_frames:
+                        print('reshaped v from: ', v.shape)
+                        if v.shape[1] < N_frames:
+                            v = np.pad(v, (0, 0), (0, N_frames - v.shape[1]), (0, 0), (0, 0))
+                        else:
+                            v = v[:, :N_frames, :, :]
+                        print(v.shape)
+                    #volume u/v/w, T, X, Y, Z
+                    if a == 0:      volume[i, :, nrow,  :,      :] = v
+                    elif a == 1:    volume[i, :, :,     nrow,   :] = v
+                    elif a == 2:    volume[i, :, :,     :,   nrow] = v
+
+
+                if dataset.dx is not None:
+                    new_spacing = dataset.dx / res_increase
+                    new_spacing = np.expand_dims(new_spacing, axis=0) 
+                    #prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', dataset.dx_colname, new_spacing, compression='gzip')
+
+            # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'u_axis{a}', volume[0, :, :, :], compression='gzip')
+            # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'v_axis{a}', volume[1, :, :, :], compression='gzip')
+            # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'w_axis{a}', volume[2, :, :, :], compression='gzip')
+            u_combined += volume[0, :, :, :] 
+            v_combined += volume[1, :, :, :] 
+            w_combined += volume[2, :, :, :] 
+
+        print("save combined predictions")
+        print("Elapsed time: ", time.time() - t_0)
+        # save and divide by 3 to get average
+        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "u_combined", u_combined/len(axis), compression='gzip')
+        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "v_combined", v_combined/len(axis), compression='gzip')
+        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "w_combined", w_combined/len(axis), compression='gzip')
+
+        print("Done!")
+
+        print("------------Calculate cubic interpolation------------")
+        t0_cubic = time.time()
         
-            time_taken = time.time() - start_time
-            print(f"\rProcessed {data_size}/{data_size} Elapsed: {time_taken:.2f} secs.")
-
-            
-            for i in range (0,3):
-                v = pgen._patchup_with_overlap(results[:,:,:,:,i], pgen.nr_x, pgen.nr_y, pgen.nr_z)
+        with h5py.File(input_filepath, mode = 'r' ) as h5:
+                u_interpolated = tbd_temporal_cubic_interpolation( np.asarray(h5.get("u")).squeeze(), u_combined.shape)
+                v_interpolated = tbd_temporal_cubic_interpolation( np.asarray(h5.get("v")).squeeze(), v_combined.shape)
+                w_interpolated = tbd_temporal_cubic_interpolation( np.asarray(h5.get("w")).squeeze(), w_combined.shape)
                 
-                # Denormalized
-                v = v * dataset.venc 
-                if round_small_values:
-                    print(f"Zero out velocity component less than {dataset.velocity_per_px}")
-                    # remove small velocity values
-                    v[np.abs(v) < dataset.velocity_per_px] = 0
-                
-                v = np.expand_dims(v, axis=0)
-                # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'{dataset.velocity_colnames[i]}__axis{a}', v, compression='gzip')
-                print('Original volume: ', volume.shape, 'shape of predicition', v.shape)
-                if v.shape[1] != N_frames:
-                    print('reshaped v from: ', v.shape)
-                    if v.shape[1] < N_frames:
-                        v = np.pad(v, (0, 0), (0, N_frames - v.shape[1]), (0, 0), (0, 0))
-                    else:
-                        v = v[:, :N_frames, :, :]
-                    print(v.shape)
-                #volume u/v/w, T, X, Y, Z
-                if a == 0:      volume[i, :, nrow,  :,      :] = v
-                elif a == 1:    volume[i, :, :,     nrow,   :] = v
-                elif a == 2:    volume[i, :, :,     :,   nrow] = v
 
-
-            if dataset.dx is not None:
-                new_spacing = dataset.dx / res_increase
-                new_spacing = np.expand_dims(new_spacing, axis=0) 
-                #prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', dataset.dx_colname, new_spacing, compression='gzip')
-
-        # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'u_axis{a}', volume[0, :, :, :], compression='gzip')
-        # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'v_axis{a}', volume[1, :, :, :], compression='gzip')
-        # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'w_axis{a}', volume[2, :, :, :], compression='gzip')
-        u_combined += volume[0, :, :, :] 
-        v_combined += volume[1, :, :, :] 
-        w_combined += volume[2, :, :, :] 
-
-    print("save combined predictions")
-    # save and divide by 3 to get average
-    prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "u_combined", u_combined/len(axis), compression='gzip')
-    prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "v_combined", v_combined/len(axis), compression='gzip')
-    prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "w_combined", w_combined/len(axis), compression='gzip')
-
-    print("Done!")
+        print('Elapsed time cubic interpolation: ', time.time()- t0_cubic)

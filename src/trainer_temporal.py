@@ -23,37 +23,36 @@ if __name__ == "__main__":
     data_dir = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal16MODEL23_2mm_step2_newmag.csv'.format(data_dir) 
-    validate_file = '{}/Temporal16MODEL1_2mm_step2_newmagP01.csv'.format(data_dir)
-
-    QUICKSAVE = True
-    benchmark_file = '{}/Temporal16MODEL4_2mm_step2_newmagP02.csv'.format(data_dir)
-
-    # training_file = '{}/Temporal16MODEL23_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir) 
-    # validate_file = '{}/Temporal16MODEL1_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
+    # training_file = '{}/Temporal16MODEL23_2mm_step2_newmag.csv'.format(data_dir) 
+    # validate_file = '{}/Temporal16MODEL1_2mm_step2_newmagP01.csv'.format(data_dir)
 
     # QUICKSAVE = True
-    # benchmark_file = '{}/Temporal16MODEL4_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
+    # benchmark_file = '{}/Temporal16MODEL4_2mm_step2_newmagP02.csv'.format(data_dir)
+
+    training_file = '{}/Temporal16MODEL23_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir) 
+    validate_file = '{}/Temporal16MODEL1_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
+
+    QUICKSAVE = True
+    benchmark_file = '{}/Temporal16MODEL4_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
     
     overview_csv = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/results/Overview_models.csv'
 
     restore = False
     if restore:
-        model_dir = "Temporal4DFlowNet/models/Temporal4DFlowNet_20230505-1837"
+        model_dir = "Temporal4DFlowNet/models/Temporal4DFlowNet_20230405-1423"
         model_file = "Temporal4DFlowNet-best.h5"
 
     # Adapt how patches are saved for temporal domain if True a different loading scheme is used
     load_patches_all_axis = True
 
     print('Check, that all the files exist:', os.path.isfile(training_file), os.path.isfile(validate_file), os.path.isfile(benchmark_file), os.path.isfile(overview_csv))
-    # if load_patches_all_axis:
-    #     assert #TODO, check that title is correct, since it implied which kind of loading it uses
 
     # Hyperparameters optimisation variables
     initial_learning_rate = 2e-4
-    epochs =  100
+    epochs =  140
     batch_size = 32
     mask_threshold = 0.6
+    lr_decay_epochs = 0
 
     # Network setting
     network_name = 'Temporal4DFlowNet'
@@ -62,15 +61,16 @@ if __name__ == "__main__":
     # Residual blocks, default (8 LR ResBlocks and 4 HR ResBlocks)
     n_low_resblock = 8
     n_hi_resblock = 4
-    low_res_block  = 'resnet_block' # 'resnet_block' 'dense_block' csp_block
-    high_res_block = 'resnet_block' ##'resnet_block'
-    upsampling_block = 'linear' #'Conv3DTranspose'#'nearest_neigbor'#'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
-    post_processing_block = None #  'unet_block'#None#'unet_block'
+    low_res_block  = 'lstm_block'#'lstm_block' #'resnet_block'#'csp_block'#'resnet_block' # 'resnet_block' 'dense_block' csp_block
+    high_res_block = 'lstm_block'#'lstm_block' #'resnet_block'#'resnet_block' ##'resnet_block'
+    upsampling_block = 'linear'#'Conv3DTranspose'#'linear' #'Conv3DTranspose'#'nearest_neigbor'#'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
+    post_processing_block = None #'#None #  'unet_block'#None#'unet_block'
     sampling = 'Cartesian' # this is not used for training but saved in the csv file for a better overview of what data it was trained on 
-           
 
-    #notes: if something about this training is more 'special' is can be added to the overview csv file
-    notes= 'Train with new magnitude without insilico mask included.'
+    shuffle = True       
+
+    # notes: if something about this training is more 'special' is can be added to the overview csv file
+    notes= f'New ConvLSTM 8-4'
 
     # Load data file and indexes
     trainset = load_indexes(training_file)
@@ -82,14 +82,14 @@ if __name__ == "__main__":
         z = PatchHandler4D_all_axis(data_dir, patch_size, res_increase, batch_size, mask_threshold)
     else:
         z = PatchHandler4D(data_dir, patch_size, res_increase, batch_size, mask_threshold)
-    trainset = z.initialize_dataset(trainset, shuffle=True, n_parallel=None)
+    trainset = z.initialize_dataset(trainset, shuffle=shuffle, n_parallel=None)
 
     # VALIDATION iterator
     if load_patches_all_axis: 
         valdh = PatchHandler4D_all_axis(data_dir, patch_size, res_increase, batch_size, mask_threshold)
     else:
         valdh = PatchHandler4D(data_dir, patch_size, res_increase, batch_size, mask_threshold)
-    valset = valdh.initialize_dataset(valset, shuffle=True, n_parallel=None)
+    valset = valdh.initialize_dataset(valset, shuffle=shuffle, n_parallel=None)
 
     # # Bechmarking dataset, use to keep track of prediction progress per best model
     testset = None
@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
     # ------- Main Network ------
     print(f"4DFlowNet Patch {patch_size}, lr {initial_learning_rate}, batch {batch_size}")
-    network = TrainerController_temporal(patch_size, res_increase, initial_learning_rate, QUICKSAVE, network_name, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block =  upsampling_block, post_processing_block=post_processing_block)
+    network = TrainerController_temporal(patch_size, res_increase, initial_learning_rate, QUICKSAVE, network_name, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block =  upsampling_block, post_processing_block=post_processing_block, lr_decay_epochs=lr_decay_epochs)
     network.init_model_dir()
 
     if restore:
