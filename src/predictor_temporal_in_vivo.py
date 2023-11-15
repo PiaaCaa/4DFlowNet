@@ -64,6 +64,8 @@ if __name__ == '__main__':
     # set filenamaes and directories
     data_dir = 'Temporal4DFlowNet/data/PIA/THORAX/'
     patients = ['P01'] #TODO double check this if the right mask is used
+    data_dir = 'Temporal4DFlowNet/data/PIA/THORAX/P05/h5/'
+    filename = 'P05.h5' #TODO double check this if the right mask is used
 
     output_dir = f'Temporal4DFlowNet/results/in_vivo/THORAX'
 
@@ -77,6 +79,10 @@ if __name__ == '__main__':
         output_filepath = '{}/{}'.format(output_dir, output_filename)      
         
         model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
+    output_dir = f'Temporal4DFlowNet/results/in_vivo/THORAX'
+    output_filename = f'P05_{model_name}_temporal.h5'
+    
+    model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
         # Params
         patch_size = 16 # take larger patchsize for only upsampling operation

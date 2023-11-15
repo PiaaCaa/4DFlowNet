@@ -6,7 +6,7 @@ import fft_downsampling as fft
 import scipy.ndimage as ndimage
 from h5functions import save_to_h5
 from visualize_utils import generate_gif_volume
-# from utils.evaluate_utils import
+from utils.evaluate_utils import signaltonoise_fluid_region, peak_signal_to_noise_ratio
 
                        
 
@@ -187,6 +187,8 @@ if __name__ == '__main__':
         hr_w[idx, :, :, :], hr_mag_w[idx, :, :, :] =  fft.downsample_phase_img(hr_w_frame, mag_image[idx], venc_w, crop_ratio, targetSNRdb, temporal_downsampling=True)   
 
         print("Peak signal to noise ratio:", peak_signal_to_noise_ratio(hr_u_frame, hr_u[idx, :, :, :]), " db")
+
+        print('Signal to noise ratio inside fluid region on noisy data: ', signaltonoise_fluid_region(hr_u[idx]))
         # hr_u[idx, :, :, :], mag_u = hr_u_frame, mag_image
         # hr_v[idx, :, :, :], mag_v = hr_v_frame, mag_image
         # hr_w[idx, :, :, :], mag_w = hr_w_frame, mag_image
