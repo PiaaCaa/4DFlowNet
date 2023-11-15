@@ -40,9 +40,9 @@ if __name__ == "__main__":
     
     
     base_path = 'Temporal4DFlowNet/data/CARDIAC'
-    lr_file = 'M2_2mm_step2_invivoP04_magnitude_adapted_noisy.h5' #LowRes velocity data #M1_2mm_step2_invivoP01_magnitude_adapted_noisy.h5
-    hr_file = 'M2_2mm_step2_invivoP04_magnitude_adapted.h5'       #HiRes velocity data
-    output_filename = f'{base_path}/Temporal{patch_size}MODEL2_2mm_step2_newmagP04_adapted.csv'
+    lr_file = 'M3_2mm_step2_invivoP03_magnitude_adapted_noise.h5' #LowRes velocity data #M1_2mm_step2_invivoP01_magnitude_adapted_noisy.h5
+    hr_file = 'M3_2mm_step2_invivoP03_magnitude_adapted_test.h5'       #HiRes velocity data
+    output_filename = f'{base_path}/Temporal{patch_size}MODEL1_2mm_step2_newmagP03_adapted_test2.csv'
 
     #TODO check the compatibility in the test iteratoor
     

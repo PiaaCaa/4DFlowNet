@@ -197,11 +197,11 @@ if __name__ == '__main__':
         # hr_mag_w[idx, :, :, :] = mag_w
 
         # only every second (even) needed for downsampling 
-        if idx % 2 == 0: 
-            save_to_h5(output_filename, "venc_u", venc_u)
-            save_to_h5(output_filename, "venc_v", venc_v)
-            save_to_h5(output_filename, "venc_w", venc_w)
-            save_to_h5(output_filename, "SNRdb", targetSNRdb)
+        # if idx % 2 == 0: 
+        save_to_h5(output_filename, "venc_u", venc_u)
+        save_to_h5(output_filename, "venc_v", venc_v)
+        save_to_h5(output_filename, "venc_w", venc_w)
+        save_to_h5(output_filename, "SNRdb", targetSNRdb)
         
 
     # DO the downsampling
