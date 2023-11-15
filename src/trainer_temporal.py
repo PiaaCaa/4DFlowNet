@@ -20,7 +20,7 @@ def write_settings_into_csv_file(filename,name, training_file, validation_file, 
                              "upsampling_type": upsampling_type, 'low_block_type': low_block_type, 'high_block_type':high_block_type, 'post_block_type':post_block_type, 'sampling':sampling, "notes":notes })
 
 if __name__ == "__main__":
-    data_dir = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/data/CARDIAC'
+    data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
     training_file = '{}/Temporal16MODEL23_2mm_step2_newmag.csv'.format(data_dir) 
@@ -35,11 +35,11 @@ if __name__ == "__main__":
     # QUICKSAVE = True
     # benchmark_file = '{}/Temporal16MODEL4_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
     
-    overview_csv = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/results/Overview_models.csv'
+    overview_csv = 'Temporal4DFlowNet/results/Overview_models.csv'
 
-    restore = False
+    restore = True
     if restore:
-        model_dir = "Temporal4DFlowNet/models/Temporal4DFlowNet_20230505-1837"
+        model_dir = "Temporal4DFlowNet/models/Temporal4DFlowNet_20230508-1433"
         model_file = "Temporal4DFlowNet-best.h5"
 
     # Adapt how patches are saved for temporal domain if True a different loading scheme is used
@@ -59,18 +59,19 @@ if __name__ == "__main__":
     network_name = 'Temporal4DFlowNet'
     patch_size = 16
     res_increase = 2
+    
     # Residual blocks, default (8 LR ResBlocks and 4 HR ResBlocks)
     n_low_resblock = 8
     n_hi_resblock = 4
     low_res_block  = 'resnet_block' # 'resnet_block' 'dense_block' csp_block
-    high_res_block = 'resnet_block' ##'resnet_block'
-    upsampling_block = 'linear' #'Conv3DTranspose'#'nearest_neigbor'#'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
+    high_res_block = 'resnet_block' #'resnet_block'
+    upsampling_block = 'linear'     #'Conv3DTranspose'#'nearest_neigbor'#'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
     post_processing_block = None #  'unet_block'#None#'unet_block'
     sampling = 'Cartesian' # this is not used for training but saved in the csv file for a better overview of what data it was trained on 
            
 
     #notes: if something about this training is more 'special' is can be added to the overview csv file
-    notes= 'Train with new magnitude without insilico mask included.'
+    notes= 'Test if training works - to be deleted'
 
     # Load data file and indexes
     trainset = load_indexes(training_file)

@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import h5py
+import time
 #from prepare_data.PatchData import create_temporal_mask
 
 class PatchHandler4D():
@@ -161,7 +162,7 @@ class PatchHandler4D_all_axis():
         self.data_directory = data_dir
         self.hr_colnames = ['u','v','w']
         self.lr_colnames = ['u','v','w']
-        self.venc_colnames = ['venc_u','venc_v','venc_w']
+        self.venc_colnames = ['venc_u','venc_v','venc_w'] #['u_max', 'v_max', 'w_max']#
         self.mag_colnames  = ['mag_u','mag_v','mag_w']
         self.mask_colname  = 'mask'
 
@@ -195,6 +196,7 @@ class PatchHandler4D_all_axis():
                     tf.float32, tf.float32])
 
     def load_patches_from_index_file(self, indexes):
+        # t = time.time()
         # Do typecasting, we need to make sure everything has the correct data type
         # Solution for tf2: https://stackoverflow.com/questions/56122670/how-to-get-string-value-out-of-tf-tensor-which-dtype-is-string
         lr_hd5path = '{}/{}'.format(self.data_directory, bytes.decode(indexes[0].numpy()))
@@ -215,11 +217,11 @@ class PatchHandler4D_all_axis():
             patch_t_index       = np.index_exp[start_t :start_t+hr_patch_size:step_t,   idx, start_1:start_1+patch_size, start_2:start_2+patch_size]
             hr_t_patch_index    = np.index_exp[start_t :start_t+hr_patch_size,          idx, start_1:start_1+patch_size, start_2:start_2+patch_size]
             mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,          idx, start_1:start_1+patch_size, start_2:start_2+patch_size]
-        elif axis ==1:
+        elif axis == 1:
             patch_t_index       = np.index_exp[start_t :start_t+hr_patch_size:step_t, start_1:start_1+patch_size,idx, start_2:start_2+patch_size]
             hr_t_patch_index    = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size,idx, start_2:start_2+patch_size]
             mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size,idx, start_2:start_2+patch_size]
-        elif axis ==2:
+        elif axis == 2:
             patch_t_index       = np.index_exp[start_t :start_t+hr_patch_size:step_t, start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
             hr_t_patch_index    = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
             mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
@@ -250,12 +252,14 @@ class PatchHandler4D_all_axis():
             Load LowRes velocity and magnitude components, and HiRes velocity components
             Also returns the global venc and HiRes mask
         '''
+        
         hires_images = []
         lowres_images = []
         mag_images = []
         vencs = []
         global_venc = 0
 
+        
         # Load the U, V, W component of HR, LR, and MAG
         with h5py.File(hd5path, 'r') as hl:
             # Open the file once per row, Loop through all the HR column
@@ -268,16 +272,19 @@ class PatchHandler4D_all_axis():
             try:
                 mask = hl.get(self.mask_colname)[mask_index] # Mask value [0 .. 1]
             except:
+                print('Temporal static mask created')
                 mask_temp = self.create_temporal_mask(np.asarray(hl.get(self.mask_colname)).squeeze(),  hl.get(self.hr_colnames[i]).shape[0])
                 mask = mask_temp[mask_index] 
             mask = (mask >= self.mask_threshold) * 1.
             # print("mask shape:", hl.get(self.mask_colname).shape)
-            
+        
+
+        
         with h5py.File(lr_hd5path, 'r') as hl:
             for i in range(len(self.lr_colnames)):
                 w = hl.get(self.lr_colnames[i])[patch_index]
                 mag_w = hl.get(self.mag_colnames[i])[patch_index]
-                w_venc = hl.get(self.venc_colnames[i])[:]
+                w_venc = np.array(hl.get(self.venc_colnames[i])).squeeze()
                             
                 # add them to the list
                 lowres_images.append(w)
@@ -285,7 +292,7 @@ class PatchHandler4D_all_axis():
                 vencs.append(w_venc)
         
         global_venc = np.max(vencs)
-
+        
         # Convert to numpy array
         hires_images = np.asarray(hires_images)
         lowres_images = np.asarray(lowres_images)
@@ -302,7 +309,7 @@ class PatchHandler4D_all_axis():
         hires_images = self._normalize(hires_images, global_venc) # Velocity normalized to -1 .. 1
         lowres_images = self._normalize(lowres_images, global_venc)
         mag_images = mag_images / 4095. # Magnitude 0 .. 1
-
+        
         # U-LR, HR, MAG, V-LR, HR, MAG, w-LR, HR, MAG, venc, MASK
         return lowres_images[0].astype('float32'), hires_images[0].astype('float32'), mag_images[0].astype('float32'), \
             lowres_images[1].astype('float32'), hires_images[1].astype('float32'), mag_images[1].astype('float32'), \

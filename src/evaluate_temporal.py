@@ -10,15 +10,168 @@ from prepare_data.visualize_utils import generate_gif_volume
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 plt.rcParams['figure.figsize'] = [10, 8]
 from utils.evaluate_utils import *
+from collections import defaultdict
+
+
+
+def load_data(model_name, set_name, data_model, step,dynamic_mask_used, ending_file= ''):
+    vel_colnames=['u', 'v', 'w']
+    #directories
+    gt_dir = 'Temporal4DFlowNet/data/CARDIAC'
+    result_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
+    eval_dir = f'{result_dir}/plots'
+    lr_dir = 'Temporal4DFlowNet/data/CARDIAC'
+    offset = False
+
+    inbetween_string = ''
+    add_offset = ''
+    if dynamic_mask_used:
+        inbetween_string = '_dynamic'
+    if offset:
+        print('LR is now sampled with offset of 1')
+        add_offset = '_offset1'
+        offset_val = 1
+    else:
+        offset_val = 0
+
+    #/home/pcallmer/Temporal4DFlowNet/data/CARDIAC/M4_2mm_step2_invivoP02_magnitude_adapted_noisy.h5
+    #filenames
+    gt_filename = f'M{data_model}_2mm_step{step}_static{inbetween_string}.h5'
+    lr_filename = f'M{data_model}_2mm_step{step}_static{inbetween_string}_noise.h5' #_noise
+    # gt_filename = f'M{data_model}_2mm_step{step}_invivoP02_magnitude.h5'
+    # lr_filename = f'M{data_model}_2mm_step{step}_invivoP02_magnitude_noisy.h5'
+    # gt_filename = f'M{data_model}_2mm_step{step}_invivoP01_magnitude.h5'
+    # lr_filename = f'M{data_model}_2mm_step{step}_invivoP01_magnitude_noisy.h5'
+
+    result_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal{ending_file}{add_offset}.h5' #_newpadding
+    evaluation_filename = f'eval_rel_err_{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'
+
+    print(gt_filename, lr_filename)
+
+    if not os.path.isdir(eval_dir):
+        os.makedirs(eval_dir)
+
+    #Params for evalation
+    save_relative_error_file= False
+
+    # Setting up
+    gt_filepath = '{}/{}'.format(gt_dir, gt_filename)
+    res_filepath = '{}/{}'.format(result_dir, result_filename)
+    lr_filepath = '{}/{}'.format(lr_dir, lr_filename)
+    
+
+    if save_relative_error_file:
+        assert(not os.path.exists(f'{result_dir}/{evaluation_filename}')) #STOP if relative error file is already created
+
+    
+    gt = {}
+    lr = {}
+    pred = {}
+
+    with h5py.File(res_filepath, mode = 'r' ) as h_pred:
+        with h5py.File(gt_filepath, mode = 'r' ) as h_gt:
+            with h5py.File(lr_filepath, mode = 'r' ) as h_lr:
+                
+                gt["mask"] = np.asarray(h_gt["mask"]).squeeze()
+                gt["mask"][np.where(gt["mask"] !=0)] = 1
+                if len(gt['mask'].shape) == 4 : # check for dynamical mask, otherwise create one
+                    temporal_mask = gt['mask'].copy()
+                else:
+                    print('Create static temporal mask for model')
+                    temporal_mask = create_temporal_mask(gt["mask"], h_gt['u'].shape[0])
+                gt['mask'] = temporal_mask.copy()
+                lr['mask'] = temporal_mask[offset_val::2, :, :, :].copy()
+                print(gt['mask'].shape)
+
+                # adapt dimension
+                for vel in vel_colnames:
+                    
+                    gt[vel] = np.asarray(h_gt[vel])
+                    pred[vel] = np.asarray(h_pred[f'{vel}_combined'])   
+                    lr[vel] = np.asarray(h_lr[vel])[offset_val::2, :, :, :]       
+
+                    print('pred shape', pred[vel].shape)
+                    # add information considering only the fluid regions  
+                    pred[f'{vel}_fluid'] =np.multiply(pred[vel], temporal_mask)
+                    lr[f'{vel}_fluid'] =  np.multiply(lr[vel], lr['mask'])
+                    gt[f'{vel}_fluid'] =  np.multiply(gt[vel], temporal_mask)
+
+                    
+                #include speed calculations
+                gt['speed']   = np.sqrt(gt["u"]**2 + gt["v"]**2 + gt["w"]**2)
+                lr['speed']   = np.sqrt(lr["u"]**2 + lr["v"]**2 + lr["w"]**2)
+                pred['speed'] = np.sqrt(pred["u"]**2 + pred["v"]**2 + pred["w"]**2)
+
+                gt['speed_fluid']   = np.multiply(gt['speed'], temporal_mask)
+                lr['speed_fluid']   = np.multiply(lr['speed'], lr['mask'])
+                pred['speed_fluid'] = np.multiply(pred['speed'], temporal_mask)
+
+
+    return lr, gt, pred, temporal_mask, eval_dir
+
+def load_interpolation(data_model, step, lr, gt, use_dynamical_mask):
+    vel_colnames=['u', 'v', 'w']
+    interpolate_NN = {}
+    interpolate_linear = {}
+    interpolate_cubic = {}
+
+
+    inbetween_string = ''
+    if use_dynamical_mask:
+        inbetween_string = '_dynamic'
+
+    lr_filename = f'M{data_model}_2mm_step{step}_static{inbetween_string}_noise.h5'
+
+
+    interpolation_file= f'Temporal4DFlowNet/results/interpolation/{lr_filename[:-3]}_interpolation'
+    if not os.path.isfile(interpolation_file):
+        print("Interpolation file does not exist - calculate interpolation and save files")
+        print("Save interpolation files to: ", interpolation_file)
+        
+        #this can take a while
+        for vel in vel_colnames:
+            print("Interpolate low resolution images - ", vel)
+            print(gt['mask'].shape)
+            interpolate_linear[vel] = temporal_linear_interpolation(lr[vel], gt[vel].shape)
+            interpolate_linear[f'{vel}_fluid'] = np.multiply(interpolate_linear[vel], gt['mask'])
+
+            interpolate_cubic[vel] = temporal_cubic_interpolation(lr[vel], gt[vel].shape)
+            interpolate_cubic[f'{vel}_fluid'] = np.multiply(interpolate_cubic[vel], gt['mask'])
+
+            interpolate_NN[vel] = temporal_NN_interpolation(lr[vel], gt[vel].shape)
+            interpolate_NN[f'{vel}_fluid'] = np.multiply(interpolate_NN[vel], gt['mask'])
+
+            prediction_utils.save_to_h5(interpolation_file, f'linear_{vel}' , interpolate_linear[vel], compression='gzip')
+            prediction_utils.save_to_h5(interpolation_file, f'cubic_{vel}' , interpolate_cubic[vel], compression='gzip')
+            prediction_utils.save_to_h5(interpolation_file, f'NN_{vel}' , interpolate_NN[vel], compression='gzip')
+    else:
+        print("Load existing interpolation file")
+        with h5py.File(interpolation_file, mode = 'r' ) as h_interpolate:
+            for vel in vel_colnames:
+                interpolate_linear[vel] = np.array(h_interpolate[f'linear_{vel}'])
+                interpolate_cubic[vel] =  np.array(h_interpolate[f'cubic_{vel}'])
+                interpolate_NN[vel] =     np.array(h_interpolate[f'NN_{vel}'])
+
+
+                interpolate_linear[f'{vel}_fluid'] = np.multiply(interpolate_linear[vel], gt['mask'])
+                interpolate_cubic[f'{vel}_fluid'] = np.multiply(interpolate_cubic[vel], gt['mask'])
+                interpolate_NN[f'{vel}_fluid'] = np.multiply(interpolate_NN[vel], gt['mask'])
+
+    return interpolate_linear, interpolate_cubic, interpolate_NN
+
+
+
 
 if __name__ == "__main__":
 
 
     # Define directories and filenames
-    model_name = '20230220-0908'    
-    set_name = 'Training'               
-    data_model= '2'
+    model_name = '20230620-0909'    
+    set_name = 'Test'               
+    data_model= '4'
     step = 2
+    use_dynamical_mask = True
+    add_ending = ''
 
     #directories
     gt_dir = 'Temporal4DFlowNet/data/CARDIAC'
@@ -28,8 +181,8 @@ if __name__ == "__main__":
     model_dir = 'Temporal4DFlowNet/models'
 
     #filenames
-    gt_filename = f'M{data_model}_2mm_step{step}_static.h5'
-    lr_filename = f'M{data_model}_2mm_step{step}_static_noise.h5'
+    gt_filename = f'M{data_model}_2mm_step{step}_static_dynamic.h5'
+    lr_filename = f'M{data_model}_2mm_step{step}_static_dynamic_noise.h5'
     result_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal_.h5'#newpadding.h5'
     evaluation_filename = f'eval_rel_err_{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'
     model_filename = f'Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
@@ -51,32 +204,36 @@ if __name__ == "__main__":
         assert(not os.path.exists(f'{result_dir}/{evaluation_filename}')) #STOP if relative error file is already created
 
     vel_colnames=['u', 'v', 'w']
-    gt = {}
-    lr = {}
-    pred = {}
-    dt = {}
+    # gt = {}
+    # lr = {}
+    # pred = {}
+    # dt = {}
 
-    #load predictions 
-    with h5py.File(res_filepath, mode = 'r' ) as h_pred:
-        with h5py.File(gt_filepath, mode = 'r' ) as h_gt:
-            with h5py.File(lr_filepath, mode = 'r' ) as h_lr:
+    # #load predictions 
+    # with h5py.File(res_filepath, mode = 'r' ) as h_pred:
+    #     with h5py.File(gt_filepath, mode = 'r' ) as h_gt:
+    #         with h5py.File(lr_filepath, mode = 'r' ) as h_lr:
                 
-                gt["mask"] = np.asarray(h_gt["mask"])
-                gt["mask"][np.where(gt["mask"] !=0)] = 1
-                temporal_mask = create_temporal_mask(gt["mask"], h_gt['u'].shape[0])
+    #             gt["mask"] = np.asarray(h_gt["mask"])
+    #             gt["mask"][np.where(gt["mask"] !=0)] = 1
+    #             temporal_mask = create_temporal_mask(gt["mask"], h_gt['u'].shape[0])
 
-                # adapt dimension
-                for vel in vel_colnames:
+    #             # adapt dimension
+    #             for vel in vel_colnames:
                     
-                    gt[vel] = np.asarray(h_gt[vel])
-                    pred[vel] = np.asarray(h_pred[f'{vel}_combined']) # TODO chnaged this with new combination of all axis 
-                    lr[vel] = np.asarray(h_lr[vel])[::2, :, :, :] #TODO: this chnaged with the new loading modules
-                    #transpose for temporal resolution
-                    #pred[vel] = pred[vel].transpose(1, 0, 2, 3) #TODO changed for new csv file
+    #                 gt[vel] = np.asarray(h_gt[vel])
+    #                 pred[vel] = np.asarray(h_pred[f'{vel}_combined']) # TODO chnaged this with new combination of all axis 
+    #                 lr[vel] = np.asarray(h_lr[vel])[::2, :, :, :] #TODO: this chnaged with the new loading modules
+    #                 #transpose for temporal resolution
+    #                 #pred[vel] = pred[vel].transpose(1, 0, 2, 3) #TODO changed for new csv file
 
-                    pred[f'{vel}_fluid'] = np.multiply(pred[vel], temporal_mask)
-                    lr[f'{vel}_fluid'] = np.multiply(lr[vel], temporal_mask[::2, :, :, :])
-                    gt[f'{vel}_fluid'] = np.multiply(gt[vel], temporal_mask)
+    #                 pred[f'{vel}_fluid'] = np.multiply(pred[vel], temporal_mask)
+    #                 lr[f'{vel}_fluid'] = np.multiply(lr[vel], temporal_mask[::2, :, :, :])
+    #                 gt[f'{vel}_fluid'] = np.multiply(gt[vel], temporal_mask)
+    
+
+    lr, gt, pred, temporal_mask, eval_dir = load_data(model_name, set_name, data_model, step, use_dynamical_mask, ending_file=add_ending)
+    interpolate_linear, interpolate_cubic, interpolate_NN = load_interpolation(data_model, step,lr, gt, use_dynamical_mask)
 
     #check that dimension fits
     assert(gt["u"].shape == pred["u"].shape)  ,str(pred["u"].shape) + str(gt["u"].shape) # dimensions need to be the same
@@ -88,21 +245,8 @@ if __name__ == "__main__":
         min_v[vel] = np.quantile(gt[vel][np.where(temporal_mask !=0)].flatten(), 0.01)
         max_v[vel] = np.quantile(gt[vel][np.where(temporal_mask !=0)].flatten(), 0.99)
 
-    # get interpoaltion results
-    interpolate_NN = {}
-    interpolate_linear = {}
-    interpolate_cubic = {}
 
-    for vel in vel_colnames:
-        interpolate_linear[vel] = temporal_linear_interpolation(lr[vel], gt[vel].shape)
-        interpolate_linear[f'{vel}_fluid'] = np.multiply(interpolate_linear[vel], gt['mask'])
-
-        interpolate_cubic[vel] = temporal_cubic_interpolation(lr[vel], gt[vel].shape)
-        interpolate_cubic[f'{vel}_fluid'] = np.multiply(interpolate_cubic[vel], gt['mask'])
-
-        interpolate_NN[vel] = temporal_NN_interpolation(lr[vel], gt[vel].shape)
-        interpolate_NN[f'{vel}_fluid'] = np.multiply(interpolate_NN[vel], gt['mask'])
-
+    
     
     
     T_peak_flow = np.unravel_index(np.argmax(gt["u"]), shape =gt["u"].shape)[0]
@@ -127,11 +271,130 @@ if __name__ == "__main__":
     mean_speed_lin_interpolation =  calculate_mean_speed(interpolate_linear["u_fluid"], interpolate_linear["v_fluid"] ,interpolate_linear["w_fluid"], gt["mask"])
     mean_speed_cubic_interpolation = calculate_mean_speed(interpolate_cubic["u_fluid"], interpolate_cubic["v_fluid"] , interpolate_cubic["w_fluid"], gt["mask"])
 
+    #speed 
+    interpolate_linear['speed'] = np.sqrt(interpolate_linear["u"]**2 + interpolate_linear["v"]**2 + interpolate_linear["w"]**2)
+    interpolate_cubic['speed'] = np.sqrt(interpolate_cubic["u"]**2 + interpolate_cubic["v"]**2 + interpolate_cubic["w"]**2)
+    interpolate_linear['speed_fluid'] = np.multiply(interpolate_linear['speed'], gt['mask'])
+    interpolate_cubic['speed_fluid'] = np.multiply(interpolate_cubic['speed'], gt['mask'])
+
 
     # dt["u"] = calculate_temporal_derivative(gt["u"], timestep=1)
     # dt["v"] = calculate_temporal_derivative(gt["v"], timestep=1)
     # dt["w"] = calculate_temporal_derivative(gt["w"], timestep=1)
 
+    diastole_end = 25
+
+    bounds, core_mask = get_boundaries(gt["mask"])
+    bounds_boolmask = bounds.astype(bool)
+    core_boolmask = core_mask.astype(bool)
+    # print(f'avg bound velocities {np.mean(np.multiply(gt["u"], bounds), axis = (1, 2, 3))} {np.mean(np.multiply(gt["v"], bounds), axis = (1, 2, 3))} {np.mean(np.multiply(gt["w"], bounds), axis = (1, 2, 3))}')
+    # print(f'avg core velocities {np.mean(np.multiply(gt["u"], core_mask), axis = (1,2,3))} {np.mean(np.multiply(gt["v"], core_mask), axis = (1, 2, 3))} {np.mean(np.multiply(gt["w"], core_mask), axis = (1, 2, 3))}')
+
+    max_b = np.max(np.mean(gt['speed'], axis = (1, 2, 3), where =bounds_boolmask))
+    min_b = np.min(np.mean(gt['speed'], axis = (1, 2, 3), where =bounds_boolmask))
+    print(f'speed min and max boundary {min_b}  {max_b}')
+    max_c = np.max(np.mean(gt['speed'], axis = (1, 2, 3), where =core_boolmask))
+    min_c = np.min(np.mean(gt['speed'], axis = (1, 2, 3), where =core_boolmask))
+    print(f'speed min and max core {min_c}  {max_c}')
+    # print(f'speed min and max boundary {np.min(np.mean(gt['speed'], axis = (1, 2, 3), where =bounds_boolmask))}  {np.max(np.mean(gt['speed'], axis = (1, 2, 3), where =bounds_boolmask))}')
+    # print(f'speed min and max core {np.min(np.mean(gt['speed'], axis = (1, 2, 3), where =core_boolmask))}  {np.min(np.mean(gt['speed'], axis = (1, 2, 3), where =core_boolmask))}')
+    
+    # for t in range(0, gt["u"].shape[0]):
+    #     total_voxels = np.sum(gt["mask"][t])
+    #     print(f'{t} - BoundaryVoxels vs core  {np.sum(bounds[t])/total_voxels:.4f} core {np.sum(core_mask[t])/total_voxels:.4f}' )
+    
+    #calculate error for each velocity component
+    vel_and_speed_colnames = vel_colnames + ['speed']
+    k = defaultdict(list)
+    r2 = defaultdict(list)
+    for vel in vel_and_speed_colnames:
+        print(f'------------------Calculate error for {vel}---------------------')
+        # rmse
+        rmse_pred= calculate_rmse(pred[vel], gt[vel], gt["mask"], return_std=False)
+        rmse_lin_interpolation = calculate_rmse(interpolate_linear[vel], gt[vel], gt["mask"])
+        rmse_cubic_interpolation = calculate_rmse(interpolate_cubic[vel], gt[vel], gt["mask"])
+        bool_mask = gt['mask'].astype(bool)
+        reverse_mask = np.ones(gt["mask"].shape) - gt["mask"]
+        
+        rmse_pred_nonfluid = calculate_rmse(pred[vel], gt[vel], reverse_mask)
+        rmse_lin_interpolation_nonfluid = calculate_rmse(interpolate_linear[vel], gt[vel], reverse_mask)
+        rmse_cubic_interpolation_nonfluid = calculate_rmse(interpolate_cubic[vel], gt[vel], reverse_mask)
+
+        for t in range(gt["u"].shape[0]):
+            k_core, r2_core  = calculate_k_R2( pred[vel][t], gt[vel][t], core_mask[t])
+            k_bounds, r2_bounds  = calculate_k_R2( pred[vel][t], gt[vel][t], bounds[t])
+            k_all, r2_all  = calculate_k_R2( pred[vel][t], gt[vel][t], gt['mask'][t])
+            k[f'k_core_{vel}'].append(k_core)
+            r2[f'r2_core_{vel}'].append(r2_core)
+            k[f'k_bounds_{vel}'].append(k_bounds)
+            r2[f'r2_bounds_{vel}'].append(r2_bounds)
+            k[f'k_all_{vel}'].append(k_all)
+            r2[f'r2_all_{vel}'].append(r2_all)
+
+        print(f'AVG k x core ', np.mean(k[f'k_core_{vel}']) , ' - bounds:', np.mean(k[f'k_bounds_{vel}']), ' - all: ', np.mean(k[f'k_all_{vel}']))
+        print(f'MIN k x core ', np.min(k[f'k_core_{vel}']) , '- bounds: ', np.min(k[f'k_bounds_{vel}']) , ' - all: ', np.min(k[f'k_all_{vel}']))
+        print(f'MAX k x core ', np.max(k[f'k_core_{vel}']) , '- bounds: ', np.max(k[f'k_bounds_{vel}']) , ' - all: ', np.max(k[f'k_all_{vel}']))
+        print(f'AVG r2 x core ', np.mean(r2[f'r2_core_{vel}']) , ' - bounds: ', np.mean(r2[f'r2_bounds_{vel}']), ' - all: ', np.mean(r2[f'r2_all_{vel}']))
+        print(f'MIN r2 x core ', np.min(r2[f'r2_core_{vel}']) , '- bounds: ', np.min(r2[f'r2_bounds_{vel}']) , ' - all: ', np.min(r2[f'r2_all_{vel}']))
+        print(f'MAX r2 x core ', np.max(r2[f'r2_core_{vel}']) , '- bounds: ', np.max(r2[f'r2_bounds_{vel}']) , ' - all: ', np.max(r2[f'r2_all_{vel}']))
+        
+        
+        print(f'AVG RMSE ALL fluid {np.mean(rmse_pred):.4f}')
+        print(f'AVG RMSE ALL nonfluid {np.mean(rmse_pred_nonfluid):.4f}')
+
+        print(f'AVG RMSE prediction diastole: {np.mean(rmse_pred[:25]):.4f} - linear interpolation: {np.mean(rmse_lin_interpolation[:25]):.4f} - cubic interpolation: {np.mean(rmse_cubic_interpolation[:25]):.4f}')
+        print(f'STD RMSE prediction diastole:  {np.std(rmse_pred[:25]):.4f} - linear interpolation: {np.std(rmse_lin_interpolation[:25]):.4f} - cubic interpolation: {np.std(rmse_cubic_interpolation[:25]):.4f}')
+        print(f'AVG RMSE prediction systole: {np.mean(rmse_pred[25:]):.4f} - linear interpolation: {np.mean(rmse_lin_interpolation[25:]):.4f} - cubic interpolation: {np.mean(rmse_cubic_interpolation[25:]):.4f}')
+        print(f'STD RMSE prediction systole:  {np.std(rmse_pred[25:]):.4f} - linear interpolation: {np.std(rmse_lin_interpolation[25:]):.4f} - cubic interpolation: {np.std(rmse_cubic_interpolation[25:]):.4f}')
+        #abs difference
+        abs_diff = np.abs(gt[f'{vel}_fluid'] - pred[f'{vel}_fluid'])
+        abs_diff_lin_interpolation = np.abs(gt[f'{vel}_fluid'] - interpolate_linear[f'{vel}_fluid'])
+        abs_diff_cubic_interpolation = np.abs(gt[f'{vel}_fluid'] - interpolate_cubic[f'{vel}_fluid'])
+
+        print(f'Max abs difference diastole - prediction {np.max(abs_diff[:diastole_end]):.4f}')
+        print(f'Max abs difference diastole - linear interpolation', np.max(abs_diff_lin_interpolation[:diastole_end]))
+        print(f'Max abs difference diastole - cubic interpolation', np.max(abs_diff_cubic_interpolation[:diastole_end]))
+        print(f'Max abs difference systole - prediction', np.max(abs_diff[diastole_end:]))	
+        print(f'Max abs difference systole - linear interpolation', np.max(abs_diff_lin_interpolation[diastole_end:]))
+        print(f'Max abs difference systole - cubic interpolation', np.max(abs_diff_cubic_interpolation[diastole_end:]))
+
+        print(f'Max abs difference fluid - prediction {np.max(abs_diff):.4f}')
+        print(f'Max abs difference fluid - linear interpolation', np.max(abs_diff_lin_interpolation))
+        print(f'Max abs difference fluid - cubic interpolation', np.max(abs_diff_cubic_interpolation))
+
+        # print(f'Max lin interpolate boundary frame 35', np.max(np.multiply(interpolate_linear[vel][35], bounds[35])))
+        # print(f'Max cubic interpolate boundary frame 35', np.max(np.multiply(interpolate_linear[vel][35], bounds[35])))
+
+        print(f'Correlation frame 35 prediction- {np.mean(abs_diff[35], where= bool_mask[35]):.4f} std: {np.std(abs_diff[35], where= bool_mask[35]):.4f}')
+        print(f'Correlation frame 35 linear interpolation- {np.mean(abs_diff_lin_interpolation[35], where= bool_mask[35]):.4f} std: {np.std(abs_diff_lin_interpolation[35], where= bool_mask[35]):.4f}')
+        print(f'Correlation frame 35 cubic interpolation- {np.mean(abs_diff_cubic_interpolation[35], where= bool_mask[35]):.4f} std: {np.std(abs_diff_cubic_interpolation[35], where= bool_mask[35]):.4f}')
+
+    print('--------------------------------------')
+    # relative error
+    REL_error_pred = rel_error
+    REL_error_lin_interpolation = rel_error_lin_interpolation
+    REL_error_cubic_interpolation = rel_error_cubic_interpolation
+    print(f'RMSE {vel} last frame - pred - {rmse_pred[-1]:.4f} - linear interpolation: {rmse_lin_interpolation[-1]:.4f} - cubic interpolation: {rmse_cubic_interpolation[-1]:.4f}')
+    print(f'RMSE {vel} peak frame 35 - pred - {rmse_pred[35]:.4f} - linear interpolation: {rmse_lin_interpolation[35]:.4f} - cubic interpolation: {rmse_cubic_interpolation[35]:.4f}')
+    print(f'RMSE {vel} peak frame 34- pred - {rmse_pred[34]:.4f} - linear interpolation: {rmse_lin_interpolation[34]:.4f} - cubic interpolation: {rmse_cubic_interpolation[34]:.4f}')
+
+
+    print(f'AVG REL error prediction {np.mean(REL_error_pred):.1f}')
+    print(f'Last frame REL error prediction {REL_error_pred[-1]:.1f}')
+    print(f'AVG REL error prediction diastole: {np.mean(REL_error_pred[:25]):.1f} - linear interpolation: {np.mean(REL_error_lin_interpolation[:25]):.1f} - cubic interpolation: {np.mean(REL_error_cubic_interpolation[:25]):.1f}')
+    print(f'STD REL error prediction diastole:  {np.std(REL_error_pred[:25]):.1f} - linear interpolation: {np.std(REL_error_lin_interpolation[:25]):.1f} - cubic interpolation: {np.std(REL_error_cubic_interpolation[:25]):.1f}')
+    print(f'AVG REL error prediction systole:  {np.mean(REL_error_pred[25:]):.1f} - linear interpolation: {np.mean(REL_error_lin_interpolation[25:]):.1f} - cubic interpolation: {np.mean(REL_error_cubic_interpolation[25:]):.1f}')
+    print(f'STD REL error prediction systole:   {np.std(REL_error_pred[25:]):.1f} - linear interpolation: {np.std(REL_error_lin_interpolation[25:]):.1f} - cubic interpolation: {np.std(REL_error_cubic_interpolation[25:]):.1f}')
+
+    print('Max mean speed deviation', np.max(np.abs(mean_speed_gt - mean_speed_pred)))
+    print('mean speed deviation', np.mean(np.abs(mean_speed_gt - mean_speed_pred)))
+    print('Max mean speed deviation linear interpolation', np.max(np.abs(mean_speed_gt - mean_speed_lin_interpolation)))
+    print('Max mean speed deviation cubic interpolation', np.max(np.abs(mean_speed_gt - mean_speed_cubic_interpolation)))
+    print('Min mean speed deviation', np.min(mean_speed_gt - mean_speed_pred))
+    print('Max mean speed deviation', np.max(mean_speed_gt - mean_speed_pred))
+    print('Count number of frames, where difference between mean speed gt and pred is smaller than 0', np.sum(mean_speed_gt - mean_speed_pred < 0))
+
+    exit()
     print("Plot example time frames..")
     show_timeframes(gt["u"], lr["u"], pred["u"],gt["mask"],error_pointwise_cap ,[interpolate_linear["u"], interpolate_cubic["u"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["u"],max_v =max_v["u"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VX.png')
     show_timeframes(gt["v"], lr["v"], pred["v"],gt["mask"],error_pointwise_cap ,[interpolate_linear["v"], interpolate_cubic["v"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["v"],max_v =max_v["v"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VY.png')

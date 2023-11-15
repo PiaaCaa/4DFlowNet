@@ -5,6 +5,7 @@ import h5py
 # from Network.PatchHandler3D import PatchHandler3D
 from Network.PatchHandler3D_temporal import PatchHandler4D, PatchHandler4D_all_axis
 from matplotlib import pyplot as plt
+import timeit
 
 def load_indexes(index_file):
     """
@@ -87,13 +88,16 @@ if __name__ == "__main__":
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal14MODEL23_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
-   
+    training_file = '{}/Temporal16MODEL23_2mm_step2_newmag_adapted.csv'.format(data_dir)
+    # training_file = '{}/Temporal16MODEL1_2mm_step2_newmagP01_adapted_test2.csv'.format(data_dir)
+    
+    # training_file = '{}/Temporal16MODEL23_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
+
     # Hyperparameters optimisation variables
     epochs =  1
-    batch_size = 15
+    batch_size = 16
 
-    patch_size = 14
+    patch_size = 16
     res_increase = 2
     
 
@@ -113,10 +117,13 @@ if __name__ == "__main__":
             
             a = data_pairs
             #check if datapairs align
-            check_compatibility(a)
+            # check_compatibility(a)
             message = f"Iteration {i+1}   - batch {time.time()-start_loop:.4f} sec {time.time()-start_time:.1f} secs"
             print(f"\r{message}", end='')
             print(' ________________________')
+
+            # if i == 0:
+            #     exit()
             
     print("\nDone")
     
