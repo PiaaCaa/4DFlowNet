@@ -13,15 +13,17 @@ import os
 from .STR4DFlowNet_adapted import STR4DFlowNet
 from . import utility, h5util, loss_utils
 
-class TrainerController_temporal:
+class  TrainerController_temporal:
     # constructor
-    def __init__(self, patch_size, res_increase, initial_learning_rate=1e-4, quicksave_enable=True, network_name='4DFlowNet', n_low_resblock=8, n_hi_resblock=4, low_res_block = 'resnet_block', high_res_block= 'resnet_block', upsampling_block = 'default', post_processing_block = None):
+    def __init__(self, patch_size, res_increase, initial_learning_rate=1e-4, quicksave_enable=True, network_name='4DFlowNet', n_low_resblock=8, n_hi_resblock=4, low_res_block = 'resnet_block', high_res_block= 'resnet_block', upsampling_block = 'default', post_processing_block = None, lr_decay_epochs = 0):
         """
             TrainerController constructor
             Setup all the placeholders, network graph, loss functions and optimizer here.
         """
         self.div_weight = 0 # Weighting for divergence loss
         self.non_fluid_weight = 1 # Weigthing for non fluid region
+        self.lr_decay_epoch = lr_decay_epochs
+        self.L2_regularization = 0.001 
 
         # General param
         self.res_increase = res_increase
@@ -252,9 +254,12 @@ class TrainerController_temporal:
         rel_error = self.accuracy_function(hires, predictions, mask)
         
         if metric_set == 'train':
-            l2_reg_loss = self.calculate_regularizer_loss()
-            self.loss_metrics[f'l2_reg_loss'].update_state(l2_reg_loss)
+            if self.L2_regularization > 0:
+                l2_reg_loss = self.calculate_regularizer_loss()
+            else:
+                l2_reg_loss = 0
 
+            self.loss_metrics[f'l2_reg_loss'].update_state(l2_reg_loss)
             loss += l2_reg_loss
 
         # Update the loss and accuracy
@@ -268,6 +273,16 @@ class TrainerController_temporal:
     def reset_metrics(self):
         for key in self.loss_metrics.keys():
             self.loss_metrics[key].reset_states()
+
+    def learning_rate_decay(self, epoch):
+        '''
+        taken from derek long :https://github.com/dlon450/4DFlowNetv2/blob/master/src/Network/TrainerSetup.py#L244
+        '''
+        # For 14k rows of data and batch 20, this is ~10k iterations
+        if epoch > 0 and epoch % self.lr_decay_epoch == 0:
+            self.optimizer.lr = self.optimizer.lr / np.sqrt(2)
+            message = f'Learning rate adjusted to {self.optimizer.lr.numpy():.6f} - {time.ctime()}\n'
+            print(message)
 
     def train_network(self, trainset, valset, n_epoch, testset=None):
         """
@@ -286,12 +301,15 @@ class TrainerController_temporal:
 
         for epoch in range(n_epoch):
             # ------------------------------- Training -------------------------------
-            # self.adjust_learning_rate(epoch)
+            
 
             # Reset the metrics at the start of the next epoch
             self.reset_metrics()
 
             start_loop = time.time()
+
+            if self.lr_decay_epoch > 0: self.learning_rate_decay(epoch)
+            
             # --- Training ---
             for i, (data_pairs) in enumerate(trainset):
                 # Train the network
@@ -304,6 +322,12 @@ class TrainerController_temporal:
                 self.test_step(data_pairs)
                 message = f"Epoch {epoch+1} Validation batch {i+1}/{total_batch_val} | loss: {self.loss_metrics['val_loss'].result():.5f} ({self.loss_metrics['val_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs"
                 print(f"\r{message}", end='')
+
+            # # --- DELETE LATER!! ---
+            # for i, (data_pairs) in enumerate(trainset):
+            #     self.test_step(data_pairs)
+            #     message = f"Epoch {epoch+1} Validation/Test batch {i+1}/{total_batch_val} | loss: {self.loss_metrics['val_loss'].result():.5f} ({self.loss_metrics['val_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs"
+            #     print(f"\r{message}", end='')
 
             # --- Epoch logging ---
             message = f"\rEpoch {epoch+1} Train loss: {self.loss_metrics['train_loss'].result():.5f} ({self.loss_metrics['train_accuracy'].result():.1f} %), Val loss: {self.loss_metrics['val_loss'].result():.5f} ({self.loss_metrics['val_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs"

@@ -254,4 +254,3 @@ def lstm_block(x, num_layers, block_name='LSTMBlock', channel_nr=64, scale = 1, 
         x = tf.keras.layers.ConvLSTM2D(channel_nr, 3, use_bias = False, return_sequences = True, padding = 'same')(x)
 
     return x
-
