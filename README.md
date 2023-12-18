@@ -84,9 +84,9 @@ How to prepare training/validation dataset.
 
     1. Generate lowres dataset in the folder prepare_data
         >> Configure the datapath and filenames in prepare_temporal_lowres_dataset.py
-        >>>> Optional configurations: 
-        downsampling_rate (default = 2); 
-        radial_downsampling: This enables averaged downsampling (Defaulkt is sampling without averaging) 
+           Optional configurations: 
+           downsampling_rate (default = 2); 
+           radial_downsampling: This enables averaged downsampling (Defaulkt is sampling without averaging) 
         >> Run prepare_temporal_lowres_dataset.py
         >> This will generate a separate HDF5 file for the low resolution velocity data.
         
@@ -203,6 +203,4 @@ Adjustable parameters:
 
 ## Contact Information
 
-If you encounter any problems, feel free to contact me by email pia.callmer@home.se.
-
-Pia Callmer
+If you encounter any problems, feel free to contact me by email pia.callmer@ki.se.

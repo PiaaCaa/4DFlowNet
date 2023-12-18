@@ -48,13 +48,13 @@ def check_compatibility(datapair):
     tol = 1e-8
     hr_u_mask[np.where(np.abs(hr_u_downsampled) < tol)] = 0
     
-    hr_u_downsampled = np.multiply(hr_u_downsampled, mask )
-    hr_v_downsampled = np.multiply(hr_v_downsampled, mask )
-    hr_w_downsampled = np.multiply(hr_w_downsampled, mask )
+    hr_u_downsampled = np.multiply(hr_u_downsampled, mask)
+    hr_v_downsampled = np.multiply(hr_v_downsampled, mask)
+    hr_w_downsampled = np.multiply(hr_w_downsampled, mask)
 
-    lr_u = np.multiply(lr_u, mask )
-    lr_v = np.multiply(lr_v, mask )
-    lr_w = np.multiply(lr_w, mask )
+    lr_u = np.multiply(lr_u, mask)
+    lr_v = np.multiply(lr_v, mask)
+    lr_w = np.multiply(lr_w, mask)
 
     
     overlap_masks = np.count_nonzero(hr_u_mask-mask)

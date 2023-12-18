@@ -1,6 +1,6 @@
-from tvtk.api import tvtk, write_data
+# from tvtk.api import tvtk, write_data
 import numpy as np
-from utils.evaluate_utils import get_boundaries, calculate_mean_speed
+# from utils.evaluate_utils import get_boundaries, calculate_mean_speed
 import matplotlib.pyplot as plt
 import h5py
 
@@ -14,6 +14,7 @@ if __name__ == '__main__':
 
     a = np.array([0, 1, 0])
     print(np.equal(a, 1.0))
+    print("test script run")
     if False:
         for m in ['1', '2', '3', '4']:
             in_vivo_path = f'/home/pcallmer/Temporal4DFlowNet/data/CARDIAC/M{m}_2mm_step2_static_dynamic.h5'
