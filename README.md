@@ -2,10 +2,10 @@
 Super Resolution 4D Flow MRI using Residual Neural Network
 
 <!-- This repsository includes an implementation of the paper [4DFlowNet: Super-Resolution 4D Flow MRI](https://www.frontiersin.org/articles/10.3389/fphy.2020.00138/full) using Tensorflow 2.9.0 with Keras.  -->
-<!-- In addition, there is an implementation for a temporal instead of a spatial-super resolution problem. -->
+<!-- In addition, the 4DFlowNet has been used as basis for the implementation of a temporal temporal-super resolution network for 4D Flow MRI. -->
 
 This is an extension of the repository [4DFlowNet](https://gitlab.eecs.umich.edu/bkhardy/4DFlowNet), which includes the implementation of the paper [4DFlowNet: Super-Resolution 4D Flow MRI](https://www.frontiersin.org/articles/10.3389/fphy.2020.00138/full) concerning spatial super resolution problem. 
-This implemenational in focusing on increasing the temporal resolution of the CFD 4D Flow MRI data. 
+The 4DFlowNet has been used as basis for the implementation of a temporal temporal-super resolution network for 4D Flow MRI.
 
 
 
@@ -78,17 +78,21 @@ without worrying about affecting others.
 
 ## Prepare dataset
 
-To prepare training or validation dataset, we assume a High resolution CFD dataset is available. As an example we have provided this under TODO
+To prepare training or validation dataset, we assume a high resolution CFD dataset is available. As an example we have provided this under TODO
 
 How to prepare training/validation dataset.
 
-    1. Generate lowres dataset
+    1. Generate lowres dataset in the folder prepare_data
         >> Configure the datapath and filenames in prepare_temporal_lowres_dataset.py
+        >>>> Optional configurations: 
+        downsampling_rate (default = 2); 
+        radial_downsampling: This enables averaged downsampling (Defaulkt is sampling without averaging) 
         >> Run prepare_temporal_lowres_dataset.py
         >> This will generate a separate HDF5 file for the low resolution velocity data.
+        
     2. Generate random patches from the LR-HR dataset pairs.
         >> Configure the datapath and filenames in prepare_patches.py
-        >> For temporal problem, set .. to True. 
+        >> For temporal problem, set temporal_preparation to True. 
         >> Configure patch_size, rotation option, and number of patches per frame
         >> Run prepare_patches.py
         >> This will generate a csv file that contains the patch information.
@@ -121,7 +125,7 @@ Adjustable parameters:
 | hi_resblock | Number of residual blocks in high resolution space within 4DFlowNet. |
 
 
-## Standard Aortic Training Setup
+<!-- ## Standard Aortic Training Setup
 |Parameter  | Value   |
 |------|--------------|
 | patch_size| 16 |
@@ -136,7 +140,7 @@ Adjustable parameters:
 |validate_file| aorta03_patches.csv |
 |benchmark_file| aorta03_patches.csv |
 | low_resblock | 8 |
-| hi_resblock | 4 |
+| hi_resblock | 4 | -->
 
 <!-- ## Standard Cerebrovascular Training Setup
 |Parameter  | Value   |
@@ -197,8 +201,8 @@ Adjustable parameters:
 
 
 
-<!-- ## Contact Information
+## Contact Information
 
-If you encounter any problems, feel free to contact me by email.
+If you encounter any problems, feel free to contact me by email pia.callmer@home.se.
 
-Pia Callmer -->
+Pia Callmer
