@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     a = np.array([0, 1, 0])
     print(np.equal(a, 1.0))
-    print("test script run")
+    print("test git commit from local computer")
     if False:
         for m in ['1', '2', '3', '4']:
             in_vivo_path = f'/home/pcallmer/Temporal4DFlowNet/data/CARDIAC/M{m}_2mm_step2_static_dynamic.h5'
