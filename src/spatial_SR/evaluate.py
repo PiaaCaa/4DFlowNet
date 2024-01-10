@@ -52,7 +52,7 @@ if __name__ == "__main__":
                 #check that dimension fits
                 assert(gt["u"].shape == pred["u"].shape)  ,str(pred["u"].shape) + str(gt["u"].shape) # dimensions need to be the same
                 
-                mask_diff, mask_pred = compare_masks(gt["u"], gt["v"] , gt["w"], gt["mask"])
+                mask_diff, mask_pred = compare_mask_and_velocitymask(gt["u"], gt["v"] , gt["w"], gt["mask"])
 
                 # calculate relative error
                 error_gt = calculate_relative_error_np(pred["u"], pred["v"], pred["w"], gt["u"], gt["v"] , gt["w"], gt["mask"])

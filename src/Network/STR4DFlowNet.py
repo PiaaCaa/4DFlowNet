@@ -25,7 +25,6 @@ class STR4DFlowNet():
         concat_layer = conv3d(concat_layer, 1, channel_nr, padding, 'relu')
         concat_layer = conv3d(concat_layer, 3, channel_nr, padding, 'relu')
         
-        #TODO here could derekt code be inserted
 
         # res blocks
         rb = concat_layer

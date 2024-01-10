@@ -7,8 +7,6 @@ def rectangular_crop3d(f, crop_ratio):
     half_x = f.shape[0] // 2
     half_y = f.shape[1] // 2
     half_z = f.shape[2] // 2
-    
-    # print('half', half_x, half_y, half_z)
 
     x_crop = int(half_x * crop_ratio)
     y_crop = int(half_y * crop_ratio)

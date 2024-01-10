@@ -12,7 +12,10 @@ def load_indexes(index_file):
     return indexes
 
 def write_settings_into_csv_file(filename,name, training_file, validation_file, test_file, epochs,batch_size,patch_size, low_resblock, high_resblock, upsampling_type, low_block_type, high_block_type, post_block_type, sampling, notes):
-    print("Write settings into overview file")
+    """
+        Write settings into csv file to store training runs
+    """
+    print(f"Write settings into overview file {filename}")
     fieldnames = ["Name","training_file","validation_file","test_file","epochs","batch_size","patch_size","res_increase","low_resblock","high_resblock","upsampling_type", "low_block_type", "high_block_type", "post_block_type", "sampling",  "notes"]
     with open(filename, mode='a', newline='') as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)

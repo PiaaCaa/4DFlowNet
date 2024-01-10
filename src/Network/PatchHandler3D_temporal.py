@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 import h5py
 import time
-#from prepare_data.PatchData import create_temporal_mask
 
 class PatchHandler4D():
     # constructor

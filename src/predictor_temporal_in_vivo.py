@@ -12,29 +12,6 @@ import timeit
 from scipy.interpolate import CubicSpline, RegularGridInterpolator
 # os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
-def tbd_temporal_cubic_interpolation(lr, hr_shape):
-    '''
-    Cubic interpolation in time , from (t, h, w, d) to (2t, h, w, d)
-    '''
-    # x_lr = np.arange(0, lr.shape[0])
-    # x_hr = np.linspace(0, lr.shape[0]-0.5,  hr_shape[0])
-    # cs = CubicSpline(x_lr, lr, axis=0)
-
-    # interpolate = cs(x_hr)
-    t_lr = np.arange(0, lr.shape[0])
-    x_lr = np.arange(0, lr.shape[1])
-    y_lr = np.arange(0, lr.shape[2])
-    z_lr = np.arange(0, lr.shape[3])
-
-    t_hr = np.linspace(0, lr.shape[0]-0.5,  hr_shape[0])
-    
-    tg, xg, yg ,zg = np.meshgrid(t_hr, x_lr, y_lr, z_lr, indexing='ij', sparse=True)
-
-    interp = RegularGridInterpolator((t_lr, x_lr, y_lr, z_lr), lr, method='cubic', bounds_error=False, fill_value=0)
-    interpolate = interp((tg, xg, yg ,zg))
-
-    return interpolate
-
 
 def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block):
     # Prepare input
@@ -74,15 +51,16 @@ if __name__ == '__main__':
         t_0 = time.time()
         # Change this for every new dataset
         # Setting up
-        input_filepath = f'{data_dir}/{patient}/h5/{patient}.h5' #'{}/{}/h5/{}.h5'.format(data_dir, patient, patient)
-        output_filename = f'/{patient}_{model_name}_8_4_arch_50Frames_TEST_deletethislater.h5'
+        input_filepath = f'{data_dir}/{patient}/h5/{patient}.h5' 
+        output_filename = f'/{patient}_{model_name}_8_4_arch_50Frames.h5'
         output_filepath = '{}/{}'.format(output_dir, output_filename)      
         
         model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
-    output_dir = f'Temporal4DFlowNet/results/in_vivo/THORAX'
-    output_filename = f'P05_{model_name}_temporal.h5'
-    
-    model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
+        output_dir = f'Temporal4DFlowNet/results/in_vivo/THORAX'
+        output_filename = f'P05_{model_name}_temporal.h5'
+        
+        model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
+
 
         # Params
         patch_size = 16 # take larger patchsize for only upsampling operation
@@ -231,13 +209,3 @@ if __name__ == '__main__':
 
         print("Done!")
 
-        print("------------Calculate cubic interpolation------------")
-        t0_cubic = time.time()
-        
-        with h5py.File(input_filepath, mode = 'r' ) as h5:
-                u_interpolated = tbd_temporal_cubic_interpolation( np.asarray(h5.get("u")).squeeze(), u_combined.shape)
-                v_interpolated = tbd_temporal_cubic_interpolation( np.asarray(h5.get("v")).squeeze(), v_combined.shape)
-                w_interpolated = tbd_temporal_cubic_interpolation( np.asarray(h5.get("w")).squeeze(), w_combined.shape)
-                
-
-        print('Elapsed time cubic interpolation: ', time.time()- t0_cubic)

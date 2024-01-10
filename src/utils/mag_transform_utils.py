@@ -1,7 +1,14 @@
 import numpy as np
 import scipy
 
+"""
+This file contains functions which help to fuse the magnitude images from invivo to insilico data
+"""
+
 def idx_invivo_to_insilico(mask_v_transformed, mask_LV_s):
+    """
+    Get index for invivo and insilico data for transformation, 3D and 4D data
+    """
 
 
     x_coord_v, y_coord_v, z_coord_v = np.where(mask_v_transformed>0)
@@ -17,7 +24,7 @@ def idx_invivo_to_insilico(mask_v_transformed, mask_LV_s):
     X_v, Y_v, Z_v = mask_v_transformed.shape
     X_s, Y_s, Z_s = mask_LV_s.shape
 
-    #indices for 3 dim data (spatial)
+    # indices for 3 dim data (spatial)
     idx_insilico = np.index_exp[int(np.maximum(0, x_LV_s - x_LV_v )):int(np.minimum(x_LV_s +X_v- x_LV_v-1, X_s -1)), 
                                 int(np.maximum(0, y_LV_s - y_LV_v )):int(np.minimum(y_LV_s +Y_v- y_LV_v-1, Y_s -1)), 
                                 int(np.maximum(0, z_LV_s - z_LV_v )):int(np.minimum(z_LV_s +Z_v- z_LV_v-1, Z_s -1))]
@@ -36,26 +43,11 @@ def idx_invivo_to_insilico(mask_v_transformed, mask_LV_s):
     return idx_insilico, idx_t_insilico, idx_invivo, idx_t_invivo
 
 
-def bbox2_3D(mask):
-    ''' code taken from https://stackoverflow.com/questions/31400769/bounding-box-of-numpy-array'''
-    # check if there is a segmentation in that image
-    if np.sum(mask) == 0:
-        print('No segmentation in given mask')
-        x, y, z = mask.shape
-        return 0, x, 0, y, 0, z
-
-    r = np.any(mask, axis=(1, 2))
-    c = np.any(mask, axis=(0, 2))
-    z = np.any(mask, axis=(0, 1))
-
-    rmin, rmax = np.where(r)[0][[0, -1]]
-    cmin, cmax = np.where(c)[0][[0, -1]]
-    zmin, zmax = np.where(z)[0][[0, -1]]
-
-    return rmin, rmax, cmin, cmax, zmin, zmax
-
 
 def combine_mag_images(mask_v, mask_s, mag_u_invivo ,idx_insilico, idx_invivo, indivial_transformation_scale_rotate):
+    """
+    Combine magnitude images from invivo and insilico data
+    """
     
     # Step 1: fill 
     surrsounding_tissue_size = 20
@@ -101,7 +93,30 @@ def combine_mag_images(mask_v, mask_s, mag_u_invivo ,idx_insilico, idx_invivo, i
 
 
 def transform_magnitude( mask_s,mag_u_invivo, idx_insilico, idx_invivo, indivial_transformation_scale_rotate):
+    """ 
+    Transform magnitude image from invivo to insilico data
+    """
     temp = indivial_transformation_scale_rotate(mag_u_invivo, scale = [2,2,2], interpolation='linear')
-    # mag_transformed = np.zeros_like(mask_s)
-    # mag_transformed[idx_insilico] = temp[idx_invivo]
     return temp[idx_invivo]
+
+
+def bbox2_3D(mask):
+    '''
+    Get bounding box of 3D mask
+    code taken from https://stackoverflow.com/questions/31400769/bounding-box-of-numpy-array
+    '''
+    # check if there is a segmentation in that image
+    if np.sum(mask) == 0:
+        print('No segmentation in given mask')
+        x, y, z = mask.shape
+        return 0, x, 0, y, 0, z
+
+    r = np.any(mask, axis=(1, 2))
+    c = np.any(mask, axis=(0, 2))
+    z = np.any(mask, axis=(0, 1))
+
+    rmin, rmax = np.where(r)[0][[0, -1]]
+    cmin, cmax = np.where(c)[0][[0, -1]]
+    zmin, zmax = np.where(z)[0][[0, -1]]
+
+    return rmin, rmax, cmin, cmax, zmin, zmax

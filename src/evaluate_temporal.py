@@ -12,15 +12,15 @@ plt.rcParams['figure.figsize'] = [10, 8]
 from utils.evaluate_utils import *
 from collections import defaultdict
 
-
+#TODO: make this nicer, by e.g. dount double directory creation
 
 def load_data(model_name, set_name, data_model, step,dynamic_mask_used, ending_file= ''):
     vel_colnames=['u', 'v', 'w']
     #directories
-    gt_dir = 'Temporal4DFlowNet/data/CARDIAC'
-    result_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
+    gt_dir = 'data/CARDIAC'
+    result_dir = f'results/Temporal4DFlowNet_{model_name}'
     eval_dir = f'{result_dir}/plots'
-    lr_dir = 'Temporal4DFlowNet/data/CARDIAC'
+    lr_dir = 'data/CARDIAC'
     offset = False
 
     inbetween_string = ''
@@ -123,34 +123,44 @@ def load_interpolation(data_model, step, lr, gt, use_dynamical_mask):
     lr_filename = f'M{data_model}_2mm_step{step}_static{inbetween_string}_noise.h5'
 
 
-    interpolation_file= f'Temporal4DFlowNet/results/interpolation/{lr_filename[:-3]}_interpolation'
-    if not os.path.isfile(interpolation_file):
+    interpolation_dir = 'results/interpolation'
+    # interpolation_filename = f'{lr_filename[:-3]}_interpolation'
+    #M4_2mm_step2_static_dynamic_interpolate_no_noise'
+    interpolation_filename = f'M{data_model}_2mm_step{step}_static{inbetween_string}_interpolate_no_noise'
+    interpolation_path = f'{interpolation_dir}/{interpolation_filename}.h5'
+    if not os.path.isfile(interpolation_path):
         print("Interpolation file does not exist - calculate interpolation and save files")
-        print("Save interpolation files to: ", interpolation_file)
+        print("Save interpolation files to: ", interpolation_path)
         
         #this can take a while
         for vel in vel_colnames:
             print("Interpolate low resolution images - ", vel)
             print(gt['mask'].shape)
-            interpolate_linear[vel] = temporal_linear_interpolation(lr[vel], gt[vel].shape)
+            interpolate_linear[vel] = temporal_linear_interpolation_np(lr[vel], gt[vel].shape)
             interpolate_linear[f'{vel}_fluid'] = np.multiply(interpolate_linear[vel], gt['mask'])
 
-            interpolate_cubic[vel] = temporal_cubic_interpolation(lr[vel], gt[vel].shape)
-            interpolate_cubic[f'{vel}_fluid'] = np.multiply(interpolate_cubic[vel], gt['mask'])
+            # interpolate_cubic[vel] = temporal_cubic_interpolation(lr[vel], gt[vel].shape)
+            # interpolate_cubic[f'{vel}_fluid'] = np.multiply(interpolate_cubic[vel], gt['mask'])
+            print("Cubic interpolation is not performed!! This has be implemented more memory efficient!")
+            interpolate_cubic[vel] = np.ones_like(interpolate_linear[vel])
+            interpolate_cubic[vel] = np.ones_like(interpolate_linear[vel])
 
             interpolate_NN[vel] = temporal_NN_interpolation(lr[vel], gt[vel].shape)
-            interpolate_NN[f'{vel}_fluid'] = np.multiply(interpolate_NN[vel], gt['mask'])
+            interpolate_cubic[f'{vel}_fluid'] = np.multiply(interpolate_cubic[vel], gt['mask'])
 
-            prediction_utils.save_to_h5(interpolation_file, f'linear_{vel}' , interpolate_linear[vel], compression='gzip')
-            prediction_utils.save_to_h5(interpolation_file, f'cubic_{vel}' , interpolate_cubic[vel], compression='gzip')
-            prediction_utils.save_to_h5(interpolation_file, f'NN_{vel}' , interpolate_NN[vel], compression='gzip')
+            
+            prediction_utils.save_to_h5(interpolation_path, f'linear_{vel}' , interpolate_linear[vel], compression='gzip')
+            # prediction_utils.save_to_h5(interpolation_file, f'cubic_{vel}' , interpolate_cubic[vel], compression='gzip')
+            prediction_utils.save_to_h5(interpolation_path, f'NN_{vel}' , interpolate_NN[vel], compression='gzip')
     else:
         print("Load existing interpolation file")
-        with h5py.File(interpolation_file, mode = 'r' ) as h_interpolate:
+        with h5py.File(interpolation_path, mode = 'r' ) as h_interpolate:
             for vel in vel_colnames:
                 interpolate_linear[vel] = np.array(h_interpolate[f'linear_{vel}'])
-                interpolate_cubic[vel] =  np.array(h_interpolate[f'cubic_{vel}'])
+                interpolate_cubic[vel] =  np.ones_like(interpolate_linear[vel])#np.array(h_interpolate[f'cubic_{vel}'])
                 interpolate_NN[vel] =     np.array(h_interpolate[f'NN_{vel}'])
+
+                print("Cubic interpolation is not performed!! This has be implemented more memory efficient!")
 
 
                 interpolate_linear[f'{vel}_fluid'] = np.multiply(interpolate_linear[vel], gt['mask'])
@@ -161,26 +171,27 @@ def load_interpolation(data_model, step, lr, gt, use_dynamical_mask):
 
 
 
+#TODO add extra ending for file
 
 if __name__ == "__main__":
 
 
     # Define directories and filenames
-    model_name = '20230620-0909'    
+    model_name = '20230405-1417'    
     set_name = 'Test'               
     data_model= '4'
     step = 2
     use_dynamical_mask = True
     add_ending = ''
 
-    #directories
-    gt_dir = 'Temporal4DFlowNet/data/CARDIAC'
-    result_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
+    # directories
+    gt_dir = 'data/CARDIAC'
+    result_dir = f'results/Temporal4DFlowNet_{model_name}'
     eval_dir = f'{result_dir}/plots'
-    lr_dir = 'Temporal4DFlowNet/data/CARDIAC'
-    model_dir = 'Temporal4DFlowNet/models'
+    lr_dir = 'data/CARDIAC'
+    model_dir = '/models'
 
-    #filenames
+    # filenames
     gt_filename = f'M{data_model}_2mm_step{step}_static_dynamic.h5'
     lr_filename = f'M{data_model}_2mm_step{step}_static_dynamic_noise.h5'
     result_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal_.h5'#newpadding.h5'
@@ -191,7 +202,7 @@ if __name__ == "__main__":
     if not os.path.isdir(eval_dir):
         os.makedirs(eval_dir)
     
-    #Params for evalation
+    # Params for evalation
     save_relative_error_file= False
 
     # Setting up
@@ -246,8 +257,6 @@ if __name__ == "__main__":
         max_v[vel] = np.quantile(gt[vel][np.where(temporal_mask !=0)].flatten(), 0.99)
 
 
-    
-    
     
     T_peak_flow = np.unravel_index(np.argmax(gt["u"]), shape =gt["u"].shape)[0]
     print("Peak flow frame", T_peak_flow)
@@ -320,6 +329,10 @@ if __name__ == "__main__":
         rmse_lin_interpolation_nonfluid = calculate_rmse(interpolate_linear[vel], gt[vel], reverse_mask)
         rmse_cubic_interpolation_nonfluid = calculate_rmse(interpolate_cubic[vel], gt[vel], reverse_mask)
 
+        plt.plot(rmse_pred, label = 'prediction')
+        plt.plot(rmse_lin_interpolation, label = 'linear interpolation')
+        
+
         for t in range(gt["u"].shape[0]):
             k_core, r2_core  = calculate_k_R2( pred[vel][t], gt[vel][t], core_mask[t])
             k_bounds, r2_bounds  = calculate_k_R2( pred[vel][t], gt[vel][t], bounds[t])
@@ -368,7 +381,9 @@ if __name__ == "__main__":
         print(f'Correlation frame 35 prediction- {np.mean(abs_diff[35], where= bool_mask[35]):.4f} std: {np.std(abs_diff[35], where= bool_mask[35]):.4f}')
         print(f'Correlation frame 35 linear interpolation- {np.mean(abs_diff_lin_interpolation[35], where= bool_mask[35]):.4f} std: {np.std(abs_diff_lin_interpolation[35], where= bool_mask[35]):.4f}')
         print(f'Correlation frame 35 cubic interpolation- {np.mean(abs_diff_cubic_interpolation[35], where= bool_mask[35]):.4f} std: {np.std(abs_diff_cubic_interpolation[35], where= bool_mask[35]):.4f}')
-
+    
+    plt.legend()
+    plt.show()
     print('--------------------------------------')
     # relative error
     REL_error_pred = rel_error
@@ -394,7 +409,6 @@ if __name__ == "__main__":
     print('Max mean speed deviation', np.max(mean_speed_gt - mean_speed_pred))
     print('Count number of frames, where difference between mean speed gt and pred is smaller than 0', np.sum(mean_speed_gt - mean_speed_pred < 0))
 
-    exit()
     print("Plot example time frames..")
     show_timeframes(gt["u"], lr["u"], pred["u"],gt["mask"],error_pointwise_cap ,[interpolate_linear["u"], interpolate_cubic["u"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["u"],max_v =max_v["u"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VX.png')
     show_timeframes(gt["v"], lr["v"], pred["v"],gt["mask"],error_pointwise_cap ,[interpolate_linear["v"], interpolate_cubic["v"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["v"],max_v =max_v["v"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VY.png')
@@ -418,7 +432,7 @@ if __name__ == "__main__":
         # prediction_utils.save_to_h5(f'{eval_dir}/{evaluation_filename}', "mask_u", mask_pred, compression='gzip')
     
     plt.clf()
-    plot_correlation(gt, pred, frame_idx = T_peak_flow, save_as=f'{result_dir}/plots/{set_name}_regression_')
+    plot_correlation(gt, pred, bounds, frame_idx = T_peak_flow, save_as=f'{result_dir}/plots/{set_name}_regression_')
     plt.clf()
 
     # plot_comparison_temporal(lr, gt, pred, frame_idx = 8, axis=1, slice_idx = 40, save_as=f'{eval_dir}/{set_name}_visualize_interporalion_comparison.png')

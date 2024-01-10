@@ -61,9 +61,9 @@ if __name__ == '__main__':
         # Network - default 8-4
         n_low_resblock = 8
         n_hi_resblock = 4
-        low_res_block  = 'dense_block' #'resnet_block'     # 'resnet_block' 'dense_block' csp_block
-        high_res_block = 'dense_block' #'resnet_block'       #'resnet_block'
-        upsampling_block = 'linear'#'nearest_neigbor'#'linear'#'Conv3DTranspose'#'nearest_neigbor'#'linear''nearest_neigbor' 'Conv3DTranspose'
+        low_res_block  = 'dense_block'   # 'resnet_block' 'dense_block' csp_block
+        high_res_block = 'dense_block'    #'resnet_block'
+        upsampling_block = 'linear' #'nearest_neigbor'#'linear'#'Conv3DTranspose'#'nearest_neigbor'#'linear''nearest_neigbor' 'Conv3DTranspose'
         post_processing_block = None#'unet_block'#None#'unet_block' #None#
 
         # Setting up
@@ -87,7 +87,7 @@ if __name__ == '__main__':
         with h5py.File(input_filepath, mode = 'r' ) as h5:
             lr_shape = h5.get("u").shape
 
-        #TODO make this nicer
+
         u_combined = np.zeros(lr_shape)
         v_combined = np.zeros(lr_shape)
         w_combined = np.zeros(lr_shape)
@@ -98,13 +98,12 @@ if __name__ == '__main__':
             
             # Check the number of rows in the file
             nr_rows = dataset.get_dataset_len(input_filepath, a)
-            print(f"Number of rows in dataset: {nr_rows}")
             
+            print(f"Number of rows in dataset: {nr_rows}")
             print(f"Loading 4DFlowNet: {res_increase}x upsample")
+
             # Load the network
             network = prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block, post_processing_block)
-            #low_res_block, high_res_block
-            #res_increase,low_res_block=low_res_block, high_res_block=high_res_block,  upsampling_block=upsampling_block 
             network.load_weights(model_path)
 
             volume = np.zeros((3, u_combined.shape[0],  u_combined.shape[1], u_combined.shape[2],  u_combined.shape[3] ))

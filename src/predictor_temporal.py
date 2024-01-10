@@ -32,9 +32,9 @@ def prepare_temporal_network(patch_size, res_increase, low_resblock, hi_resblock
 
 if __name__ == '__main__':
     # Define directories and filenames
-    model_name = '20230301-1704' 
+    model_name = '20230405-1417' 
     set_name = 'Validation'
-    data_model= '1'
+    data_model= '3'
     step = 2
 
     # set filenamaes and directories
@@ -55,7 +55,7 @@ if __name__ == '__main__':
     # Network
     low_resblock= 8
     hi_resblock = 4
-    block = 'csp_block' # # 'resnet_block' 'dense_block' csp_block
+    block = 'resnet_block' # # 'resnet_block' 'dense_block' csp_block
 
     # Setting up
     input_filepath = '{}/{}'.format(data_dir, filename)

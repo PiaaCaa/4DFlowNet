@@ -5,7 +5,9 @@ import h5py
 import os
 import scipy.ndimage as ndimage
 import vtk.util.numpy_support as ns
-''' This file is taken form Leon and Adam's work (git)
+
+''' 
+This file is copied from Leon Ericsson and Adam's Hjalmarsson work https://github.com/LeonEricsson/Ensemble4DFlowNet
 '''
 
 def load_mhd(filename):
@@ -80,7 +82,6 @@ def vectors_to_vtk(vector_arrays, spacing, filename):
     v = v.ravel(order='F')
     w = w.ravel(order='F')
     array = np.stack((u,v,w), axis=1)
-    # print(array.shape)
 
     # array is a shape of [n, 3]
     vtkArray = ns.numpy_to_vtk(num_array=array, deep=True,
@@ -210,18 +211,15 @@ def get_mask(input_filepath, idx):
     return mask
 
 def create_difference_field(hr_file, prediction_file,hr_colnames, pred_colnames,  idx):
-    with h5py.File(hr_file, 'r') as hf:
-        u_hr = np.asarray(hf.get(hr_colnames[0])[idx])
-        v_hr = np.asarray(hf.get(hr_colnames[1])[idx])
-        w_hr = np.asarray(hf.get(hr_colnames[2])[idx])
-    with h5py.File(prediction_file, 'r') as hf:
-        u_pred = np.asarray(hf.get(pred_colnames[0])[idx])
-        v_pred = np.asarray(hf.get(pred_colnames[1])[idx])
-        w_pred = np.asarray(hf.get(pred_colnames[2])[idx])
+    """
+        Create difference field between HR and prediction
+    """
+    with h5py.File(hr_file, 'r') as hr:
+        with h5py.File(prediction_file, 'r') as pred:
+            u_diff = np.asarray(hr.get(hr_colnames[0])[idx]) - np.asarray(pred.get(pred_colnames[0])[idx])
+            v_diff = np.asarray(hr.get(hr_colnames[1])[idx]) - np.asarray(pred.get(pred_colnames[1])[idx])
+            w_diff = np.asarray(hr.get(hr_colnames[2])[idx]) - np.asarray(pred.get(pred_colnames[2])[idx])
 
-    u_diff = u_hr - u_pred
-    v_diff = v_hr - v_pred
-    w_diff = w_hr - w_pred
     return u_diff, v_diff, w_diff
 
 if __name__ == "__main__":

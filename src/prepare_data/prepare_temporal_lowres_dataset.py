@@ -181,7 +181,7 @@ if __name__ == '__main__':
                 venc_w = vencs[2]
         
         
-        # attention: is just adding noise NOT downsampling image
+        # note! this is just adding noise NOT downsampling image
         hr_u[idx, :, :, :], hr_mag_u[idx, :, :, :] =  fft.downsample_phase_img(hr_u_frame, mag_image[idx], venc_u, crop_ratio, targetSNRdb, temporal_downsampling=True)   
         hr_v[idx, :, :, :], hr_mag_v[idx, :, :, :] =  fft.downsample_phase_img(hr_v_frame, mag_image[idx], venc_v, crop_ratio, targetSNRdb, temporal_downsampling=True)   
         hr_w[idx, :, :, :], hr_mag_w[idx, :, :, :] =  fft.downsample_phase_img(hr_w_frame, mag_image[idx], venc_w, crop_ratio, targetSNRdb, temporal_downsampling=True)   
