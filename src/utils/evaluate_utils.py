@@ -132,9 +132,9 @@ def sigmoid(x):
   return 1 / (1 + np.exp(-x))
 
 
-def create_temporal_mask(mask, n_frames):
+def create_dynamic_mask(mask, n_frames):
     '''
-    from static mask create temporal mask of shape (n_frames, h, w, d)
+    from static mask create dynamic mask of shape (n_frames, h, w, d)
     '''
     assert(len(mask.shape) == 3), " shape: " + str(mask.shape) # shape of mask is assumed to be 3 dimensional
     print('Create static temporal mask.')
@@ -194,7 +194,7 @@ def calculate_relative_error_normalized(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi
 
     if len(binary_mask.squeeze().shape) ==3:
         print('Create temporal mask to calculate relative error')
-        binary_mask = create_temporal_mask(binary_mask, u_hi.shape[0])
+        binary_mask = create_dynamic_mask(binary_mask, u_hi.shape[0])
 
     u_diff = np.square(u_pred - u_hi)
     v_diff = np.square(v_pred - v_hi)
@@ -244,7 +244,7 @@ def get_fluid_region_points(data, binary_mask):
     '''
     assert len(binary_mask.shape) == 1 #remove this function from here
     if len(binary_mask.squeeze().shape) ==3:
-            binary_mask = create_temporal_mask(binary_mask, data.shape[0])
+            binary_mask = create_dynamic_mask(binary_mask, data.shape[0])
         
     points_in_mask = np.where(binary_mask !=0)
     return data[:, points_in_mask[1], points_in_mask[2], points_in_mask[3]].reshape(data.shape[0], -1)
@@ -271,7 +271,7 @@ def calculate_rmse(pred,gt, binary_mask, return_std= False):
     
     if len(binary_mask.squeeze().shape) ==3:
         print('Create temporal mask for RMSE caculation', binary_mask.shape, pred.shape, gt.shape )
-        binary_mask = create_temporal_mask(binary_mask, pred.shape[0])
+        binary_mask = create_dynamic_mask(binary_mask, pred.shape[0])
         print('Reshaped to', binary_mask.shape)
     
     binary_mask[np.where(binary_mask > 0.5)] = 1
@@ -299,7 +299,7 @@ def calculate_pointwise_error(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_m
     # if epsilon is set to 0, we will get nan and inf
     epsilon = 1e-5
     if len(binary_mask.squeeze().shape) ==3:
-        binary_mask = create_temporal_mask(binary_mask, u_hi.shape[0])
+        binary_mask = create_dynamic_mask(binary_mask, u_hi.shape[0])
 
     u_diff = np.square(u_pred - u_hi)
     v_diff = np.square(v_pred - v_hi)
@@ -332,7 +332,7 @@ def calculate_mean_speed(u_hi, v_hi, w_hi, binary_mask):
     Important: Set values of u, v, w outside of fluid region to zero 
     '''
     if len(binary_mask.squeeze().shape) ==3:
-        binary_mask = create_temporal_mask(binary_mask, u_hi.shape[0])
+        binary_mask = create_dynamic_mask(binary_mask, u_hi.shape[0])
 
 
     u_hi = np.multiply(u_hi, binary_mask)
@@ -379,7 +379,7 @@ def calculate_k_R2( pred, gt, binary_mask):
     return slope,  r_value**2
 
 
-def plot_correlation(gt, prediction, bounds, frame_idx, save_as = None):
+def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KTH_colors['pink100'], save_as = None):
     '''
     Plot correlation plot between ground truth and prediction at a given frame
     '''
@@ -391,7 +391,7 @@ def plot_correlation(gt, prediction, bounds, frame_idx, save_as = None):
 
     # if mask static make dynamic mask 
     if len(mask.shape) == 3:
-        mask = create_temporal_mask(mask, prediction['u'].shape[0])
+        mask = create_dynamic_mask(mask, prediction['u'].shape[0])
     
     # threshold mask
     mask[np.where(mask > mask_threshold)] = 1 
@@ -440,12 +440,12 @@ def plot_correlation(gt, prediction, bounds, frame_idx, save_as = None):
 
         # plot linear correlation line and parms
         plt.gca().text(0.05, 0.95, text,transform=plt.gca().transAxes, fontsize=10, verticalalignment='top')
-        plt.gca().text(0.05, 0.85, text_bounds,transform=plt.gca().transAxes, fontsize=10, verticalalignment='top', color=KTH_colors['pink100'])
+        plt.gca().text(0.05, 0.85, text_bounds,transform=plt.gca().transAxes, fontsize=10, verticalalignment='top', color=color_b)
         plt.plot(x_range, x_range, color= 'grey', label = 'diagonal line')
-        plt.plot(x_range, corr_line_bounds, '--', color = KTH_colors['pink100'])
+        plt.plot(x_range, corr_line_bounds, '--', color = color_b)
         plt.plot(x_range, corr_line, 'k--')
         plt.scatter(hr_vals, sr_vals, s=0.3, c=["black"], label = 'core voxels')
-        plt.scatter(hr_vals_bounds, sr_vals_bounds, s=0.3, c=[KTH_colors['pink100']], label = 'boundary voxels')
+        plt.scatter(hr_vals_bounds, sr_vals_bounds, s=0.3, c=[color_b], label = 'boundary voxels')
         
         plt.title(direction)
         plt.xlabel("V HR (m/s)")
@@ -771,7 +771,7 @@ def show_quiver( u, v, w, mask,frame,save_as = "3DFlow.png"):
     
     set_to_zero = 0.9
     if len(binary_mask.shape) ==3:
-        mask = create_temporal_mask(binary_mask, pred.shape[0])
+        mask = create_dynamic_mask(binary_mask, pred.shape[0])
     
 
     x_idx, y_idx, z_idx = random_indices3D(mask[frame], int(np.count_nonzero(mask[frame])*set_to_zero))
@@ -794,6 +794,69 @@ def show_quiver( u, v, w, mask,frame,save_as = "3DFlow.png"):
     ax.quiver(x, y, z, u, v, w, length=0.3, normalize=True, color=plt.cm.viridis([200, 50, 100, 200, 200, 50, 50, 100, 100]))
     fig.savefig(save_as)
     plt.clf()
+
+def make_3D_quiver_plot(data,mask,  frame, set_to_zero=0.9):
+        
+        u_quiver = data['u'][frame].copy() 
+        v_quiver = data['v'][frame].copy() 
+        w_quiver = data['w'][frame].copy() 
+
+        x_len, y_len, z_len = data['u'].shape[1::]
+
+        # ev = np.array([1, 0, 0])
+        # angles = np.arccos(np.dot(ev, [u, v, w]) / (np.linalg.norm(ev) * np.linalg.norm(v2)))
+        # angles = np.multiply
+
+        # Make the grid
+        x, y, z = np.meshgrid(np.arange(y_len),np.arange(x_len),np.arange(z_len))
+        
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='3d')
+
+        # Erase (i.e. set zo zero) multiple points to increase visibility
+        x_idx, y_idx, z_idx = random_indices3D(mask[frame], int(np.count_nonzero(mask[frame])*set_to_zero))
+        u_quiver[x_idx, y_idx, z_idx] = 0
+        v_quiver[x_idx, y_idx, z_idx] = 0
+        w_quiver[x_idx, y_idx, z_idx] = 0
+
+        # crop image from middle
+        cropx = cropy = cropz = 25
+        startx = x_len//2-(cropx//2)
+        starty = y_len//2-(cropy//2)    
+        startz = z_len//2-(cropz//2)
+        u_quiver = u_quiver[startx:startx+cropx, starty:starty+cropy,startz:startz+cropz] 
+        v_quiver = v_quiver[startx:startx+cropx, starty:starty+cropy,startz:startz+cropz] 
+        w_quiver = w_quiver[startx:startx+cropx, starty:starty+cropy,startz:startz+cropz] 
+
+        x =x[startx:startx+cropx, starty:starty+cropy,startz:startz+cropz] 
+        y =y[startx:startx+cropx, starty:starty+cropy,startz:startz+cropz] 
+        z =z[startx:startx+cropx, starty:starty+cropy,startz:startz+cropz]
+
+        u_new = u_quiver[np.where(u_quiver != 0)]
+        v_new = v_quiver[np.where(u_quiver != 0)]
+        w_new = w_quiver[np.where(u_quiver != 0)]
+
+        x_new = x[np.where(u_quiver!=0)] 
+        y_new = y[np.where(u_quiver!=0)] 
+        z_new = z[np.where(u_quiver!=0)]
+
+
+        # Color by magnitude
+        c = np.sqrt(u_new**2+ v_new**2+ w_new**2) #np.arctan2(w_new, u_new)
+        # Flatten and normalize
+
+        c = (c.ravel() - c.min()) / c.ptp()
+        # Repeat for each body line and two head lines
+        c = np.concatenate((c, np.repeat(c, 2)))
+        # Colormap
+        c = plt.cm.jet(c)
+
+
+        ax.quiver(x_new, y_new, z_new, u_new, v_new, w_new, length=10, normalize=False,  pivot='middle', color = c)
+        plt.xlabel('x')
+        plt.ylabel('y')
+        # plt.zlabel('z')
+        # plt.show()
 
 
 def show_timeframes(gt,lr,  pred,mask, rel_error, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v,save_as = "Frame_comparison.png"):
@@ -1187,21 +1250,104 @@ def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparis
     plt.savefig(save_as,bbox_inches='tight' )
 
     
-def plot_k_r2_vals(frames, k,k_bounds, r2,  r2_bounds, peak_flow_frame, name_evaluation, eval_dir):
-    '''Plots the k and the r^2 values for each velocity component over time in one and separate plots '''
+# def plot_k_r2_vals(frames, k,k_bounds, r2,  r2_bounds, peak_flow_frame, name_evaluation, eval_dir):
+#     '''Plots the k and the r^2 values for each velocity component over time in one and separate plots '''
+
+#     vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
+#     vel_colnames = ['u', 'v', 'w']
+#     min_val = np.minimum(0.05, np.minimum(np.min(k_bounds), np.min(r2_bounds)))
+#     max_val = np.maximum(np.max(k), np.max(r2))
+#     plt.figure(figsize=(15, 5))
+    
+#     # make subplots
+#     # make plot for regression slope 
+#     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
+#         plt.subplot(2, 3, i+1)
+#         plt.plot(range(frames), k[i*frames:i*frames+frames] , label = 'k core', color = 'black')
+#         plt.plot(range(frames), k_bounds[i*frames:i*frames+frames] ,'--',  label = 'k boundary', color = KTH_colors['pink100'])
+#         plt.plot(np.ones(frames), 'k:')
+#         plt.ylim([min_val, np.maximum(max_val, 1.05)])
+#         plt.title(title)
+#         plt.xlabel('frames')
+#         plt.ylabel('k')
+#         plt.scatter(np.ones(2)*peak_flow_frame, [k[i*frames+peak_flow_frame],k_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['grey80'])
+#         plt.legend()
+#         print(f'Average k vals core {np.average(k[i*frames:i*frames+frames])}')
+#         print(f'Average k vals boundary {np.average(k_bounds[i*frames:i*frames+frames])}')
+#         print(f'Min k vals core {np.min(k[i*frames:i*frames+frames])}')
+#         print(f'Min k vals boundary {np.min(k_bounds[i*frames:i*frames+frames])}')
+#         print(f'Max k vals core {np.max(k[i*frames:i*frames+frames])}')
+#         print(f'Max k vals boundary {np.max(k_bounds[i*frames:i*frames+frames])}')
+
+#     # make plot for r^2
+#     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
+#         plt.subplot(2, 3, i+4)
+#         plt.plot(range(frames), r2[i*frames:i*frames+frames] ,label = r'$R^2$ core', color = 'black')
+#         plt.plot(range(frames), r2_bounds[i*frames:i*frames+frames] ,'--', label = r'$R^2$ boundary', color = KTH_colors['pink100'])
+#         plt.plot(np.ones(frames), 'k:')
+#         plt.ylim([min_val, np.maximum(max_val, 1.05)])
+#         plt.title(title)
+#         plt.xlabel('frame')
+#         plt.ylabel(r'$R^2$')
+#         plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['blue80'])
+#         plt.legend()
+
+#     plt.tight_layout()
+#     plt.savefig(f'{eval_dir}/{name_evaluation}_k_vals.svg')
+
+#     # save each plot separately
+#     plt.figure(figsize=(5, 5))
+#     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
+#         plt.clf()
+#         plt.plot(range(frames), k[i*frames:i*frames+frames] , label = 'k core', color = 'black')
+#         plt.plot(range(frames), k_bounds[i*frames:i*frames+frames] ,'--',  label = 'k boundary', color = KTH_colors['pink100'])
+#         plt.plot(np.ones(frames), 'k:')
+#         plt.ylim([min_val, np.maximum(max_val, 1.05)])
+#         plt.title(title)
+#         plt.xlabel('frame')
+#         plt.ylabel('k')
+#         plt.scatter(np.ones(2)*peak_flow_frame, [k[i*frames+peak_flow_frame],k_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['blue80'])
+#         plt.legend()
+#         plt.savefig(f'{eval_dir}/{name_evaluation}_k_vals_{vel}_.svg', bbox_inches='tight')
+#     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
+#         plt.clf()
+#         plt.plot(range(frames), r2[i*frames:i*frames+frames] ,label = r'$R^2$ core', color = 'black')
+#         plt.plot(range(frames), r2_bounds[i*frames:i*frames+frames] ,'--', label = r'$R^2$ boundary', color = KTH_colors['pink100'])
+#         plt.plot(np.ones(frames), 'k:')
+#         plt.ylim([min_val, np.maximum(max_val, 1.05)])
+#         plt.title(title)
+#         plt.xlabel('frame')
+#         plt.ylabel(r'$R^2$')
+#         plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['blue80'])
+#         plt.legend()
+#         plt.savefig(f'{eval_dir}/{name_evaluation}_R2_vals_{vel}__.svg', bbox_inches='tight')
+
+
+def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KTH_colors['pink100'] , save_as= ''):
 
     vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
-    vel_colnames = ['u', 'v', 'w']
+
+
+    print('Peak flow frame:', peak_flow_frame)
+    frames = gt['mean_speed'].shape[0]
+    k, r2, k_bounds,r2_bounds  = np.zeros(3*frames), np.zeros(3*frames), np.zeros(3*frames), np.zeros(3*frames)
+    bounds_mask = bounds.copy()
+    core_mask = gt['mask'] - bounds_mask
+
+    plt.figure(figsize=(8, 8))
+    #calculate k values in core and boundary region
+    for i, vel in enumerate(vel_colnames):
+        for t in range(frames):
+            k[t+i*frames], r2[t+i*frames]  = calculate_k_R2( pred[vel][t], gt[vel][t], core_mask[t])
+            k_bounds[t+i*frames], r2_bounds[t+i*frames]  = calculate_k_R2( pred[vel][t], gt[vel][t], bounds[t])
+
     min_val = np.minimum(0.05, np.minimum(np.min(k_bounds), np.min(r2_bounds)))
     max_val = np.maximum(np.max(k), np.max(r2))
-    plt.figure(figsize=(15, 5))
-    
-    # make subplots
-    # make plot for regression slope 
+    #make subplots
     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
         plt.subplot(2, 3, i+1)
         plt.plot(range(frames), k[i*frames:i*frames+frames] , label = 'k core', color = 'black')
-        plt.plot(range(frames), k_bounds[i*frames:i*frames+frames] ,'--',  label = 'k boundary', color = KTH_colors['pink100'])
+        plt.plot(range(frames), k_bounds[i*frames:i*frames+frames] ,'--',  label = 'k boundary', color = color_b)
         plt.plot(np.ones(frames), 'k:')
         plt.ylim([min_val, np.maximum(max_val, 1.05)])
         plt.title(title)
@@ -1215,49 +1361,50 @@ def plot_k_r2_vals(frames, k,k_bounds, r2,  r2_bounds, peak_flow_frame, name_eva
         print(f'Min k vals boundary {np.min(k_bounds[i*frames:i*frames+frames])}')
         print(f'Max k vals core {np.max(k[i*frames:i*frames+frames])}')
         print(f'Max k vals boundary {np.max(k_bounds[i*frames:i*frames+frames])}')
-
-    # make plot for r^2
     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
         plt.subplot(2, 3, i+4)
+        print(f'Average R2 vals core {np.average(r2[i*frames:i*frames+frames])}')
+        print(f'Average R2 vals boundary {np.average(r2_bounds[i*frames:i*frames+frames])}')
         plt.plot(range(frames), r2[i*frames:i*frames+frames] ,label = r'$R^2$ core', color = 'black')
-        plt.plot(range(frames), r2_bounds[i*frames:i*frames+frames] ,'--', label = r'$R^2$ boundary', color = KTH_colors['pink100'])
+        plt.plot(range(frames), r2_bounds[i*frames:i*frames+frames] ,'--', label = r'$R^2$ boundary', color = color_b)
         plt.plot(np.ones(frames), 'k:')
         plt.ylim([min_val, np.maximum(max_val, 1.05)])
         plt.title(title)
-        plt.xlabel('frame')
+        plt.xlabel('frames')
         plt.ylabel(r'$R^2$')
-        plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['blue80'])
+        plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['grey80'])
         plt.legend()
 
     plt.tight_layout()
-    plt.savefig(f'{eval_dir}/{name_evaluation}_k_vals.svg')
+    plt.savefig(f'{eval_dir}/k_vals_{set_name}_{save_as}.svg')
 
-    # save each plot separately
+    #save each plot separately
     plt.figure(figsize=(5, 5))
     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
         plt.clf()
         plt.plot(range(frames), k[i*frames:i*frames+frames] , label = 'k core', color = 'black')
-        plt.plot(range(frames), k_bounds[i*frames:i*frames+frames] ,'--',  label = 'k boundary', color = KTH_colors['pink100'])
+        plt.plot(range(frames), k_bounds[i*frames:i*frames+frames] ,'--',  label = 'k boundary', color = color_b)
         plt.plot(np.ones(frames), 'k:')
         plt.ylim([min_val, np.maximum(max_val, 1.05)])
         plt.title(title)
-        plt.xlabel('frame')
+        plt.xlabel('frames')
         plt.ylabel('k')
-        plt.scatter(np.ones(2)*peak_flow_frame, [k[i*frames+peak_flow_frame],k_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['blue80'])
+        plt.scatter(np.ones(2)*peak_flow_frame, [k[i*frames+peak_flow_frame],k_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['grey80'])
         plt.legend()
-        plt.savefig(f'{eval_dir}/{name_evaluation}_k_vals_{vel}_.svg', bbox_inches='tight')
+        plt.savefig(f'{eval_dir}/k_vals_{vel}_{set_name}_{save_as}.svg', bbox_inches='tight')
     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
         plt.clf()
         plt.plot(range(frames), r2[i*frames:i*frames+frames] ,label = r'$R^2$ core', color = 'black')
-        plt.plot(range(frames), r2_bounds[i*frames:i*frames+frames] ,'--', label = r'$R^2$ boundary', color = KTH_colors['pink100'])
+        plt.plot(range(frames), r2_bounds[i*frames:i*frames+frames] ,'--', label = r'$R^2$ boundary', color = color_b)
         plt.plot(np.ones(frames), 'k:')
         plt.ylim([min_val, np.maximum(max_val, 1.05)])
         plt.title(title)
-        plt.xlabel('frame')
+        plt.xlabel('frames')
         plt.ylabel(r'$R^2$')
-        plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['blue80'])
+        plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['grey80'])
         plt.legend()
-        plt.savefig(f'{eval_dir}/{name_evaluation}_R2_vals_{vel}__.svg', bbox_inches='tight')
+        plt.savefig(f'{eval_dir}/R2_vals_{vel}_M{model_name}_{set_name}_{save_as}_.svg', bbox_inches='tight')
+
 
 
 # ------------------- INTERPOLATION FUNCTIONS---------------------------
