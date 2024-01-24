@@ -36,14 +36,11 @@ def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resb
 
 if __name__ == '__main__':
     # Define directories and filenames
-    model_name = '20230602-1701' #'20230405-1417'#'20230602-1701'#'20230405-1417' ##'20230508-1433' #'20230405-1417' #
+    model_name = '20240118-1300' #'20230405-1417'#'20230602-1701'#'20230405-1417' ##'20230508-1433' 
 
-    # set filenamaes and directories
+    # set filenames and directories
     data_dir = 'Temporal4DFlowNet/data/PIA/THORAX/'
     patients = ['P01'] #TODO double check this if the right mask is used
-    data_dir = 'Temporal4DFlowNet/data/PIA/THORAX/P05/h5/'
-    filename = 'P05.h5' #TODO double check this if the right mask is used
-
     output_dir = f'Temporal4DFlowNet/results/in_vivo/THORAX'
 
     for patient in patients:
@@ -52,22 +49,18 @@ if __name__ == '__main__':
         # Change this for every new dataset
         # Setting up
         input_filepath = f'{data_dir}/{patient}/h5/{patient}.h5' 
-        output_filename = f'/{patient}_{model_name}_8_4_arch_50Frames.h5'
+        output_filename = f'/{patient}_{model_name}_Toeger_25Frames.h5'
         output_filepath = '{}/{}'.format(output_dir, output_filename)      
-        
-        model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
-        output_dir = f'Temporal4DFlowNet/results/in_vivo/THORAX'
-        output_filename = f'P05_{model_name}_temporal.h5'
         
         model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
 
         # Params
-        patch_size = 16 # take larger patchsize for only upsampling operation
+        patch_size = 12 # take larger patchsize for only upsampling operation
         res_increase = 2
         batch_size = 16
         round_small_values = False
-        downsample_input_first = False # This is important for invivo data: either only upsample (visual evaluation) or downsample and compare to original
+        downsample_input_first = True # This is important for invivo data: either only upsample (visual evaluation) or downsample and compare to original
 
         # Network - default 8-4
         n_low_resblock = 8
@@ -98,7 +91,6 @@ if __name__ == '__main__':
             print("Shape of in-vivo data", lr_shape)
             N_frames, X, Y, Z = lr_shape
 
-        #TODO make this nicer
         if downsample_input_first:
             u_combined = np.zeros(lr_shape)
             v_combined = np.zeros(lr_shape)
@@ -193,9 +185,6 @@ if __name__ == '__main__':
                     new_spacing = np.expand_dims(new_spacing, axis=0) 
                     #prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', dataset.dx_colname, new_spacing, compression='gzip')
 
-            # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'u_axis{a}', volume[0, :, :, :], compression='gzip')
-            # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'v_axis{a}', volume[1, :, :, :], compression='gzip')
-            # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'w_axis{a}', volume[2, :, :, :], compression='gzip')
             u_combined += volume[0, :, :, :] 
             v_combined += volume[1, :, :, :] 
             w_combined += volume[2, :, :, :] 
