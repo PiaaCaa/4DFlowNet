@@ -164,6 +164,12 @@ class  TrainerController_temporal:
         """
         return (u_pred - u) ** 2 +  (v_pred - v) ** 2 + (w_pred - w) ** 2
 
+    def calculate_mae(self, u, v, w, u_pred, v_pred, w_pred):
+        """
+            Calculate L1 Speed magnitude error
+        """
+        return tf.abs(u_pred - u) +  tf.abs(v_pred - v) + tf.abs(w_pred - w)
+
     def init_model_dir(self):
         """
             Create model directory to save the weights with a [network_name]_[datetime] format
@@ -322,12 +328,6 @@ class  TrainerController_temporal:
                 self.test_step(data_pairs)
                 message = f"Epoch {epoch+1} Validation batch {i+1}/{total_batch_val} | loss: {self.loss_metrics['val_loss'].result():.5f} ({self.loss_metrics['val_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs"
                 print(f"\r{message}", end='')
-
-            # # --- DELETE LATER!! ---
-            # for i, (data_pairs) in enumerate(trainset):
-            #     self.test_step(data_pairs)
-            #     message = f"Epoch {epoch+1} Validation/Test batch {i+1}/{total_batch_val} | loss: {self.loss_metrics['val_loss'].result():.5f} ({self.loss_metrics['val_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs"
-            #     print(f"\r{message}", end='')
 
             # --- Epoch logging ---
             message = f"\rEpoch {epoch+1} Train loss: {self.loss_metrics['train_loss'].result():.5f} ({self.loss_metrics['train_accuracy'].result():.1f} %), Val loss: {self.loss_metrics['val_loss'].result():.5f} ({self.loss_metrics['val_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs"
