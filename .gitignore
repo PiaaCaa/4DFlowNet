@@ -20,3 +20,4 @@ outputfiles/*
 data/PIA/*
 my_job.sbatch
 training.sbatch
+my_job.sbatch
