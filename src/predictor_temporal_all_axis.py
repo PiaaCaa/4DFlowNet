@@ -33,10 +33,14 @@ def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resb
 
 if __name__ == '__main__':
     # Define directories and filenames
+    model_name = '20240118-1300' #20230619-1631#'20230405-1417'#'20230407-2246'#'20230404-1418' #this model: training 2, 3, validation: 1, test:4
+    set_names = [ 'Test', 'Validation']#, 'Training', 'Training'] 'Training', 'Training',
     model_name = '20240115-1535' #20230619-1631#'20230405-1417'#'20230407-2246'#'20230404-1418' #this model: training 2, 3, validation: 1, test:4
     set_names = [ 'Test', 'Validation']#, 'Training', 'Training'] 
     data_models= ['4', '1']#['2', '3', '4', '1']#, '2', '3']
     steps = [2, 2]#, 2, 2]
+    file_names = ['M4_2mm_step2_invivoP02_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5', 'M1_2mm_step2_invivoP01_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5']
+    #file_names = ['M4_2mm_step2_static_dynamic_noise.h5', 'M1_2mm_step2_static_dynamic_noise.h5'] #'M2_2mm_step2_static_dynamic_noise.h5', 'M3_2mm_step2_static_dynamic_noise.h5', 
     file_names = ['M4_2mm_step2_temporalsmoothing_toeger_periodic_LRfct_noise.h5', 'M1_2mm_step2_temporalsmoothing_toeger_periodic_LRfct_noise.h5'] #'M2_2mm_step2_static_dynamic_noise.h5', 'M3_2mm_step2_static_dynamic_noise.h5', 
 
 
@@ -175,6 +179,9 @@ if __name__ == '__main__':
 
         print("save combined predictions")
         # save and divide by 3 to get average
+        print("Delete extit fct after testing")
+        exit()
+
         prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "u_combined", u_combined/len(axis), compression='gzip')
         prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "v_combined", v_combined/len(axis), compression='gzip')
         prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "w_combined", w_combined/len(axis), compression='gzip')

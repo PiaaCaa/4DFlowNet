@@ -32,17 +32,17 @@ if __name__ == "__main__":
     temporal_preparation = True
     patch_size = 16 # Patch size, this will be checked to make sure the generated patches do not go out of bounds
     n_patch = 20    # number of patch per time frame
-    n_empty_patch_allowed = 0 # max number of empty patch per frame
-    all_rotation = False # When true, include 90,180, and 270 rotation for each patch. When False, only include 1 random rotation.
+    n_empty_patch_allowed = 1 # max number of empty patch per frame
+    all_rotation = False # When true, include 90,180, and 270 rotation for each patch. When False, only include 1 random rotation. (not possible for temporal sampling)
     reverse = True
-    mask_threshold = 0.4 # Threshold for non-binary mask 
+    mask_threshold = 0.5 # Threshold for non-binary mask 
     minimum_coverage = 0.2 # Minimum fluid region within a patch. Any patch with less than this coverage will not be taken. Range 0-1
     
     
-    base_path = 'Temporal4DFlowNet/data/CARDIAC'
-    lr_file = 'M3_2mm_step2_invivoP03_magnitude_adapted_noise.h5' #LowRes velocity data #M1_2mm_step2_invivoP01_magnitude_adapted_noisy.h5
-    hr_file = 'M3_2mm_step2_invivoP03_magnitude_adapted_test.h5'       #HiRes velocity data
-    output_filename = f'{base_path}/Temporal{patch_size}MODEL1_2mm_step2_newmagP03_adapted_test2.csv'
+    base_path = 'data/CARDIAC'
+    hr_file = 'M4_2mm_step2_invivoP02_magn_temporalsmoothing_toeger_periodic_HRfct.h5'       #HiRes velocity data
+    lr_file = 'M4_2mm_step2_invivoP02_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5' #LowRes velocity data 
+    output_filename = f'{base_path}/Temporal{patch_size}MODEL4_2mm_step2_invivoP02_magn_tempsmooth_toeger.csv'
 
     #TODO check the compatibility in the test iteratoor
     

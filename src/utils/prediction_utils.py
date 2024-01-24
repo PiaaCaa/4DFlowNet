@@ -15,6 +15,7 @@ def save_predictions(output_dir, output_filename, colnames, predictions, compres
 
 
 def save_to_h5(output_filepath, col_name, dataset, compression=None):
+    
     # convert float64 to float32 to save space
     if dataset.dtype == 'float64':
         dataset = np.array(dataset, dtype='float32')

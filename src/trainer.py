@@ -23,7 +23,7 @@ def write_settings_into_csv_file(filename,name, training_file, validation_file, 
                              "upsampling_type": upsampling_type, 'low_block_type': low_block_type, 'high_block_type':high_block_type, 'post_block_type':post_block_type, 'sampling':sampling, "notes":notes })
 
 if __name__ == "__main__":
-    data_dir = 'Temporal4DFlowNet/data/CARDIAC'
+    data_dir = 'data/CARDIAC'
     
     # ---- Patch index files ----
     training_file = '{}/Temporal16MODEL23_2mm_step2_invivoP04P03_magn_tempsmooth_toeger.csv'.format(data_dir) 
@@ -32,9 +32,9 @@ if __name__ == "__main__":
     QUICKSAVE = True
     benchmark_file = '{}/Temporal16MODEL4_2mm_step2_invivoP02_magn_tempsmooth_toeger.csv'.format(data_dir)
     
-    overview_csv = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/results/Overview_models.csv'
+    overview_csv = 'c:/Users/piacal/Code/SuperResolution4DFlowMRI/Temporal4DFlowNet/results/Overview_models.csv'
 
-    restore = True
+    restore = False
     if restore:
         model_dir = "Temporal4DFlowNet/models/Temporal4DFlowNet_20240118-1300"
         model_file = "Temporal4DFlowNet-best.h5"
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     shuffle = True       
 
     #notes: if something about this training is more 'special' is can be added to the overview csv file
-    notes= 'Next attempt: train with invivo magnitude; restore 20240118-1300 (train without invivo magn images)'
+    notes= 'Test L1 loss'
     # Load data file and indexes
     trainset = load_indexes(training_file)
     valset =   load_indexes(validate_file)

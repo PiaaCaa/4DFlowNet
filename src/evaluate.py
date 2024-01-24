@@ -78,7 +78,7 @@ def load_data(model_name, set_name, data_model, step,dynamic_mask_used, ending_f
                     temporal_mask = gt['mask'].copy()
                 else:
                     print('Create static temporal mask for model')
-                    temporal_mask = create_temporal_mask(gt["mask"], h_gt['u'].shape[0])
+                    temporal_mask = create_dynamic_mask(gt["mask"], h_gt['u'].shape[0])
                 gt['mask'] = temporal_mask.copy()
                 lr['mask'] = temporal_mask[offset_val::2, :, :, :].copy()
                 print(gt['mask'].shape)

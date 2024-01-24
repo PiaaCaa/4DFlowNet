@@ -322,7 +322,8 @@ if __name__ == "__main__":
                             k_bounds[t+i*frames], r2_bounds[t+i*frames]  = calculate_k_R2( data_predicted[vel][t], data_original[vel][t], bounds[t])
 
                     #plot k and r^2 values
-                    plot_k_r2_vals(frames, k,k_bounds, r2,  r2_bounds, peak_flow_frame, name_evaluation, eval_dir)
+                    # plot_k_r2_vals(frames, k,k_bounds, r2,  r2_bounds, peak_flow_frame, name_evaluation, eval_dir)
+                    plot_k_r2_vals(data_original, data_predicted, bounds, peak_flow_frame,color_b = KTH_colors['pink100'] , save_as= '')
 
                     #print mean k and r^2 values
                     dict_intermediate_results = defaultdict(list)

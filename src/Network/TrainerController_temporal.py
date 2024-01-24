@@ -97,7 +97,8 @@ class  TrainerController_temporal:
         u,v,w = y_true[...,0],y_true[...,1], y_true[...,2]
         u_pred,v_pred,w_pred = y_pred[...,0],y_pred[...,1], y_pred[...,2]
 
-        mse = self.calculate_mse(u,v,w, u_pred,v_pred,w_pred)
+        # mse = self.calculate_mse(u,v,w, u_pred,v_pred,w_pred)
+        mse = self.calculate_mae(u, v, w, u_pred, v_pred, w_pred)
 
         # if mask is not None:
         # === Separate mse ===
@@ -164,6 +165,38 @@ class  TrainerController_temporal:
         """
         return (u_pred - u) ** 2 +  (v_pred - v) ** 2 + (w_pred - w) ** 2
 
+    def calculate_mae(self, u, v, w, u_pred, v_pred, w_pred):
+        """
+            Calculate L1 Speed magnitude error
+        """
+        return tf.abs(u_pred - u) +  tf.abs(v_pred - v) + tf.abs(w_pred - w)
+
+    def calculate_l2norm(self, u, v, w):
+        """
+            Calculate L2 norm
+        """
+        return tf.sqrt(u ** 2 + v ** 2 + w ** 2)
+
+
+    def calculate_l1_mutually_projected_loss(self, u, v, w, u_pred, v_pred, w_pred, alpha= 0.5):
+        """
+            Calculate L1 mutually projected loss
+        """
+        theta = tf.acos((u*u_pred + v*v_pred + w*w_pred) / (self.calculate_l2norm(u,v,w) * self.calculate_l2norm(u_pred,v_pred,w_pred)))
+        proj_l1_u_v = tf.abs(self.calculate_l2_norm(u,v,w) - self.calculate_l2_norm(u_pred,v_pred,w_pred) * tf.cos(theta))
+        proj_l1_v_u = tf.abs(self.calculate_l2_norm(u_pred,v_pred,w_pred) - self.calculate_l2_norm(u,v,w) * tf.cos(theta))
+        return alpha * proj_l1_u_v + (1-alpha)* proj_l1_v_u
+
+
+    # TODO check where the averaging happens; 
+    def combined_l1_mutually_projected_loss(self, u, v, w, u_pred, v_pred, w_pred, weight, alpha= 0.5):
+        """
+            Calculate L1 mutually projected loss
+        """
+        l1_mutuall_proj = self.calculate_l1_mutually_projected_loss(u, v, w, u_pred, v_pred, w_pred, alpha)
+        l1 = self.calculate_mae(u, v, w, u_pred, v_pred, w_pred)
+        return weight * l1_mutuall_proj + (1-weight) * l1
+
     def init_model_dir(self):
         """
             Create model directory to save the weights with a [network_name]_[datetime] format
@@ -203,18 +236,19 @@ class  TrainerController_temporal:
         utility.log_to_file(self.logfile, f'epoch, {stat_names}, learning rate, elapsed (sec), best_model, benchmark_err, benchmark_rel_err, benchmark_mse, benchmark_divloss\n')
 
         print("Copying source code to model directory...")
-        base_path = "Temporal4DFlowNet/src/"
+        # base_path = "Temporal4DFlowNet/src/"
+        base_path = "/" # TODO change for berzelius again
+        if False: 
+            # Copy all the source file to the model dir for backup
+            directory_to_backup = [base_path +".", base_path+ "Network"]
+            for directory in directory_to_backup:
+                files = os.listdir(directory)
+                for fname in files:
+                    if fname.endswith(".py") or fname.endswith(".ipynb"):
+                        dest_fpath = os.path.join(self.model_dir,"backup_source",directory, fname)
+                        os.makedirs(os.path.dirname(dest_fpath), exist_ok=True)
 
-        # Copy all the source file to the model dir for backup
-        directory_to_backup = [base_path +".", base_path+ "Network"]
-        for directory in directory_to_backup:
-            files = os.listdir(directory)
-            for fname in files:
-                if fname.endswith(".py") or fname.endswith(".ipynb"):
-                    dest_fpath = os.path.join(self.model_dir,"backup_source",directory, fname)
-                    os.makedirs(os.path.dirname(dest_fpath), exist_ok=True)
-
-                    shutil.copy2(f"{directory}/{fname}", dest_fpath)
+                        shutil.copy2(f"{directory}/{fname}", dest_fpath)
 
       
     @tf.function
@@ -322,12 +356,6 @@ class  TrainerController_temporal:
                 self.test_step(data_pairs)
                 message = f"Epoch {epoch+1} Validation batch {i+1}/{total_batch_val} | loss: {self.loss_metrics['val_loss'].result():.5f} ({self.loss_metrics['val_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs"
                 print(f"\r{message}", end='')
-
-            # # --- DELETE LATER!! ---
-            # for i, (data_pairs) in enumerate(trainset):
-            #     self.test_step(data_pairs)
-            #     message = f"Epoch {epoch+1} Validation/Test batch {i+1}/{total_batch_val} | loss: {self.loss_metrics['val_loss'].result():.5f} ({self.loss_metrics['val_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs"
-            #     print(f"\r{message}", end='')
 
             # --- Epoch logging ---
             message = f"\rEpoch {epoch+1} Train loss: {self.loss_metrics['train_loss'].result():.5f} ({self.loss_metrics['train_accuracy'].result():.1f} %), Val loss: {self.loss_metrics['val_loss'].result():.5f} ({self.loss_metrics['val_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs"
