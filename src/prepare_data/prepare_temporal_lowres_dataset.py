@@ -1,13 +1,13 @@
 import numpy as np
 import os
+import sys
 import h5py
 import random
 import fft_downsampling as fft
 import scipy.ndimage as ndimage
 from h5functions import save_to_h5
-from visualize_utils import generate_gif_volume
-from utils.evaluate_utils import signaltonoise_fluid_region, peak_signal_to_noise_ratio
-
+# from visualize_utils import generate_gif_volume
+# from .utils.evaluate_utils import peak_signal_to_noise_ratio, signaltonoise_fluid_region
                        
 
 def choose_venc():
@@ -48,11 +48,13 @@ def simple_temporal_downsampling(hr_data, downsample =2):
 
 
 if __name__ == '__main__':
+
     # Config
-    base_path = 'Temporal4DFlowNet/data/CARDIAC'
+    base_path = 'data/CARDIAC'
     # Put your path to Hires Dataset
-    input_filepath  =  f'{base_path}/M3_2mm_step2_static_dynamic.h5'
-    output_filename = f'{base_path}/M3_2mm_step2_static_dynamic_noise.h5' 
+    input_filepath  =  f'{base_path}/M4_2mm_step2_invivoP02_magn_temporalsmoothing_toeger_periodic_LRfct.h5'
+    output_filename =  f'{base_path}/M4_2mm_step2_invivoP02_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5' 
+
     # Downsample rate 
     downsample = 2
 
@@ -186,9 +188,9 @@ if __name__ == '__main__':
         hr_v[idx, :, :, :], hr_mag_v[idx, :, :, :] =  fft.downsample_phase_img(hr_v_frame, mag_image[idx], venc_v, crop_ratio, targetSNRdb, temporal_downsampling=True)   
         hr_w[idx, :, :, :], hr_mag_w[idx, :, :, :] =  fft.downsample_phase_img(hr_w_frame, mag_image[idx], venc_w, crop_ratio, targetSNRdb, temporal_downsampling=True)   
 
-        print("Peak signal to noise ratio:", peak_signal_to_noise_ratio(hr_u_frame, hr_u[idx, :, :, :]), " db")
+        # print("Peak signal to noise ratio:", peak_signal_to_noise_ratio(hr_u_frame, hr_u[idx, :, :, :]), " db")
 
-        print('Signal to noise ratio inside fluid region on noisy data: ', signaltonoise_fluid_region(hr_u[idx]))
+        # print('Signal to noise ratio inside fluid region on noisy data: ', signaltonoise_fluid_region(hr_u[idx]))
         # hr_u[idx, :, :, :], mag_u = hr_u_frame, mag_image
         # hr_v[idx, :, :, :], mag_v = hr_v_frame, mag_image
         # hr_w[idx, :, :, :], mag_w = hr_w_frame, mag_image

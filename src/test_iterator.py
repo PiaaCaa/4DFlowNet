@@ -85,10 +85,10 @@ def check_compatibility(datapair):
 
 
 if __name__ == "__main__":
-    data_dir = 'Temporal4DFlowNet/data/CARDIAC'
+    data_dir = 'data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal16MODEL23_2mm_step2_newmag_adapted.csv'.format(data_dir)
+    training_file = '{}/Temporal16MODEL23_2mm_step2_tempsmooth_toeger.csv'.format(data_dir)
     # training_file = '{}/Temporal16MODEL1_2mm_step2_newmagP01_adapted_test2.csv'.format(data_dir)
     
     # training_file = '{}/Temporal16MODEL23_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)

@@ -23,20 +23,20 @@ def write_settings_into_csv_file(filename,name, training_file, validation_file, 
                              "upsampling_type": upsampling_type, 'low_block_type': low_block_type, 'high_block_type':high_block_type, 'post_block_type':post_block_type, 'sampling':sampling, "notes":notes })
 
 if __name__ == "__main__":
-    data_dir = 'Temporal4DFlowNet/data/CARDIAC'
+    data_dir = 'data/CARDIAC'
     
     # ---- Patch index files ----
-    # training_file = '{}/Temporal16MODEL23_2mm_step2_newmag.csv'.format(data_dir) 
-    # validate_file = '{}/Temporal16MODEL1_2mm_step2_newmagP01.csv'.format(data_dir)
+    training_file = '{}/Temporal16MODEL23_2mm_step2_invivoP04P03_magn_tempsmooth_toeger.csv'.format(data_dir) 
+    validate_file = '{}/Temporal16MODEL1_2mm_step2_invivoP01_magn_tempsmooth_toeger.csv'.format(data_dir) #Temporal16MODEL23_2mm_step2_invivoP04P03_magn_tempsmooth_toeger.csv
 
-    # QUICKSAVE = True
-    # benchmark_file = '{}/Temporal16MODEL4_2mm_step2_all_axis_extended_dynamic_mask.csv'.format(data_dir)
+    QUICKSAVE = True
+    benchmark_file = '{}/Temporal16MODEL4_2mm_step2_invivoP02_magn_tempsmooth_toeger.csv'.format(data_dir)
     
-    overview_csv = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/results/Overview_models.csv'
+    overview_csv = 'c:/Users/piacal/Code/SuperResolution4DFlowMRI/Temporal4DFlowNet/results/Overview_models.csv'
 
-    restore = True
+    restore = False
     if restore:
-        model_dir = "Temporal4DFlowNet/models/Temporal4DFlowNet_20230505-1837"
+        model_dir = "Temporal4DFlowNet/models/Temporal4DFlowNet_20240118-1300"
         model_file = "Temporal4DFlowNet-best.h5"
 
     # Adapt how patches are saved for temporal domain if True a different loading scheme is used
@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     # Hyperparameters optimisation variables
     initial_learning_rate = 2e-4
-    epochs =  140
+    epochs =  1
     batch_size = 32
     mask_threshold = 0.6
     lr_decay_epochs = 0
@@ -68,8 +68,7 @@ if __name__ == "__main__":
     shuffle = True       
 
     #notes: if something about this training is more 'special' is can be added to the overview csv file
-    notes= 'Test if training works - to be deleted'
-
+    notes= 'Test L1 loss'
     # Load data file and indexes
     trainset = load_indexes(training_file)
     valset =   load_indexes(validate_file)

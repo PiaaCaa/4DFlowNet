@@ -760,19 +760,16 @@ def show_temporal_development_line(gt, lr, pred, mask, axis, indices, save_as = 
 
     plt.savefig(save_as,bbox_inches='tight')
 
-def show_quiver( u, v, w, mask,frame,save_as = "3DFlow.png"):
+def show_quiver( u, v, w, mask,frame,save_as = "Quiver_3DFlow.png"):
     x_len, y_len, z_len = u.shape
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
 
     # Make the grid
     x, y, z = np.meshgrid(np.arange(y_len),np.arange(x_len),np.arange(z_len))
-    print("x shape:", x.shape, y.shape, "u: ", u.shape)
     
     set_to_zero = 0.9
-    if len(binary_mask.shape) ==3:
-        mask = create_dynamic_mask(binary_mask, pred.shape[0])
-    
+    if len(mask.shape) ==3: mask = create_dynamic_mask(mask, u.shape[0])
 
     x_idx, y_idx, z_idx = random_indices3D(mask[frame], int(np.count_nonzero(mask[frame])*set_to_zero))
     u[x_idx, y_idx, z_idx] = 0
@@ -787,12 +784,13 @@ def show_quiver( u, v, w, mask,frame,save_as = "3DFlow.png"):
     v = v[startx:startx+cropx, starty:starty+cropy,startz:startz+cropz] 
     w = w[startx:startx+cropx, starty:starty+cropy,startz:startz+cropz] 
 
-    x =x[startx:startx+cropx, starty:starty+cropy,startz:startz+cropz] 
-    y =y[startx:startx+cropx, starty:starty+cropy,startz:startz+cropz] 
-    z =z[startx:startx+cropx, starty:starty+cropy,startz:startz+cropz] 
+    x = x[startx:startx+cropx, starty:starty+cropy,startz:startz+cropz] 
+    y = y[startx:startx+cropx, starty:starty+cropy,startz:startz+cropz] 
+    z = z[startx:startx+cropx, starty:starty+cropy,startz:startz+cropz] 
 
     ax.quiver(x, y, z, u, v, w, length=0.3, normalize=True, color=plt.cm.viridis([200, 50, 100, 200, 200, 50, 50, 100, 100]))
-    fig.savefig(save_as)
+    fig.savefig(f'{save_as}_frame{frame}.png')
+    plt.show()
     plt.clf()
 
 def make_3D_quiver_plot(data,mask,  frame, set_to_zero=0.9):
@@ -839,6 +837,13 @@ def make_3D_quiver_plot(data,mask,  frame, set_to_zero=0.9):
         x_new = x[np.where(u_quiver!=0)] 
         y_new = y[np.where(u_quiver!=0)] 
         z_new = z[np.where(u_quiver!=0)]
+
+        u = u_new.ravel()
+        v = v_new.ravel()
+        w = w_new.ravel()
+
+        
+
 
 
         # Color by magnitude
@@ -1010,49 +1015,86 @@ def calculate_temporal_derivative(data, timestep=1):
     
     return dt
 
-
-def plot_relative_error(lst_hgt_paths, lst_hpred_paths,lst_names, save_as = 'Relative_error_comparison.png'):
+def velocity_through_plane(idx_plane, data, normal, order_normal= [0, 1, 2]):
+    ''' Returns the velocity through a plane, i.e. in direction of the normal, using projection on normal vector
+    params:
+        idx_plane: tuple of indices for the plane
+        data: 4D data
+        normal: normal vector of the plane
+        order_normal: order of the normal vector, i.e. correspondece between cartesian plane and u, v, w (similar to paraview)
     '''
-    Plots relative error from all the files given in the list of paths in the same plot
-    '''
-    assert(len(lst_hgt_paths)==len(lst_hpred_paths))
-    vel_colnames=['u', 'v', 'w']
-
-    for gt_path, pred_path, name in zip(lst_hgt_paths, lst_hpred_paths, lst_names):
-        gt = {}
-        pred = {}
-        with h5py.File(pred_path, mode = 'r' ) as h_pred:
-            with h5py.File(gt_path, mode = 'r' ) as h_gt:
-
-                # load gt and predcition values
-                for vel in vel_colnames:
-                    
-                    gt[vel] = np.asarray(h_gt[vel])
-                    pred[vel] = np.asarray(h_pred[vel])
-
-                    #transpose for temporal resolution
-                    #TODO change if needed
-                    pred[vel] = pred[vel].transpose(1, 0, 2, 3)
-                    # gt[vel] = crop_gt(gt[vel], pred[vel].shape 
-
-                    #load prediction values
-                gt["mask"] = np.asarray(h_gt["mask"])
-                #compute relative error
-
-                error_gt = calculate_relative_error_normalized(pred["u"], pred["v"], pred["w"], gt["u"], gt["v"] , gt["w"], gt["mask"])
-                #Plot Relative error
-                plt.plot(error_gt, '-', label = name)
+    N_frames = data['u'].shape[0]
+    vx_in_plane = data['u'][:, idx_plane[0], idx_plane[1], idx_plane[2]].reshape(N_frames, -1)
+    vy_in_plane = data['v'][:, idx_plane[0], idx_plane[1], idx_plane[2]].reshape(N_frames, -1)
+    vz_in_plane = data['w'][:, idx_plane[0], idx_plane[1], idx_plane[2]].reshape(N_frames, -1)
+    return vx_in_plane*normal[order_normal[0]]+ vy_in_plane*normal[order_normal[1]]+ vz_in_plane*normal[order_normal[2]]
 
 
-    plt.plot(50*np.ones(len(error_gt)), 'k:')
-    plt.xlabel("Frame")
-    plt.ylabel("Relative error (%)")
-    plt.ylim((0, 100))
-    #plt.legend(lst_names)
-    plt.title("Relative error")
-    #plt.savefig(save_as)
-    #plt.clf()
+def rmse_plane(idx_intersection_plane_fluid,normal,  data,gt,order_normal = [0, 1, 2],   label = '', color = 'black'):
 
+    V_plane_pred    = velocity_through_plane(idx_intersection_plane_fluid, data, normal, order_normal = order_normal)
+    V_plane_gt      = velocity_through_plane(idx_intersection_plane_fluid, gt, normal, order_normal = order_normal)
+
+    rmse = np.sqrt(np.mean((V_plane_pred-V_plane_gt)**2, axis = 1))
+    plt.plot(rmse,'.-', label = label, color = color)
+    plt.xlabel('frame')
+    plt.ylabel('RMSE')
+
+def plot_max_speed_plane(idx_intersection_plane_fluid, data, mask, frames, label = '', color = 'black'):
+    N_frames = data['u'].shape[0]
+
+    # Velocity through plane
+    V_plane = velocity_through_plane(idx_intersection_plane_fluid, data, normal, orderr_normal = [0, 1, 2])
+    max_speed= np.max(V_plane, axis = 1)*100
+    min_speed = np.min(V_plane, axis = 1)*100
+
+    abs_max_vel = np.max(np.abs(V_plane), axis = 1)*100
+    positive_mask = max_speed >= 0
+
+    res = np.zeros_like(abs_max_vel)
+    res[positive_mask] = abs_max_vel[positive_mask]
+    res[~positive_mask] = -abs_max_vel[~positive_mask]
+    
+
+    if N_frames != frames:
+        plt.plot(range(frames)[::2], max_speed,'--', color = color, label = f'{label} max')
+        plt.plot(range(frames)[::2], min_speed,':', color = color, label = f'{label} min')
+    else:
+        plt.plot(max_speed,'--', label = f'{label} max', color = color)
+        plt.plot(min_speed,':', label = f'{label} min', color = color)
+    plt.xlabel('frame')
+    plt.ylabel('velocity (cm/s)')
+    plt.title('Velocity through plane')
+
+def plot_mean_speed_plane(idx_intersection_plane_fluid, data, frames,order_normal = [0, 1, 2], label = '', color = 'black'):
+    N_frames = data['u'].shape[0]
+
+    #Velocity through plane
+    V_plane = velocity_through_plane(idx_intersection_plane_fluid, data, normal, order_normal = order_normal)
+    mean_speed= np.mean(V_plane, axis = 1)*100
+    if N_frames != frames:
+        plt.plot(range(frames)[::2], mean_speed,'.-', color = 'yellowgreen', label = label)
+    else:
+        plt.plot(mean_speed,'.-', label = label, color = color)
+    plt.xlabel('frame')
+    plt.ylabel('Mean velocity (cm/s)')
+    plt.title('Velocity through plane')
+    return mean_speed
+
+
+def plot_line_speed(x_line,frame, data, normal, points_in_plane, label = '', color = 'black'):
+    plane_slice = points_in_plane[x_line, :, :]
+    
+    idx_line_p = np.where(plane_slice == 1)
+    # Get points
+    line_points_idx = np.index_exp[frame, x_line, idx_line_p[0], idx_line_p[1]]
+
+    V_line = data[line_points_idx]*100#np.sqrt(data['u'][line_points_idx]**2+ data['v'][line_points_idx]**2+ data['w'][line_points_idx]**2) *100#(data['u'][line_points_idx]*normal[0]+ data['v'][line_points_idx]*normal[1]+ data['w'][line_points_idx]*normal[2]) *100
+    #project
+    plt.plot(V_line, label = label, color = color)
+    plt.xlabel('voxel number')
+    plt.ylabel('V (cm/s)')
+    plt.title(f'Speed on line in frame {frame}')
 
 
 
@@ -1065,7 +1107,6 @@ def create_temporal_comparison_gif(lr, hr, pred, vel, save_as):
     v_NN = temporal_NN_interpolation(v_lr,v_hr.shape )
 
     combined_image = np.concatenate((v_NN, v_hr, v_pred), axis = 3)
-    print(combined_image.shape)
     idx = 30
 
     generate_gif_volume(combined_image[:,idx, :, : ], axis = 0, save_as = save_as)
@@ -1324,7 +1365,7 @@ def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparis
 
 
 def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KTH_colors['pink100'] , save_as= ''):
-
+    vel_colnames = ['u', 'v', 'w']
     vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
 
 

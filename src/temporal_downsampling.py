@@ -34,7 +34,7 @@ def temporal_averaging(hr, radius):
     T = hr.shape[0]
     hr_avg = np.zeros_like(hr)
 
-    # loop through all the frames and save the average in hr_avg
+    # loop through all the frames and save the average in hr_avg                        
     for t in range(T):
         for i in range(t -radius//2, t+radius//2+1):
             
@@ -111,14 +111,14 @@ def temporal_smoothing_box_function_toeger(hr,t_range, sigma,):
         periodic_weighting[:len(extended_boundaries_right)] += weighting[-len(extended_boundaries_right):] 
         periodic_weighting[-len(extended_boundaries_left):] += weighting[:len(extended_boundaries_left)]
 
-        plt.plot(t_range, periodic_weighting)
-        plt.scatter(t0, periodic_weighting[np.where(t_range == t0)])
+        # plt.plot(t_range, periodic_weighting)
+        # plt.scatter(t0, periodic_weighting[np.where(t_range == t0)])
         # plt.plot(t_range_extended, weighting)
         # plt.scatter(t0, weighting[np.where(t_range_extended == t0)])
 
         # weight input by the periodic weighting
         hr_avg[i, :, :, :] = np.sum(hr*periodic_weighting[:, None, None, None], axis = 0)
-    plt.show()
+    # plt.show()
     
     print(f"Created temporally smoothed data with sigma = {sigma} in range {start_t} to {end_t} and resolution {dt}")
     return hr_avg
@@ -157,16 +157,17 @@ def delete_data_from_h5(h5_file,lst_keys):
 
 if __name__ == '__main__':
     # load data
-    hr_file = 'data/CARDIAC/M4_2mm_step2_static_dynamic.h5'
+    hr_file = 'data/CARDIAC/M1_2mm_step2_invivoP01_magnitude.h5'
 
     # save data
-    smooth_file_lr = 'data/CARDIAC/M4_2mm_step2_temporalsmoothing_toeger_periodic_LRfct.h5'
-    smooth_file_hr = 'data/CARDIAC/M4_2mm_step2_temporalsmoothing_toeger_periodic_HRfct.h5'
+    smooth_file_lr = 'data/CARDIAC/M1_2mm_step2_invivoP01_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5'
+    smooth_file_hr = 'data/CARDIAC/M4_2mm_step2_invivoP02_magn_temporalsmoothing_toeger_periodic_HRfct.h5'
 
-    # keys =  ["dx",  "mag_u", "mag_v", "mag_w", "mask", "u_max", "v_max", "w_max",] 
-    # delete_data_from_h5(smooth_file_lr, keys)
+    keys =  [ "mag_u", "mag_v", "mag_w", "mask", ] 
+    delete_data_from_h5(smooth_file_lr, keys)
     # delete_data_from_h5(smooth_file_hr, keys)
-
+    merge_data_to_h5(smooth_file_lr, hr_file)
+    exit()
 
     with h5py.File(hr_file, mode = 'r' ) as p1:
           hr_u = np.asarray(p1['u']) 
@@ -179,7 +180,7 @@ if __name__ == '__main__':
 
     #-------LR function smoothing-------
     # Note the output will be in same dimension as HR; but the smoothing function is applied on the downsampled data.
-    if False: 
+    if True: 
         # downsample and then apply smoothing
         hr_u0 = hr_u[::2]
         hr_v0 = hr_v[::2]
@@ -214,6 +215,7 @@ if __name__ == '__main__':
         if os.path.exists(smooth_file_lr):
             print("STOP - File already exists!")
             exit()
+        print(f'saving to {smooth_file_lr}')
         prediction_utils.save_to_h5(smooth_file_lr, 'u', u_temp_smoothing)
         prediction_utils.save_to_h5(smooth_file_lr, 'v', v_temp_smoothing)
         prediction_utils.save_to_h5(smooth_file_lr, 'w', w_temp_smoothing)
@@ -230,6 +232,7 @@ if __name__ == '__main__':
         if os.path.exists(smooth_file_hr):
             print("STOP - File already exists!")
             exit()
+        print(f'saving to {smooth_file_hr}')
         prediction_utils.save_to_h5(smooth_file_hr, 'u', u_temp_smoothing)
         prediction_utils.save_to_h5(smooth_file_hr, 'v', v_temp_smoothing)
         prediction_utils.save_to_h5(smooth_file_hr, 'w', w_temp_smoothing)
