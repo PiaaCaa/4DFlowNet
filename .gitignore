@@ -18,6 +18,7 @@ data/example_data
 venv_setup.txt
 outputfiles/*
 data/PIA/*
+data/flowerdataset/*
 my_job.sbatch
 training.sbatch
-my_job.sbatch
+*.h5
