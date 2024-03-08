@@ -22,3 +22,4 @@ data/flowerdataset/*
 my_job.sbatch
 training.sbatch
 *.h5
+data/
