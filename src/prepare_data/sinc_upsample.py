@@ -4,6 +4,8 @@ import math
 import matplotlib.pyplot as plt
 import h5functions
 
+#TODO whole functions
+
 def plot_images(u, v, w, u_mag, v_mag, w_mag):
     print(u.shape)
     # slice_to_show = np.index_exp[:, 4, :]

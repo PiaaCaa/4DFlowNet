@@ -102,9 +102,9 @@ if __name__ == '__main__':
     # Load the mask once
     with h5py.File(input_filepath, mode = 'r' ) as hf:
         # Some h5 files have 4D mask with 1 in the temporal dimension while others are already 3D
-        #create dynamic mask, either already loaded or with static temporal mask
+        
         mask = np.asarray(hf['mask']).squeeze()
-        if len(mask.shape) == 3: 
+        if len(mask.shape) == 3: # create dynamic mask, either already loaded or with static temporal mask
             mask = np.repeat(np.expand_dims(mask, 0), hf['u'].shape[0], axis=0)
 
         N_frames = hf.get("u").shape[0]
@@ -112,12 +112,11 @@ if __name__ == '__main__':
         hr_u = np.asarray(hf['u'])
         hr_v = np.asarray(hf['v'])
         hr_w = np.asarray(hf['w'])
-
         mag_u = np.asarray(hf['mag_u'])
 
 
     
-    print("Datacount:", N_frames, " mask shape ", mask.shape)
+    print("Number of frames:", N_frames, " mask shape ", mask.shape)
     
     #--------------temporal smoothing---------------
     # temporal downsampling/smoothing here before adding noise for each frame
@@ -230,16 +229,16 @@ if __name__ == '__main__':
         
         #----------------- Spatial downsample and add noise -----------------
         # Downsample the data in the frequency domain (spatial) and add white gaussian noise
-        # if spatial_downsample != 1.0 and add_noise:
-        lr_u[idx, :, :, :], lr_mag_u[idx, :, :, :] =  fft.noise_and_downsampling(hr_u_frame, mag_image[idx], venc_u,  targetSNRdb, spatial_crop_ratio=crop_ratio, add_noise=add_noise)   
-        lr_v[idx, :, :, :], lr_mag_v[idx, :, :, :] =  fft.noise_and_downsampling(hr_v_frame, mag_image[idx], venc_v,  targetSNRdb, spatial_crop_ratio=crop_ratio, add_noise=add_noise)   
-        lr_w[idx, :, :, :], lr_mag_w[idx, :, :, :] =  fft.noise_and_downsampling(hr_w_frame, mag_image[idx], venc_w,  targetSNRdb, spatial_crop_ratio=crop_ratio, add_noise=add_noise)  
-        # else:
-        #     lr_u[idx, :, :, :], lr_mag_u[idx, :, :] = hr_u_frame, mag_image[idx]
-        #     lr_v[idx, :, :, :], lr_mag_v[idx, :, :] = hr_v_frame, mag_image[idx]
-        #     lr_w[idx, :, :, :], lr_mag_w[idx, :, :] = hr_w_frame, mag_image[idx]
+        if spatial_downsample != 1.0 and add_noise:
+            lr_u[idx, :, :, :], lr_mag_u[idx, :, :, :] =  fft.noise_and_downsampling(hr_u_frame, mag_image[idx], venc_u,  targetSNRdb, spatial_crop_ratio=crop_ratio, add_noise=add_noise)   
+            lr_v[idx, :, :, :], lr_mag_v[idx, :, :, :] =  fft.noise_and_downsampling(hr_v_frame, mag_image[idx], venc_v,  targetSNRdb, spatial_crop_ratio=crop_ratio, add_noise=add_noise)   
+            lr_w[idx, :, :, :], lr_mag_w[idx, :, :, :] =  fft.noise_and_downsampling(hr_w_frame, mag_image[idx], venc_w,  targetSNRdb, spatial_crop_ratio=crop_ratio, add_noise=add_noise)  
+        else:
+            lr_u[idx, :, :, :], lr_mag_u[idx, :, :] = hr_u_frame, mag_image[idx]
+            lr_v[idx, :, :, :], lr_mag_v[idx, :, :] = hr_v_frame, mag_image[idx]
+            lr_w[idx, :, :, :], lr_mag_w[idx, :, :] = hr_w_frame, mag_image[idx]
 
-
+        #TODO compute SNR here
         # print("Peak signal to noise ratio:", peak_signal_to_noise_ratio(hr_u_frame, hr_u[idx, :, :, :]), " db")
 
         # print('Signal to noise ratio inside fluid region on noisy data: ', signaltonoise_fluid_region(hr_u[idx]))

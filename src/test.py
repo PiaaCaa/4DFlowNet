@@ -141,16 +141,9 @@ def concatenate_csv_files(lst_files, output_filename):
 
         
 
-def create_h5_file(dir, name):
-    """
-    Create a new h5 file at the specified path and with the given name.
-    """
-    file_path = os.path.join(dir, name)
-    with h5py.File(file_path, 'w') as file:
-        pass  # Empty block to create the file
-    print(f"Created new h5 file: {file_path}")
 
-#TODO put in testing folder
+
+#TODO delete this since it is in testing foler
 def check_csv_patch_compatibility(csv_file, data_dir = 'data/CARDIAC'):
     """
     Check if the the pathes (and shapes) of the .h5 files loaded in the csv file are compatible 

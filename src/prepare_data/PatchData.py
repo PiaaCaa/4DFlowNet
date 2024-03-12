@@ -22,65 +22,24 @@ def create_temporal_mask(mask, n_frames):
     assert(len(mask.shape) == 3), " shape: " + str(mask.shape) # shape of mask is assumed to be 3 dimensional
     return np.repeat(np.expand_dims(mask, 0), n_frames, axis=0)
     
-def generate_random_patches(input_filename, target_filename, output_filename, index, n_patch, binary_mask, patch_size, minimum_coverage, empty_patch_allowed, apply_all_rotation=True):
-    empty_patch_counter = 0
-            
-    # foreach row, create n number of patches
-    j = 0
-    not_found = 0
-    while j < n_patch:
-        if not_found > 100:
-            print(f"Cannot find enough patches above {minimum_coverage} coverage, please lower the minimum_coverage")
-            break
-
-        can_still_take_empty_patch = empty_patch_counter < empty_patch_allowed
-        # print('patch number', j)
-        patch = PatchData(input_filename, target_filename, patch_size)
-        
-        # default, no rotation
-        patch.create_random_patch(binary_mask, index, axis)
-        patch.calculate_patch_coverage(binary_mask, minimum_coverage)
-
-        # before saving, do a check
-        # print(patch.coverage)
-        if patch.coverage < minimum_coverage:
-            if can_still_take_empty_patch:
-                
-                print('Taking this empty one',patch.coverage)
-                empty_patch_counter += 1
-                
-            else:
-                # skip empty patch because we already have one
-                not_found += 1
-                continue
-
-        patch.write_to_csv(output_filename)
-
-        # apply ALL  rotation
-        if apply_all_rotation:
-            patch.rotate = 1
-            for plane_nr in range(1,4):
-                # rotation plane 1,2,3
-                patch.rotation_plane = plane_nr
-
-                for rotation_idx in range(1,4):
-                    # rotation index 1,2,3
-                    patch.rotation_degree_idx = rotation_idx
-                    patch.write_to_csv(output_filename)
-                # /end of rotation idx
-            # /end of plane
-        else:
-            patch.rotate = 1
-            # do 1 random rotation
-            patch.rotation_plane = rnd.randint(1,3)
-            patch.rotation_degree_idx = rnd.randint(1,3)
-            patch.write_to_csv(output_filename)
-
-        # break
-        j += 1
-    # /end of while n_patch
 
 def generate_random_patches(input_filename, target_filename, output_filename, index, n_patch, binary_mask, patch_size, minimum_coverage, empty_patch_allowed, apply_all_rotation=True):
+    """
+    Generate random patches from the input and target images for SPATIAL super-resolution pairs.
+
+    Args:
+        input_filename (str): The filename of the input image.
+        target_filename (str): The filename of the target image.
+        output_filename (str): The filename of the output CSV file to save the patches.
+        index (int): The index of the image to generate patches from.
+        n_patch (int): The number of patches to generate.
+        binary_mask (ndarray): The binary mask used to select valid regions for patch generation.
+        patch_size (int): The size of the patches to generate.
+        minimum_coverage (float): The minimum coverage required for a patch to be considered valid.
+        empty_patch_allowed (int): The maximum number of empty patches allowed.
+        apply_all_rotation (bool, optional): Whether to apply all possible rotations to the patches. Defaults to True.
+    """
+
     empty_patch_counter = 0
             
     # foreach row, create n number of patches
@@ -138,45 +97,24 @@ def generate_random_patches(input_filename, target_filename, output_filename, in
         j += 1
     # /end of while n_patch
 
-def generate_temporal_random_patches(input_filename, target_filename, output_filename, index,frames, n_patch, binary_mask, patch_size, minimum_coverage, empty_patch_allowed, apply_all_rotation=False):
-    empty_patch_counter = 0
-            
-    # foreach row, create n number of patches
-    j = 0
-    not_found = 0
-
-    binary_mask = binary_mask[:, index, :, :]
-    while j < n_patch:
-        if not_found > 100:
-            print(f"Cannot find enough patches above {minimum_coverage} coverage, please lower the minimum_coverage")
-            break
-
-        can_still_take_empty_patch = empty_patch_counter < empty_patch_allowed
-        
-        patch = PatchData(input_filename, target_filename, patch_size)
-        
-        # default, no rotation
-        patch.create_random_patch(binary_mask, index)
-        patch.calculate_patch_coverage(binary_mask, minimum_coverage)
-
-        # before saving, do a check
-        if patch.coverage < minimum_coverage:
-            if can_still_take_empty_patch:
-                
-                print('Taking this empty one',patch.coverage)
-                empty_patch_counter += 1
-                
-            else:
-                # skip empty patch because we already have one
-                not_found += 1
-                continue
-
-        patch.write_to_csv(output_filename)
-
-        j += 1
-    # /end of while n_patch
 
 def generate_temporal_random_patches_all_axis(input_filename, target_filename, output_filename, axis, index, n_patch, binary_mask, patch_size, minimum_coverage, empty_patch_allowed, reverse=False):
+    """
+    Generate temporal random patches along a specified axis.
+
+    Args:
+        input_filename (str): The filename of the input data.
+        target_filename (str): The filename of the target data.
+        output_filename (str): The filename to save the generated patches.
+        axis (int): The axis along which to generate the patches (0 for temporal, 1 for width, 2 for depth).
+        index (int): The index along the specified axis to generate the patches.
+        n_patch (int): The number of patches to generate.
+        binary_mask (ndarray): The binary mask indicating the valid regions for patch generation.
+        patch_size (tuple): The size of each patch (t, w, d).
+        minimum_coverage (float): The minimum coverage required for a patch to be considered valid.
+        empty_patch_allowed (int): The maximum number of empty patches allowed.
+        reverse (bool, optional): Whether to reverse the created patches. Defaults to False.
+    """
     empty_patch_counter = 0
             
     # foreach row, create n number of patches

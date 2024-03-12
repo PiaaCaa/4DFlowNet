@@ -1,4 +1,6 @@
 import os
+import h5py
+import numpy as np
 
 def check_csv_patch_compatibility(csv_file, data_dir = 'data/CARDIAC'):
     """

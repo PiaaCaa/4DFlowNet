@@ -1,5 +1,6 @@
 import numpy as np
 import h5py
+import os
 
 def save_to_h5(output_filepath, col_name, dataset, expand_dims = True):
     if expand_dims: dataset = np.expand_dims(dataset, axis=0)
@@ -21,7 +22,7 @@ def save_to_h5(output_filepath, col_name, dataset, expand_dims = True):
 
 def merge_data_to_h5(input_file, toadd_file):
     """
-    Add data from merge_file to input file if keys are not present.
+    Add data from merge_file to input_file if keys are not present.
     """
     with h5py.File(input_file, mode='a') as input_h5:
         with h5py.File(toadd_file, mode='r') as toadd_h5:
@@ -47,3 +48,12 @@ def delete_data_from_h5(h5_file,lst_keys):
             if key in hf.keys():
                 del hf[key]
                 print('Deleted key', key)
+
+def create_h5_file(dir, name):
+    """
+    Create a new h5 file at the specified path and with the given name.
+    """
+    file_path = os.path.join(dir, name)
+    with h5py.File(file_path, 'w') as file:
+        pass  # Empty block to create the file
+    print(f"Created new h5 file: {file_path}")

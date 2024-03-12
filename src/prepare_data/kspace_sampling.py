@@ -44,20 +44,34 @@ def biot_savart_simulation(segments, locations):
   return np.linalg.norm(sensitivity_contribution, axis=1)
 
 def define_coils(radius, center, pos, axis, segments=21):
-  theta = np.linspace(0, 2 * np.pi, segments)
-  if axis == 'x':
-      x = np.full_like(theta, center[0] + pos)
-      y = center[1] + radius * np.cos(theta)
-      z = center[2] + radius * np.sin(theta)
-  elif axis == 'y':
-      x = center[0] + radius * np.cos(theta)
-      y = np.full_like(theta, center[1] + pos)
-      z = center[2] + radius * np.sin(theta)
-  else:
-      x = center[0] + radius * np.cos(theta)
-      y = center[1] + radius * np.sin(theta)
-      z = np.full_like(theta, center[2] + pos)
-  return np.column_stack((x, y, z))
+    """
+    Define the coordinates of coils in a cylindrical arrangement.
+
+    Parameters:
+    radius (float): The radius of the cylindrical arrangement.
+    center (tuple): The center coordinates of the cylindrical arrangement (x, y, z).
+    pos (float): The position of the coils along the specified axis.
+    axis (str): The axis along which the coils are positioned ('x', 'y', or 'z').
+    segments (int, optional): The number of segments in the cylindrical arrangement. Default is 21.
+
+    Returns:
+    numpy.ndarray: An array of shape (segments, 3) containing the coordinates of the coils.
+    """
+
+    theta = np.linspace(0, 2 * np.pi, segments)
+    if axis == 'x':
+        x = np.full_like(theta, center[0] + pos)
+        y = center[1] + radius * np.cos(theta)
+        z = center[2] + radius * np.sin(theta)
+    elif axis == 'y':
+        x = center[0] + radius * np.cos(theta)
+        y = np.full_like(theta, center[1] + pos)
+        z = center[2] + radius * np.sin(theta)
+    else:
+        x = center[0] + radius * np.cos(theta)
+        y = center[1] + radius * np.sin(theta)
+        z = np.full_like(theta, center[2] + pos)
+    return np.column_stack((x, y, z))
 
 def compute_mri_coil_sensitivity(segments, locations, volume_shape):
   sensitivities = biot_savart_simulation(segments, locations)
@@ -72,7 +86,7 @@ def create_sphere_phantom(volume_shape=(192, 192, 192), radius=48):
   return distance_from_center <= radius
 
 
-# --------End copy code from Alexander Fyrdahl:------
+# --------End copy code from Alexander Fyrdahl------
 
 def adjust_image_size(image, new_shape):
     """

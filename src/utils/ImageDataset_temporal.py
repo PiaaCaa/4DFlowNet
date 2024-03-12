@@ -65,10 +65,6 @@ class ImageDataset_temporal():
         # Load the U, V, W component of LR, and MAG
         with h5py.File(filepath, 'r') as hl:
             
-            #not really used?
-            # if self.dx_colname in hl:
-            #     dx = hl.get(self.dx_colname)[idx]
-            # print("PLEASE DELETE LATER __________________ magnitude gets multiplied by mask")
             for i in range(len(self.velocity_colnames)):           
                 if axis == 0:
                     w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[:, idx, :, :]
@@ -83,7 +79,6 @@ class ImageDataset_temporal():
                     mag_w =  np.asarray(hl.get(self.mag_colnames[i])).squeeze()[:, :, :, idx]
                     mask = np.asarray(hl.get('mask')).squeeze()[:, :, :, idx]
                 
-                #TODO is this correct with the venc parameter?
                 w_venc = np.asarray(hl.get(self.venc_colnames[i]))#)[idx])
 
                 # mag_w = np.multiply(mag_w, mask) #mask*80.0 #

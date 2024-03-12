@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 import h5functions
 
 """
-This file contains functions for temporal downsampling
+This file contains functions for temporal downsampling with the aim to mimic the temporal sampling of MRI machine
 """
 
 
