@@ -36,20 +36,22 @@ def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resb
 
 if __name__ == '__main__':
     # Define directories and filenames
-    model_name = '20240118-1300' #'20230405-1417'#'20230602-1701'#'20230405-1417' ##'20230508-1433' 
+    model_name = '20240226-2026' #'20230405-1417'#'20230602-1701'#'20230405-1417' ##'20230508-1433' 
 
     # set filenames and directories
     data_dir = 'Temporal4DFlowNet/data/PIA/THORAX/'
-    patients = ['P01'] #TODO double check this if the right mask is used
-    output_dir = f'Temporal4DFlowNet/results/in_vivo/THORAX'
+    patients = ['P01', 'P02', 'P03', 'P04', 'P05'] #TODO double check this if the right mask is used
+    output_root = f'Temporal4DFlowNet/results/in_vivo/THORAX'
 
     for patient in patients:
         print('Patient:', patient)
         t_0 = time.time()
+        
         # Change this for every new dataset
         # Setting up
         input_filepath = f'{data_dir}/{patient}/h5/{patient}.h5' 
-        output_filename = f'/{patient}_{model_name}_Toeger_25Frames.h5'
+        output_dir = f'{output_root}/{patient}'
+        output_filename = f'/{patient}_{model_name}_25Frames.h5'
         output_filepath = '{}/{}'.format(output_dir, output_filename)      
         
         model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
@@ -189,7 +191,7 @@ if __name__ == '__main__':
             v_combined += volume[1, :, :, :] 
             w_combined += volume[2, :, :, :] 
 
-        print("save combined predictions")
+        print(f"save combined predictions to {output_dir}/{output_filename}" )
         print("Elapsed time: ", time.time() - t_0)
         # save and divide by 3 to get average
         prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "u_combined", u_combined/len(axis), compression='gzip')

@@ -8,6 +8,7 @@ from utils import prediction_utils
 from utils.ImageDataset_temporal import ImageDataset_temporal
 from matplotlib import pyplot as plt
 import h5py
+import argparse
 # os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block, post_processing_block):
@@ -32,27 +33,31 @@ def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resb
 
 
 if __name__ == '__main__':
-    # Define directories and filenames
-    model_name = '20240118-1300' #20230619-1631#'20230405-1417'#'20230407-2246'#'20230404-1418' #this model: training 2, 3, validation: 1, test:4
-    set_names = [ 'Test', 'Validation']#, 'Training', 'Training'] 'Training', 'Training',
-    model_name = '20240115-1535' #20230619-1631#'20230405-1417'#'20230407-2246'#'20230404-1418' #this model: training 2, 3, validation: 1, test:4
-    set_names = [ 'Test', 'Validation']#, 'Training', 'Training'] 
-    data_models= ['4', '1']#['2', '3', '4', '1']#, '2', '3']
-    steps = [2, 2]#, 2, 2]
-    file_names = ['M4_2mm_step2_invivoP02_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5', 'M1_2mm_step2_invivoP01_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5']
-    #file_names = ['M4_2mm_step2_static_dynamic_noise.h5', 'M1_2mm_step2_static_dynamic_noise.h5'] #'M2_2mm_step2_static_dynamic_noise.h5', 'M3_2mm_step2_static_dynamic_noise.h5', 
-    file_names = ['M4_2mm_step2_temporalsmoothing_toeger_periodic_LRfct_noise.h5', 'M1_2mm_step2_temporalsmoothing_toeger_periodic_LRfct_noise.h5'] #'M2_2mm_step2_static_dynamic_noise.h5', 'M3_2mm_step2_static_dynamic_noise.h5', 
+    parser = argparse.ArgumentParser(description="My script description")
+    parser.add_argument("--model", type=str, help="Optional argument to pass the name of the model")
+    args = parser.parse_args()
 
+    # Define directories and filenames
+    if args.model is not None:
+        model_name = args.model
+    else:
+        model_name = '20240226-2026' # this model: training 2, 3, validation: 1, test:4
+    print("Model name: ", model_name)
+    set_names = ['Test', 'Validation', 'Training', 'Training']
+    data_models= ['4', '1', '2', '3', ]
+    steps = [ 2, 2, 2, 2]
+    file_names = ['M4_2mm_step2_flowermagn_boxavg_LRfct_noise.h5', 'M1_2mm_step2_flowermagn_boxavg_LRfct_noise.h5', 
+                  'M2_2mm_step2_flowermagn_boxavg_LRfct_noise.h5', 'M3_2mm_step2_flowermagn_boxavg_LRfct_noise.h5']
+    #file_names = ['M4_2mm_step2_static_dynamic_noise.h5', 'M1_2mm_step2_static_dynamic_noise.h5'] #'M2_2mm_step2_static_dynamic_noise.h5', 'M3_2mm_step2_static_dynamic_noise.h5', 
+    # file_names = ['M4_2mm_step2_temporalsmoothing_toeger_periodic_LRfct_noise.h5', 'M1_2mm_step2_temporalsmoothing_toeger_periodic_LRfct_noise.h5'] #'M2_2mm_step2_static_dynamic_noise.h5', 'M3_2mm_step2_static_dynamic_noise.h5', 
+    # set filenamaes and directories
+    data_dir = 'Temporal4DFlowNet/data/CARDIAC'  
 
     for set_name, data_model, step, filename in zip(set_names, data_models, steps, file_names):
 
         # set filenamaes and directories
-        data_dir = 'Temporal4DFlowNet/data/CARDIAC'
-        # filename = f'M{data_model}_2mm_step{step}_static_dynamic_noise.h5' 
-        
-    
         output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
-        output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'
+        output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal2.h5'
         
         model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
@@ -68,7 +73,7 @@ if __name__ == '__main__':
         low_res_block  = 'resnet_block'   # 'resnet_block' 'dense_block' csp_block
         high_res_block = 'resnet_block'    #'resnet_block'
         upsampling_block = 'linear' #'nearest_neigbor'#'linear'#'Conv3DTranspose'#'nearest_neigbor'#'linear''nearest_neigbor' 'Conv3DTranspose'
-        post_processing_block = None#'unet_block'#None#'unet_block' #None#
+        post_processing_block = None  #'unet_block'
 
         # Setting up
         input_filepath = '{}/{}'.format(data_dir, filename)
@@ -179,8 +184,6 @@ if __name__ == '__main__':
 
         print("save combined predictions")
         # save and divide by 3 to get average
-        print("Delete extit fct after testing")
-        exit()
 
         prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "u_combined", u_combined/len(axis), compression='gzip')
         prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "v_combined", v_combined/len(axis), compression='gzip')
