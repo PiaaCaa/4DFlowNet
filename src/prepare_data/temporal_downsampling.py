@@ -3,7 +3,8 @@ import os
 import h5py
 from scipy.integrate import trapz
 from matplotlib import pyplot as plt
-# from utils import prediction_utils
+# from utils import h5functions
+import h5functions
 
 """
 This file contains functions for temporal downsampling
@@ -147,45 +148,13 @@ def temporal_smoothing_box_function_toeger(hr,t_range, sigma):
 
 
 
-def merge_data_to_h5(input_file, toadd_file):
-    """
-    Add data from merge_file to input file if keys are not present.
-    """
-    with h5py.File(input_file, mode='a') as input_h5:
-        with h5py.File(toadd_file, mode='r') as toadd_h5:
-            for key in toadd_h5.keys():
-                if key not in input_h5.keys():
-                    print('Adding key', key)
-                    dataset = np.array(toadd_h5[key])
-
-                    # convert float64 to float32 to save space
-                    if dataset.dtype == 'float64':
-                        dataset = np.array(dataset, dtype='float32')
-                    datashape = (None, )
-                    if (dataset.ndim > 1):
-                        datashape = (None, ) + dataset.shape[1:]
-                    input_h5.create_dataset(key, data=dataset, maxshape=datashape)
-
-def delete_data_from_h5(h5_file,lst_keys):
-    """
-    Delete data from keys from h5_file 
-    """
-    with h5py.File(h5_file, mode='a') as hf:
-        for key in lst_keys:
-            if key in hf.keys():
-                del hf[key]
-                print('Deleted key', key)
-
-
-
 if __name__ == '__main__':
     # load data
     hr_file = 'data/CARDIAC/M4_2mm_step1_static_dynamic.h5'
 
     # save data
-    smooth_file_lr  = 'data/CARDIAC/M4_2mm_step2_boxavg_LR.h5'
-    smooth_file_hr0 = 'data/CARDIAC/M4_2mm_step2_boxavg0_HR.h5'
-    smooth_file_hr1 = 'data/CARDIAC/M4_2mm_step2_boxavg1_HR.h5'
+    smooth_file_lr  = 'data/CARDIAC/M4_2mm_step2_boxavg_LR_new.h5'
+    smooth_file_hr0 = 'data/CARDIAC/M4_2mm_step2_boxavg0_HR_new.h5'
 
     keys =  ["mask", ] 
     # delete_data_from_h5(smooth_file_lr, keys)
@@ -197,8 +166,8 @@ if __name__ == '__main__':
           hr_u = np.asarray(p1['u']) 
           hr_v = np.asarray(p1['v'])
           hr_w = np.asarray(p1['w'])
-          mask = np.asarray(p1['mask'])
-          print(p1.keys())
+          mask = np.asarray(p1['mask']).squeeze()
+          print(p1.keys(), 'shapes', hr_u.shape, hr_v.shape, hr_w.shape, mask.shape)
 
    
     t_range = np.linspace(0, 1, hr_u.shape[0])
@@ -243,44 +212,25 @@ if __name__ == '__main__':
                 print("STOP - File already exists!")
             
             print(f'saving to {smooth_file_lr}')
-            prediction_utils.save_to_h5(smooth_file_lr, 'u', u_temp_smoothing)
-            prediction_utils.save_to_h5(smooth_file_lr, 'v', v_temp_smoothing)
-            prediction_utils.save_to_h5(smooth_file_lr, 'w', w_temp_smoothing)
+            h5functions.save_to_h5(smooth_file_lr, 'u', u_temp_smoothing)
+            h5functions.save_to_h5(smooth_file_lr, 'v', v_temp_smoothing)
+            h5functions.save_to_h5(smooth_file_lr, 'w', w_temp_smoothing)
         else:
             # apply smoothing on the downsampled data
             print("---------downsampling to 100 to 50------------")
             hr_u0, hr_u1 = temporal_box_averaging_and_downsampling(hr_u, 2)
-            # hr_v0, hr_v1 = temporal_box_averaging_and_downsampling(hr_v, 2)
-            # hr_w0, hr_w1 = temporal_box_averaging_and_downsampling(hr_w, 2)
-            print("---------downsampling to 50 to 25------------")
-            test_hr_u1, test_hr_u2 = temporal_box_averaging_and_downsampling(hr_u0, 2)
-            # test_hr_u3, test_hr_u4 = temporal_box_averaging_and_downsampling(hr_u1, 2)
+            hr_v0, hr_v1 = temporal_box_averaging_and_downsampling(hr_v, 2)
+            hr_w0, hr_w1 = temporal_box_averaging_and_downsampling(hr_w, 2)
+            # print("---------downsampling to 50 to 25------------")
+            # test_hr_u1, test_hr_u2 = temporal_box_averaging_and_downsampling(hr_u0, 2)
+            # # test_hr_u3, test_hr_u4 = temporal_box_averaging_and_downsampling(hr_u1, 2)
 
             print("---------downsampling to 100 to 25 ------------")
             lr_u2, lr_u3 = temporal_box_averaging_and_downsampling(hr_u, 4)
-            # lr_v2, lr_v3 = temporal_box_averaging_and_downsampling(hr_v, 4)
-            # lr_w2, lr_w3 = temporal_box_averaging_and_downsampling(hr_w, 4)
-            exit()
-            print("diff: ", np.sum(lr_u2-test_hr_u1), "max", np.max(lr_u2-test_hr_u1) )
-            plt.imshow(lr_u2[10, :, :, 30]-test_hr_u1[10, :, :, 30])
-            
-            plt.show()
-
-            print("diff: ", np.sum(lr_u3-test_hr_u1) , "max", np.max(lr_u3-test_hr_u1))
-            plt.imshow(lr_u3[10, :, :, 30]-test_hr_u1[10, :, :, 30])
-            plt.show()
-
-            print("diff: ", np.sum(lr_u3-test_hr_u2) )
-            plt.imshow(lr_u2[10, :, :, 30]-test_hr_u2[10, :, :, 30])
-            plt.show()
-
-            print("diff: ", np.sum(lr_u3-test_hr_u2) )
-            plt.imshow(lr_u2[10, :, :, 30]-test_hr_u3[10, :, :, 30])
-            plt.show()
+            lr_v2, lr_v3 = temporal_box_averaging_and_downsampling(hr_v, 4)
+            lr_w2, lr_w3 = temporal_box_averaging_and_downsampling(hr_w, 4)
 
 
-
-            exit()
             lr_u = np.zeros_like(hr_u0)
             lr_v = np.zeros_like(hr_v0)
             lr_w = np.zeros_like(hr_w0)
@@ -292,52 +242,70 @@ if __name__ == '__main__':
             lr_w[::2] = lr_w2
             lr_w[1::2] = lr_w3
 
+            print('shapes', lr_u.shape, lr_v.shape, lr_w.shape,  mask[::2].shape, ' hr ', hr_u0.shape)
+
+            mean_speed_lr = np.average(np.sqrt(lr_u**2 + lr_v**2 + lr_w**2), axis = (1, 2, 3), weights=  mask[::2])
+            mean_speed_hr = np.average(np.sqrt(hr_u0**2 + hr_v0**2 + hr_w0**2), axis = (1, 2, 3), weights=  mask[::2])
+            t_range = np.arange(mean_speed_hr.shape[0])
+            plt.subplot(1, 2, 1)
+            plt.plot(mean_speed_hr, label = 'hr')
+            plt.plot(t_range[::2], mean_speed_lr[::2], label = 'lr')
+            plt.subplot(1, 2, 2)
+            plt.plot(mean_speed_hr, label = 'hr')
+            plt.plot(t_range[1::2], mean_speed_lr[1::2], label = 'lr')
+            
+            plt.legend()
+
+            plt.show()
+
+
+
             if os.path.exists(smooth_file_hr0):
                 print(f"STOP - File {smooth_file_hr0} already exists!")
             else:
             
                 # save hr first
                 print(f'saving to {smooth_file_hr0}')
-                prediction_utils.save_to_h5(smooth_file_hr0, 'u', hr_u0)
-                prediction_utils.save_to_h5(smooth_file_hr0, 'v', hr_v0)
-                prediction_utils.save_to_h5(smooth_file_hr0, 'w', hr_w0)
-                prediction_utils.save_to_h5(smooth_file_hr0, 'mask',  mask [::2])
+                h5functions.save_to_h5(smooth_file_hr0, 'u', hr_u0)
+                h5functions.save_to_h5(smooth_file_hr0, 'v', hr_v0)
+                h5functions.save_to_h5(smooth_file_hr0, 'w', hr_w0)
+                h5functions.save_to_h5(smooth_file_hr0, 'mask',  mask [::2])
                 with h5py.File(hr_file, mode = 'r' ) as p1:
                     for key in add_keys:
                         if key != 'dx':
-                            prediction_utils.save_to_h5(smooth_file_hr0, key, np.array(p1[key])[::2])
+                            h5functions.save_to_h5(smooth_file_hr0, key, np.array(p1[key])[::2], expand_dims=False)
                         else:
-                            prediction_utils.save_to_h5(smooth_file_hr0, key, np.array(p1[key]))
+                            h5functions.save_to_h5(smooth_file_hr0, key, np.array(p1[key]), expand_dims=False)
                         print(np.array(p1[key]).shape)
 
-            if os.path.exists(smooth_file_hr1):
-                print(f"STOP - File {smooth_file_hr1} already exists!")
-            else:
-                        # save hr first
-                print(f'saving to {smooth_file_hr1}')
-                prediction_utils.save_to_h5(smooth_file_hr1, 'u', hr_u0)
-                prediction_utils.save_to_h5(smooth_file_hr1, 'v', hr_v0)
-                prediction_utils.save_to_h5(smooth_file_hr1, 'w', hr_w0)
-                prediction_utils.save_to_h5(smooth_file_hr1, 'mask',  mask [::2])
-                with h5py.File(hr_file, mode = 'r' ) as p1:
-                    for key in add_keys:
-                        if key != 'dx':
-                            prediction_utils.save_to_h5(smooth_file_hr1, key, np.array(p1[key])[::2])
-                        else:
-                            prediction_utils.save_to_h5(smooth_file_hr1, key, np.array(p1[key]))
-                        print(np.array(p1[key]).shape)
+            # if os.path.exists(smooth_file_hr1):
+            #     print(f"STOP - File {smooth_file_hr1} already exists!")
+            # else:
+            #             # save hr first
+            #     print(f'saving to {smooth_file_hr1}')
+            #     h5functions.save_to_h5(smooth_file_hr1, 'u', hr_u0)
+            #     h5functions.save_to_h5(smooth_file_hr1, 'v', hr_v0)
+            #     h5functions.save_to_h5(smooth_file_hr1, 'w', hr_w0)
+            #     h5functions.save_to_h5(smooth_file_hr1, 'mask',  mask [::2])
+            #     with h5py.File(hr_file, mode = 'r' ) as p1:
+            #         for key in add_keys:
+            #             if key != 'dx':
+            #                 h5functions.save_to_h5(smooth_file_hr1, key, np.array(p1[key])[::2])
+            #             else:
+            #                 h5functions.save_to_h5(smooth_file_hr1, key, np.array(p1[key]))
+            #             print(np.array(p1[key]).shape)
 
             if os.path.exists(smooth_file_lr):
                 print(f"STOP - File {smooth_file_lr} already exists!")
             else:
                 print(f'saving to {smooth_file_lr}')
-                prediction_utils.save_to_h5(smooth_file_lr, 'u', lr_u)
-                prediction_utils.save_to_h5(smooth_file_lr, 'v', lr_v)
-                prediction_utils.save_to_h5(smooth_file_lr, 'w', lr_w)
+                h5functions.save_to_h5(smooth_file_lr, 'u', lr_u, expand_dims=False)
+                h5functions.save_to_h5(smooth_file_lr, 'v', lr_v, expand_dims=False)
+                h5functions.save_to_h5(smooth_file_lr, 'w', lr_w, expand_dims=False)
                 with h5py.File(smooth_file_hr0, mode = 'r' ) as p1:
                     for key in add_keys:
-                            prediction_utils.save_to_h5(smooth_file_lr, key, np.array(p1[key]))
-                            prediction_utils.save_to_h5(smooth_file_lr, key, np.array(p1[key]))
+                            h5functions.save_to_h5(smooth_file_lr, key, np.array(p1[key]), expand_dims=False)
+                            h5functions.save_to_h5(smooth_file_lr, key, np.array(p1[key]), expand_dims=False)
                             print(np.array(p1[key]).shape)
 
             # also save magnitude etc.
@@ -356,9 +324,9 @@ if __name__ == '__main__':
             print("STOP - File already exists!")
             exit()
         print(f'saving to {smooth_file_hr}')
-        prediction_utils.save_to_h5(smooth_file_hr, 'u', u_temp_smoothing)
-        prediction_utils.save_to_h5(smooth_file_hr, 'v', v_temp_smoothing)
-        prediction_utils.save_to_h5(smooth_file_hr, 'w', w_temp_smoothing)
+        h5functions.save_to_h5(smooth_file_hr, 'u', u_temp_smoothing)
+        h5functions.save_to_h5(smooth_file_hr, 'v', v_temp_smoothing)
+        h5functions.save_to_h5(smooth_file_hr, 'w', w_temp_smoothing)
 
         merge_data_to_h5(smooth_file_hr, hr_file)
 
