@@ -12,6 +12,8 @@ import shutil
 import os
 from .STR4DFlowNet_adapted import STR4DFlowNet
 from . import utility, h5util, loss_utils
+from keras.utils.layer_utils import count_params
+
 
 class  TrainerController_temporal:
     # constructor
@@ -178,13 +180,13 @@ class  TrainerController_temporal:
         return tf.sqrt(u ** 2 + v ** 2 + w ** 2)
 
 
-    def calculate_l1_mutually_projected_loss(self, u, v, w, u_pred, v_pred, w_pred, alpha= 0.5):
+    def calculate_l1_mutually_projected_loss(self,  u, v, w, u_pred, v_pred, w_pred, alpha= 0.5):
         """
             Calculate L1 mutually projected loss
         """
-        theta = tf.acos((u*u_pred + v*v_pred + w*w_pred) / (self.calculate_l2norm(u,v,w) * self.calculate_l2norm(u_pred,v_pred,w_pred)))
-        proj_l1_u_v = tf.abs(self.calculate_l2_norm(u,v,w) - self.calculate_l2_norm(u_pred,v_pred,w_pred) * tf.cos(theta))
-        proj_l1_v_u = tf.abs(self.calculate_l2_norm(u_pred,v_pred,w_pred) - self.calculate_l2_norm(u,v,w) * tf.cos(theta))
+        eps = 0.00005
+        proj_l1_u_v = tf.abs(self.calculate_l2norm(u,v,w) - (u*u_pred + v*v_pred + w*w_pred)/ (self.calculate_l2norm(u,v,w) + eps))
+        proj_l1_v_u = tf.abs(self.calculate_l2norm(u_pred,v_pred,w_pred) - (u*u_pred + v*v_pred + w*w_pred)/ (self.calculate_l2norm(u_pred,v_pred,w_pred) + eps))
         return alpha * proj_l1_u_v + (1-alpha)* proj_l1_v_u
 
 
