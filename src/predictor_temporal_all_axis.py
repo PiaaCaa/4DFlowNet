@@ -8,6 +8,7 @@ from utils import prediction_utils
 from utils.ImageDataset_temporal import ImageDataset_temporal
 from matplotlib import pyplot as plt
 import h5py
+import argparse
 # os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block, post_processing_block):
@@ -32,6 +33,19 @@ def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resb
 
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description="My script description")
+    parser.add_argument("--model", type=str, help="Optional argument to pass the name of the model")
+    args = parser.parse_args()
+
+    # Define directories and filenames
+    if args.model is not None:
+        model_name = args.model
+    else:
+        model_name = '20240207-1150' # this model: training 2, 3, validation: 1, test:4
+
+    print("model_name: ", model_name)
+    exit()
     # Define directories and filenames
     model_name = '20240118-1300' #20230619-1631#'20230405-1417'#'20230407-2246'#'20230404-1418' #this model: training 2, 3, validation: 1, test:4
     set_names = [ 'Test', 'Validation']#, 'Training', 'Training'] 'Training', 'Training',
