@@ -13,7 +13,6 @@ from matplotlib import pyplot as plt
 
 from Network.PatchGenerator import PatchGenerator
 from utils import prediction_utils
-from prepare_data.visualize_utils import generate_gif_volume
 from Network.loss_utils import calculate_divergence
 from utils.colors import *
 
