@@ -33,10 +33,19 @@ def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resb
 
 
 if __name__ == '__main__':
+
     parser = argparse.ArgumentParser(description="My script description")
     parser.add_argument("--model", type=str, help="Optional argument to pass the name of the model")
     args = parser.parse_args()
 
+    # Define directories and filenames
+    if args.model is not None:
+        model_name = args.model
+    else:
+        model_name = '20240207-1150' # this model: training 2, 3, validation: 1, test:4
+
+    print("model_name: ", model_name)
+    exit()
     # Define directories and filenames
     if args.model is not None:
         model_name = args.model

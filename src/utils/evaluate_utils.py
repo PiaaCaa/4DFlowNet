@@ -1364,7 +1364,7 @@ def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparis
 #         plt.savefig(f'{eval_dir}/{name_evaluation}_R2_vals_{vel}__.svg', bbox_inches='tight')
 
 
-def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KTH_colors['pink100'] , save_as= ''):
+def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KTH_colors['pink100'] , save_as= '', eval_dir= '', set_name = '', model_name = ''):
     vel_colnames = ['u', 'v', 'w']
     vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
 
@@ -1417,7 +1417,7 @@ def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KTH_colors['pink1
         plt.legend()
 
     plt.tight_layout()
-    plt.savefig(f'{eval_dir}/k_vals_{set_name}_{save_as}.svg')
+    plt.savefig(f'{save_as}.svg')
 
     #save each plot separately
     plt.figure(figsize=(5, 5))
@@ -1459,18 +1459,13 @@ def temporal_linear_interpolation(lr, hr_shape):
     '''
 
     # only temporal resolution increases 
-    t_lr = np.arange(0, lr.shape[0])
-    x_lr = np.arange(0, lr.shape[1])
-    y_lr = np.arange(0, lr.shape[2])
-    z_lr = np.arange(0, lr.shape[3])
+    downsampling_factor = lr.shape[0]/hr_shape[0]
 
-    t_hr = np.linspace(0, lr.shape[0]-0.5,  hr_shape[0])
+    t_hr = np.linspace(0, lr[0]-downsampling_factor,  hr_shape[0])
     
-    tg, xg, yg ,zg = np.meshgrid(t_hr, x_lr, y_lr, z_lr, indexing='ij', sparse=True)
+    tg, xg, yg ,zg = np.meshgrid(t_hr, np.arange(0, lr.shape[1]), np.arange(0, lr.shape[2]), np.arange(0, lr.shape[3]), indexing='ij', sparse=True)
 
-    interp = RegularGridInterpolator((t_lr, x_lr, y_lr, z_lr), lr, method='linear', bounds_error=False, fill_value=0)
-    interpolate = interp((tg, xg, yg ,zg))
-
+    interpolate = scipy.ndimage.map_coordinates(lr, np.array([tg, xg, yg ,zg]), mode='linear')
 
     return interpolate
 
@@ -1494,35 +1489,6 @@ def temporal_NN_interpolation(lr, hr_shape):
     Nearest neighbor interpolation in time, from (t, h, w, d) to (2t, h, w, d)
     For an equidistant grid this is only the doubling of the temporal resolution
     '''
-    # t_lr = np.arange(0, lr.shape[0])
-    # x_lr = np.arange(0, lr.shape[1])
-    # y_lr = np.arange(0, lr.shape[2])
-    # z_lr = np.arange(0, lr.shape[3])
-
-    # t_hr = np.linspace(0, lr.shape[0]-0.5,  hr_shape[0])
-    
-    # tg, xg, yg ,zg = np.meshgrid(t_hr, x_lr, y_lr, z_lr, indexing='ij', sparse=True)
-
-    # interp = RegularGridInterpolator((t_lr, x_lr, y_lr, z_lr), lr, method='nearest', bounds_error=False, fill_value=0)
-    # interpolate = interp((tg, xg, yg ,zg))
-
-    
-
-    interpolate = np.zeros(hr_shape)
-    interpolate[::2, :, :, :] = lr
-    interpolate[1::2, :, :, :] = lr
-
-    return interpolate
-
-def temporal_cubic_interpolation(lr, hr_shape):
-    '''
-    Cubic interpolation in time , from (t, h, w, d) to (2t, h, w, d)
-    '''
-    # x_lr = np.arange(0, lr.shape[0])
-    # x_hr = np.linspace(0, lr.shape[0]-0.5,  hr_shape[0])
-    # cs = CubicSpline(x_lr, lr, axis=0)
-
-    # interpolate = cs(x_hr)
     t_lr = np.arange(0, lr.shape[0])
     x_lr = np.arange(0, lr.shape[1])
     y_lr = np.arange(0, lr.shape[2])
@@ -1532,21 +1498,52 @@ def temporal_cubic_interpolation(lr, hr_shape):
     
     tg, xg, yg ,zg = np.meshgrid(t_hr, x_lr, y_lr, z_lr, indexing='ij', sparse=True)
 
-    interp = RegularGridInterpolator((t_lr, x_lr, y_lr, z_lr), lr, method='cubic', bounds_error=False, fill_value=0)
-    interpolate = interp((tg, xg, yg ,zg))
+    interpolate = scipy.ndimage.map_coordinates(lr, np.array([tg, xg, yg ,zg]), mode='nearest')
+
+    return interpolate
+
+#TODO test this
+def temporal_cubic_interpolation(lr, hr_shape):
+    '''
+    Cubic interpolation in time , from (t, h, w, d) to (2t, h, w, d)
+    '''
+
+    t_lr = np.arange(0, lr.shape[0])
+    x_lr = np.arange(0, lr.shape[1])
+    y_lr = np.arange(0, lr.shape[2])
+    z_lr = np.arange(0, lr.shape[3])
+
+    t_hr = np.linspace(0, lr.shape[0]-0.5,  hr_shape[0])
+    
+    tg, xg, yg ,zg = np.meshgrid(t_hr, x_lr, y_lr, z_lr, indexing='ij', sparse=True)
+
+    interpolate = scipy.ndimage.map_coordinates(lr, np.array([tg, xg, yg ,zg]), mode='cubic')
+    # interp = RegularGridInterpolator((t_lr, x_lr, y_lr, z_lr), lr, method='cubic', bounds_error=False, fill_value=0)
+    # interpolate = interp((tg, xg, yg ,zg))
 
     return interpolate
 
 
-def temporal_sinc_interpolation(lr, hr_shape):
-    '''
-    TODO create sinc interpolation
-    '''
-    a = 1
-    return None
+def temporal_sinc_interpolation_ndarray(data, s_range, e_range):
+    """
+    Interpolate the data in the temporal direction using sinc interpolation
+    data is nd array: expect T x X x Y x Z
+    s_range is range of the sample points
+    e_range is evaluation range
+    """
+    dt = s_range[1] - s_range[0]
 
+    sinc_matrix =  np.sinc((e_range - s_range[:, None])/dt).transpose()
+
+    #tensordot product
+    sinc_interp = np.tensordot(sinc_matrix, data, axes = ([1], [0]))
+    
+    return np.asarray(sinc_interp)
 
 def temporal_linear_interpolation_np(lr, hr_shape):
+    """
+    Linear interpolation in time, from (t, h, w, d) to (2t, h, w, d)
+    """
     T, x, y, z = hr_shape
     interpolate = np.zeros((hr_shape))
     interpolate[::2, :, :, :] = lr
@@ -1557,18 +1554,17 @@ def temporal_linear_interpolation_np(lr, hr_shape):
 
     return interpolate
 
+
+
 def spatial3D_NN_interpolation(lr, hr_shape, method = 'nearest'):
 
-    x_lr = np.arange(0, lr.shape[0])
-    y_lr = np.arange(0, lr.shape[1])
-    z_lr = np.arange(0, lr.shape[2])
 
     x_hr = np.linspace(0, lr.shape[0],  int(hr_shape[0]))
     y_hr = np.linspace(0, lr.shape[1],  int(hr_shape[1]))
     z_hr = np.linspace(0, lr.shape[2],  int(hr_shape[2]))
     
     xg, yg ,zg = np.meshgrid(x_hr, y_hr, z_hr, indexing='ij', sparse=True)
+    
+    interpolate = scipy.ndimage.map_coordinates(lr, np.array([xg, yg, zg]), mode=method)
 
-    interp = RegularGridInterpolator((x_lr, y_lr, z_lr), lr, method=method, bounds_error=False, fill_value=0)
-    interpolate = interp((xg, yg ,zg))
     return interpolate

@@ -1,7 +1,7 @@
 import time
 import math
 import numpy as np
-
+from matplotlib import pyplot as plt
 
 def rectangular_crop3d(f, crop_ratio):
     half_x = f.shape[0] // 2
@@ -86,7 +86,7 @@ def add_complex_signal_noise(imgfft, targetSNRdb):
 
     return imgfft
 
-def downsample_complex_img(complex_img, crop_ratio, targetSNRdb, temporal_downsampling = False):
+def downsample_complex_img_TBD(complex_img, crop_ratio, targetSNRdb, temporal_downsampling = False):
     imgfft = np.fft.fftn(complex_img)
     
     if not temporal_downsampling:
@@ -111,7 +111,7 @@ def rescale_magnitude_on_ratio(new_mag, old_mag):
 
     return new_mag * rescale_ratio
     
-def downsample_phase_img(velocity_img, mag_image, venc, crop_ratio, targetSNRdb, temporal_downsampling = False):
+def downsample_phase_img_TBD(velocity_img, mag_image, venc, crop_ratio, targetSNRdb, temporal_downsampling = False):
     # convert to phase
     phase_image = velocity_img / venc * math.pi
 
@@ -132,53 +132,62 @@ def downsample_phase_img(velocity_img, mag_image, venc, crop_ratio, targetSNRdb,
 
     return new_velocity_img, new_mag
 
+def velocity_img_to_kspace(vel_img,mag_image, venc):
 
-def rectangular_crop3d_TBAD(f, crop_ratio):
-    half_x = f.shape[0] // 2
-    half_y = f.shape[1] // 2
-    half_z = f.shape[2] // 2
-    
-    # print('half', half_x, half_y, half_z)
+    # convert to phase
+    phase_image = vel_img / venc * math.pi
 
-    x_crop = int(half_x * crop_ratio)
-    y_crop = int(half_y * crop_ratio)
-    z_crop = int(half_z * crop_ratio)
+    # convert to complex image
+    complex_img = np.multiply(mag_image, np.exp(1j*phase_image))
 
-    # shift it to make it easier to crop, otherwise we need to concat half left and half right
-    new_kspace = np.fft.fftshift(f)
-    new_kspace = new_kspace[half_x-x_crop:half_x+x_crop, half_y-y_crop:half_y+y_crop, half_z-z_crop : half_z+z_crop]
-    # shift it back to original freq domain
-    new_kspace = np.fft.fftshift(new_kspace)
-     
-    return np.fft.fftshift(f)
-
-
-def downsample_complex_img_TBAD(complex_img, crop_ratio, targetSNRdb):
+    # fft
     imgfft = np.fft.fftn(complex_img)
 
-    # commented out to entirely get rid of cropping - this should prevent any downsampling
-    #imgfft = rectangular_crop3d_TBAD(imgfft, crop_ratio)
-    
-    shifted_mag  = 20*np.log(np.fft.fftshift(np.abs(imgfft)))
+    return imgfft
 
-    # add noise on freq domain
-    imgfft = add_complex_signal_noise(imgfft, targetSNRdb)
+def velocity_img_to_centered_kspace(vel_img,mag_image, venc):
+    # convert to phase
+    phase_image = vel_img / venc * math.pi
 
-    # inverse fft to image domain
+    # convert to complex image
+    complex_img = np.multiply(mag_image, np.exp(1j*phase_image))
+
+    # ifftshift
+    complex_img = np.fft.ifftshift(complex_img)
+
+    # fft
+    imgfft = np.fft.fftn(complex_img)
+
+    # shift img to center
+    imgfft = np.fft.fftshift(imgfft)
+
+    return imgfft
+
+def centered_kspace_to_velocity_img(imgfft, mag_image, venc):
+
+    # shift img to center
+    imgfft = np.fft.ifftshift(imgfft)
+
     new_complex_img = np.fft.ifftn(imgfft)
 
-    return new_complex_img, shifted_mag
-
-
-def downsample_phase_img_TBAD(velocity_img, mag_image, venc, crop_ratio, targetSNRdb):
-    # convert to phase
-    phase_image = velocity_img / venc * math.pi
-
-    complex_img = np.multiply(mag_image, np.exp(1j*phase_image))
+    new_complex_img = np.fft.fftshift(new_complex_img)
     
-    # -----------------------------------------------------------
-    new_complex_img, shifted_freqmag = downsample_complex_img_TBAD(complex_img, crop_ratio, targetSNRdb)
-    # -----------------------------------------------------------
+    # Get the MAGnitude and rescale
+    new_mag = np.abs(new_complex_img)
+    new_mag = rescale_magnitude_on_ratio(new_mag, mag_image)
+
+    # Get the PHASE
+    new_phase = np.angle(new_complex_img)
+
+    # Get the velocity image
+    new_velocity_img = new_phase / math.pi * venc
+    
+
+    return new_velocity_img, new_mag
+
+def kspace_to_velocity_img(imgfft, mag_image, venc):
+    
+    new_complex_img = np.fft.ifftn(imgfft)
 
     # Get the MAGnitude and rescale
     new_mag = np.abs(new_complex_img)
@@ -192,3 +201,101 @@ def downsample_phase_img_TBAD(velocity_img, mag_image, venc, crop_ratio, targetS
 
     return new_velocity_img, new_mag
 
+def whole_script_TBD(vel_img, mag_image, venc, targetSNRdb):
+
+    # convert to phase
+    phase_image = vel_img / venc * math.pi
+
+    # convert to complex image
+    complex_img = np.multiply(mag_image, np.exp(1j*phase_image))
+
+    # fft 
+    imgfft = np.fft.fftn(complex_img)
+    shifted_mag  = 20*np.log(np.fft.fftshift(np.abs(imgfft)))
+
+    # add noise on freq domain
+    imgfft = add_complex_signal_noise(imgfft, targetSNRdb)
+
+    # inverse fft to image domain
+    new_complex_img = np.fft.ifftn(imgfft)
+
+    # Get the MAGnitude and rescale
+    new_mag = np.abs(new_complex_img)
+    new_mag = rescale_magnitude_on_ratio(new_mag, mag_image)
+
+    # Get the PHASE
+    new_phase = np.angle(new_complex_img)
+
+    # Get the velocity image
+    new_velocity_img = new_phase / math.pi * venc
+
+    return new_velocity_img, new_mag
+
+def noise_and_downsampling(vel_img, mag_image, venc, targetSNRdb, add_noise = True, spatial_crop_ratio = 1.0):
+
+    # convert to kspace
+    imgfft = velocity_img_to_kspace(vel_img,mag_image, venc)
+
+    # downsample the kspace by rectangular cropping
+    if spatial_crop_ratio < 1.0:
+        print("Downsampling by rectangular cropping")
+        imgfft = rectangular_crop3d(imgfft, spatial_crop_ratio)
+
+    # add noise on freq domain
+    if add_noise:
+        print("Adding noise")
+        shifted_mag  = 20*np.log(np.fft.fftshift(np.abs(imgfft)))
+        imgfft = add_complex_signal_noise(imgfft, targetSNRdb)
+
+    # inverse fft to image domain
+    new_velocity_img, new_mag = kspace_to_velocity_img(imgfft, mag_image, venc)
+
+    return new_velocity_img, new_mag
+
+
+
+# -------------test function----------------------------------------------
+# TODO put this in a test file
+def test_transform():
+    """test if going from kspace and back to image domain is lossless"""
+    # Create a random velocity image
+    vel_img = np.random.rand(100,100,100)
+    mag_image = np.random.rand(100,100,100)
+    venc = 100
+
+    # convert to kspace
+    imgfft = velocity_img_to_kspace(vel_img,mag_image, venc)
+    # inverse fft to image domain
+    new_velocity_img, new_mag = kspace_to_velocity_img(imgfft, mag_image, venc)
+
+    # check if the original and new are the same
+    assert np.allclose(vel_img, new_velocity_img) # check if the velocity image is the same
+    assert np.allclose(mag_image, new_mag) # check if the magnitude image is the same
+
+    print("Test 1 passed")
+
+    print("----Test 2----")
+
+    # Create a random velocity image
+    vel_img = np.arange(0, 100*100*100).reshape((100,100,100))
+    mag_image = np.random.rand(100,100,100)
+    mask = np.zeros_like(mag_image)
+    mask[25:75,15:34,25:75] = 1
+
+    vel_img = vel_img * mask
+
+    venc = 100
+
+    new_vel_img, _ = noise_and_downsampling(vel_img, mag_image, venc, 17, add_noise = False, spatial_crop_ratio = 1.0)
+    fig = plt.subplot(121)
+    plt.subplot(121)
+    plt.imshow(new_vel_img[:,:,50])
+    plt.subplot(122)
+    plt.imshow(vel_img[:,:,50])
+    plt.show()
+    assert np.allclose(vel_img, new_vel_img) # check if the velocity image is the same
+
+    print("Test 2 passed")
+
+
+# test_transform()

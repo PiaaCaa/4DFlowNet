@@ -38,7 +38,9 @@ class PanelController(param.Parameterized):
     def run(self):
         self.layout = self.view.get_layout()
         self.layout.servable()
+        print("-------------------------------------------------------------------------------------")
         print("ruuuuuning")
+        # self.layout.show()
 
 
     @param.depends(
@@ -69,4 +71,6 @@ class PanelController(param.Parameterized):
         # also check matplotlib responsive
 
         self.view.update_layout() # TODO maybe delete this later
-        
+        # self.view.layout.servable()
+        # self.view.layout.show()
+        print('Finished updating')

@@ -177,12 +177,13 @@ if __name__ == "__main__":
 
 
     # Define directories and filenames
-    model_name = '20230405-1417'    
-    set_name = 'Test'               
-    data_model= '4'
+    model_name = '20240226-2026' 
+    set_name = 'Validation'               
+    data_model= '1'
     step = 2
     use_dynamical_mask = True
     add_ending = ''
+    load_interpolation_files = False
 
     # directories
     gt_dir = 'data/CARDIAC'
@@ -192,9 +193,12 @@ if __name__ == "__main__":
     model_dir = '/models'
 
     # filenames
-    gt_filename = f'M{data_model}_2mm_step{step}_static_dynamic.h5'
-    lr_filename = f'M{data_model}_2mm_step{step}_static_dynamic_noise.h5'
-    result_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal_.h5'#newpadding.h5'
+    # gt_filename = f'M{data_model}_2mm_step{step}_static_dynamic.h5'
+    # lr_filename = f'M{data_model}_2mm_step{step}_static_dynamic_noise.h5'
+    gt_filename = f'M{data_model}_2mm_step2_flowermagn_boxavg_HRfct.h5'
+    lr_filename = f'M{data_model}_2mm_step2_flowermagn_boxavg_LRfct_noise.h5'
+
+    result_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'#newpadding.h5'
     evaluation_filename = f'eval_rel_err_{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'
     model_filename = f'Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
@@ -206,10 +210,10 @@ if __name__ == "__main__":
     save_relative_error_file= False
 
     # Setting up
-    gt_filepath = '{}/{}'.format(gt_dir, gt_filename)
+    gt_filepath  = '{}/{}'.format(gt_dir, gt_filename)
     res_filepath = '{}/{}'.format(result_dir, result_filename)
-    lr_filepath = '{}/{}'.format(lr_dir, lr_filename)
-    model_path = '{}/{}'.format(model_dir, model_filename)
+    lr_filepath  = '{}/{}'.format(lr_dir, lr_filename)
+    model_path   = '{}/{}'.format(model_dir, model_filename)
 
     if save_relative_error_file:
         assert(not os.path.exists(f'{result_dir}/{evaluation_filename}')) #STOP if relative error file is already created
@@ -244,9 +248,9 @@ if __name__ == "__main__":
     
 
     lr, gt, pred, temporal_mask, eval_dir = load_data(model_name, set_name, data_model, step, use_dynamical_mask, ending_file=add_ending)
-    interpolate_linear, interpolate_cubic, interpolate_NN = load_interpolation(data_model, step,lr, gt, use_dynamical_mask)
+    if load_interpolation_files: interpolate_linear, interpolate_cubic, interpolate_NN = load_interpolation(data_model, step,lr, gt, use_dynamical_mask)
 
-    #check that dimension fits
+    # check that dimension fits
     assert(gt["u"].shape == pred["u"].shape)  ,str(pred["u"].shape) + str(gt["u"].shape) # dimensions need to be the same
     
     #calculate velocity values in 1% and 99% quantile for plotting without noise
@@ -266,8 +270,9 @@ if __name__ == "__main__":
     #calculate relative error
     rel_error = calculate_relative_error_normalized(pred["u"], pred["v"], pred["w"], gt["u"], gt["v"] , gt["w"], gt["mask"])
     error_pointwise, error_absolut = calculate_pointwise_error(pred["u"], pred["v"], pred["w"], gt["u"], gt["v"] , gt["w"], gt["mask"])
-    rel_error_lin_interpolation =   calculate_relative_error_normalized(interpolate_linear["u"], interpolate_linear["v"], interpolate_linear["w"], gt["u"], gt["v"] , gt["w"], gt["mask"])
-    rel_error_cubic_interpolation = calculate_relative_error_normalized(interpolate_cubic["u"], interpolate_cubic["v"], interpolate_cubic["w"], gt["u"], gt["v"] , gt["w"], gt["mask"])
+    if load_interpolation_files:
+        rel_error_lin_interpolation =   calculate_relative_error_normalized(interpolate_linear["u"], interpolate_linear["v"], interpolate_linear["w"], gt["u"], gt["v"] , gt["w"], gt["mask"])
+        rel_error_cubic_interpolation = calculate_relative_error_normalized(interpolate_cubic["u"], interpolate_cubic["v"], interpolate_cubic["w"], gt["u"], gt["v"] , gt["w"], gt["mask"])
 
     error_pointwise_cap = error_pointwise.copy()
     error_pointwise_cap[np.where(error_pointwise_cap>1)] = 1
@@ -277,14 +282,16 @@ if __name__ == "__main__":
     # mean speed of gt and prediction
     mean_speed_gt =                 calculate_mean_speed(gt["u_fluid"], gt["v_fluid"] , gt["w_fluid"], gt["mask"])
     mean_speed_pred =               calculate_mean_speed(pred["u_fluid"], pred["v_fluid"] , pred["w_fluid"], gt["mask"])
-    mean_speed_lin_interpolation =  calculate_mean_speed(interpolate_linear["u_fluid"], interpolate_linear["v_fluid"] ,interpolate_linear["w_fluid"], gt["mask"])
-    mean_speed_cubic_interpolation = calculate_mean_speed(interpolate_cubic["u_fluid"], interpolate_cubic["v_fluid"] , interpolate_cubic["w_fluid"], gt["mask"])
+    if load_interpolation_files:
+        mean_speed_lin_interpolation =  calculate_mean_speed(interpolate_linear["u_fluid"], interpolate_linear["v_fluid"] ,interpolate_linear["w_fluid"], gt["mask"])
+        mean_speed_cubic_interpolation = calculate_mean_speed(interpolate_cubic["u_fluid"], interpolate_cubic["v_fluid"] , interpolate_cubic["w_fluid"], gt["mask"])
 
     #speed 
-    interpolate_linear['speed'] = np.sqrt(interpolate_linear["u"]**2 + interpolate_linear["v"]**2 + interpolate_linear["w"]**2)
-    interpolate_cubic['speed'] = np.sqrt(interpolate_cubic["u"]**2 + interpolate_cubic["v"]**2 + interpolate_cubic["w"]**2)
-    interpolate_linear['speed_fluid'] = np.multiply(interpolate_linear['speed'], gt['mask'])
-    interpolate_cubic['speed_fluid'] = np.multiply(interpolate_cubic['speed'], gt['mask'])
+    if load_interpolation_files:
+        interpolate_linear['speed'] = np.sqrt(interpolate_linear["u"]**2 + interpolate_linear["v"]**2 + interpolate_linear["w"]**2)
+        interpolate_cubic['speed'] = np.sqrt(interpolate_cubic["u"]**2 + interpolate_cubic["v"]**2 + interpolate_cubic["w"]**2)
+        interpolate_linear['speed_fluid'] = np.multiply(interpolate_linear['speed'], gt['mask'])
+        interpolate_cubic['speed_fluid'] = np.multiply(interpolate_cubic['speed'], gt['mask'])
 
 
     # dt["u"] = calculate_temporal_derivative(gt["u"], timestep=1)
@@ -320,17 +327,21 @@ if __name__ == "__main__":
         print(f'------------------Calculate error for {vel}---------------------')
         # rmse
         rmse_pred= calculate_rmse(pred[vel], gt[vel], gt["mask"], return_std=False)
-        rmse_lin_interpolation = calculate_rmse(interpolate_linear[vel], gt[vel], gt["mask"])
-        rmse_cubic_interpolation = calculate_rmse(interpolate_cubic[vel], gt[vel], gt["mask"])
+        if load_interpolation_files:
+            rmse_lin_interpolation = calculate_rmse(interpolate_linear[vel], gt[vel], gt["mask"])
+            rmse_cubic_interpolation = calculate_rmse(interpolate_cubic[vel], gt[vel], gt["mask"])
         bool_mask = gt['mask'].astype(bool)
         reverse_mask = np.ones(gt["mask"].shape) - gt["mask"]
         
         rmse_pred_nonfluid = calculate_rmse(pred[vel], gt[vel], reverse_mask)
-        rmse_lin_interpolation_nonfluid = calculate_rmse(interpolate_linear[vel], gt[vel], reverse_mask)
-        rmse_cubic_interpolation_nonfluid = calculate_rmse(interpolate_cubic[vel], gt[vel], reverse_mask)
+        if load_interpolation_files:
+            rmse_lin_interpolation_nonfluid = calculate_rmse(interpolate_linear[vel], gt[vel], reverse_mask)
+            rmse_cubic_interpolation_nonfluid = calculate_rmse(interpolate_cubic[vel], gt[vel], reverse_mask)
 
         plt.plot(rmse_pred, label = 'prediction')
-        plt.plot(rmse_lin_interpolation, label = 'linear interpolation')
+        if load_interpolation_files:
+            plt.plot(rmse_cubic_interpolation, label = 'cubic interpolation')
+            plt.plot(rmse_lin_interpolation, label = 'linear interpolation')
         
 
         for t in range(gt["u"].shape[0]):
@@ -355,67 +366,75 @@ if __name__ == "__main__":
         print(f'AVG RMSE ALL fluid {np.mean(rmse_pred):.4f}')
         print(f'AVG RMSE ALL nonfluid {np.mean(rmse_pred_nonfluid):.4f}')
 
-        print(f'AVG RMSE prediction diastole: {np.mean(rmse_pred[:25]):.4f} - linear interpolation: {np.mean(rmse_lin_interpolation[:25]):.4f} - cubic interpolation: {np.mean(rmse_cubic_interpolation[:25]):.4f}')
-        print(f'STD RMSE prediction diastole:  {np.std(rmse_pred[:25]):.4f} - linear interpolation: {np.std(rmse_lin_interpolation[:25]):.4f} - cubic interpolation: {np.std(rmse_cubic_interpolation[:25]):.4f}')
-        print(f'AVG RMSE prediction systole: {np.mean(rmse_pred[25:]):.4f} - linear interpolation: {np.mean(rmse_lin_interpolation[25:]):.4f} - cubic interpolation: {np.mean(rmse_cubic_interpolation[25:]):.4f}')
-        print(f'STD RMSE prediction systole:  {np.std(rmse_pred[25:]):.4f} - linear interpolation: {np.std(rmse_lin_interpolation[25:]):.4f} - cubic interpolation: {np.std(rmse_cubic_interpolation[25:]):.4f}')
-        #abs difference
-        abs_diff = np.abs(gt[f'{vel}_fluid'] - pred[f'{vel}_fluid'])
-        abs_diff_lin_interpolation = np.abs(gt[f'{vel}_fluid'] - interpolate_linear[f'{vel}_fluid'])
-        abs_diff_cubic_interpolation = np.abs(gt[f'{vel}_fluid'] - interpolate_cubic[f'{vel}_fluid'])
+        # print(f'AVG RMSE prediction diastole: {np.mean(rmse_pred[:25]):.4f} - linear interpolation: {np.mean(rmse_lin_interpolation[:25]):.4f} - cubic interpolation: {np.mean(rmse_cubic_interpolation[:25]):.4f}')
+        # print(f'STD RMSE prediction diastole:  {np.std(rmse_pred[:25]):.4f} - linear interpolation: {np.std(rmse_lin_interpolation[:25]):.4f} - cubic interpolation: {np.std(rmse_cubic_interpolation[:25]):.4f}')
+        # print(f'AVG RMSE prediction systole: {np.mean(rmse_pred[25:]):.4f} - linear interpolation: {np.mean(rmse_lin_interpolation[25:]):.4f} - cubic interpolation: {np.mean(rmse_cubic_interpolation[25:]):.4f}')
+        # print(f'STD RMSE prediction systole:  {np.std(rmse_pred[25:]):.4f} - linear interpolation: {np.std(rmse_lin_interpolation[25:]):.4f} - cubic interpolation: {np.std(rmse_cubic_interpolation[25:]):.4f}')
+        # #abs difference
+        # abs_diff = np.abs(gt[f'{vel}_fluid'] - pred[f'{vel}_fluid'])
+        # if load_interpolation_files:
+        #     abs_diff_lin_interpolation = np.abs(gt[f'{vel}_fluid'] - interpolate_linear[f'{vel}_fluid'])
+        #     abs_diff_cubic_interpolation = np.abs(gt[f'{vel}_fluid'] - interpolate_cubic[f'{vel}_fluid'])
 
-        print(f'Max abs difference diastole - prediction {np.max(abs_diff[:diastole_end]):.4f}')
-        print(f'Max abs difference diastole - linear interpolation', np.max(abs_diff_lin_interpolation[:diastole_end]))
-        print(f'Max abs difference diastole - cubic interpolation', np.max(abs_diff_cubic_interpolation[:diastole_end]))
-        print(f'Max abs difference systole - prediction', np.max(abs_diff[diastole_end:]))	
-        print(f'Max abs difference systole - linear interpolation', np.max(abs_diff_lin_interpolation[diastole_end:]))
-        print(f'Max abs difference systole - cubic interpolation', np.max(abs_diff_cubic_interpolation[diastole_end:]))
+        # print(f'Max abs difference diastole - prediction {np.max(abs_diff[:diastole_end]):.4f}')
+        # print(f'Max abs difference diastole - linear interpolation', np.max(abs_diff_lin_interpolation[:diastole_end]))
+        # print(f'Max abs difference diastole - cubic interpolation', np.max(abs_diff_cubic_interpolation[:diastole_end]))
+        # print(f'Max abs difference systole - prediction', np.max(abs_diff[diastole_end:]))	
+        # print(f'Max abs difference systole - linear interpolation', np.max(abs_diff_lin_interpolation[diastole_end:]))
+        # print(f'Max abs difference systole - cubic interpolation', np.max(abs_diff_cubic_interpolation[diastole_end:]))
 
-        print(f'Max abs difference fluid - prediction {np.max(abs_diff):.4f}')
-        print(f'Max abs difference fluid - linear interpolation', np.max(abs_diff_lin_interpolation))
-        print(f'Max abs difference fluid - cubic interpolation', np.max(abs_diff_cubic_interpolation))
+        # print(f'Max abs difference fluid - prediction {np.max(abs_diff):.4f}')
+        # print(f'Max abs difference fluid - linear interpolation', np.max(abs_diff_lin_interpolation))
+        # print(f'Max abs difference fluid - cubic interpolation', np.max(abs_diff_cubic_interpolation))
 
-        # print(f'Max lin interpolate boundary frame 35', np.max(np.multiply(interpolate_linear[vel][35], bounds[35])))
-        # print(f'Max cubic interpolate boundary frame 35', np.max(np.multiply(interpolate_linear[vel][35], bounds[35])))
+        # # print(f'Max lin interpolate boundary frame 35', np.max(np.multiply(interpolate_linear[vel][35], bounds[35])))
+        # # print(f'Max cubic interpolate boundary frame 35', np.max(np.multiply(interpolate_linear[vel][35], bounds[35])))
 
-        print(f'Correlation frame 35 prediction- {np.mean(abs_diff[35], where= bool_mask[35]):.4f} std: {np.std(abs_diff[35], where= bool_mask[35]):.4f}')
-        print(f'Correlation frame 35 linear interpolation- {np.mean(abs_diff_lin_interpolation[35], where= bool_mask[35]):.4f} std: {np.std(abs_diff_lin_interpolation[35], where= bool_mask[35]):.4f}')
-        print(f'Correlation frame 35 cubic interpolation- {np.mean(abs_diff_cubic_interpolation[35], where= bool_mask[35]):.4f} std: {np.std(abs_diff_cubic_interpolation[35], where= bool_mask[35]):.4f}')
+        # print(f'Correlation frame 35 prediction- {np.mean(abs_diff[35], where= bool_mask[35]):.4f} std: {np.std(abs_diff[35], where= bool_mask[35]):.4f}')
+        # print(f'Correlation frame 35 linear interpolation- {np.mean(abs_diff_lin_interpolation[35], where= bool_mask[35]):.4f} std: {np.std(abs_diff_lin_interpolation[35], where= bool_mask[35]):.4f}')
+        # print(f'Correlation frame 35 cubic interpolation- {np.mean(abs_diff_cubic_interpolation[35], where= bool_mask[35]):.4f} std: {np.std(abs_diff_cubic_interpolation[35], where= bool_mask[35]):.4f}')
     
     plt.legend()
     plt.show()
     print('--------------------------------------')
     # relative error
     REL_error_pred = rel_error
-    REL_error_lin_interpolation = rel_error_lin_interpolation
-    REL_error_cubic_interpolation = rel_error_cubic_interpolation
-    print(f'RMSE {vel} last frame - pred - {rmse_pred[-1]:.4f} - linear interpolation: {rmse_lin_interpolation[-1]:.4f} - cubic interpolation: {rmse_cubic_interpolation[-1]:.4f}')
-    print(f'RMSE {vel} peak frame 35 - pred - {rmse_pred[35]:.4f} - linear interpolation: {rmse_lin_interpolation[35]:.4f} - cubic interpolation: {rmse_cubic_interpolation[35]:.4f}')
-    print(f'RMSE {vel} peak frame 34- pred - {rmse_pred[34]:.4f} - linear interpolation: {rmse_lin_interpolation[34]:.4f} - cubic interpolation: {rmse_cubic_interpolation[34]:.4f}')
+    if load_interpolation_files:
+        REL_error_lin_interpolation = rel_error_lin_interpolation
+        REL_error_cubic_interpolation = rel_error_cubic_interpolation
+    # print(f'RMSE {vel} last frame - pred - {rmse_pred[-1]:.4f} - linear interpolation: {rmse_lin_interpolation[-1]:.4f} - cubic interpolation: {rmse_cubic_interpolation[-1]:.4f}')
+    # print(f'RMSE {vel} peak frame 35 - pred - {rmse_pred[35]:.4f} - linear interpolation: {rmse_lin_interpolation[35]:.4f} - cubic interpolation: {rmse_cubic_interpolation[35]:.4f}')
+    # print(f'RMSE {vel} peak frame 34- pred - {rmse_pred[34]:.4f} - linear interpolation: {rmse_lin_interpolation[34]:.4f} - cubic interpolation: {rmse_cubic_interpolation[34]:.4f}')
 
 
-    print(f'AVG REL error prediction {np.mean(REL_error_pred):.1f}')
-    print(f'Last frame REL error prediction {REL_error_pred[-1]:.1f}')
-    print(f'AVG REL error prediction diastole: {np.mean(REL_error_pred[:25]):.1f} - linear interpolation: {np.mean(REL_error_lin_interpolation[:25]):.1f} - cubic interpolation: {np.mean(REL_error_cubic_interpolation[:25]):.1f}')
-    print(f'STD REL error prediction diastole:  {np.std(REL_error_pred[:25]):.1f} - linear interpolation: {np.std(REL_error_lin_interpolation[:25]):.1f} - cubic interpolation: {np.std(REL_error_cubic_interpolation[:25]):.1f}')
-    print(f'AVG REL error prediction systole:  {np.mean(REL_error_pred[25:]):.1f} - linear interpolation: {np.mean(REL_error_lin_interpolation[25:]):.1f} - cubic interpolation: {np.mean(REL_error_cubic_interpolation[25:]):.1f}')
-    print(f'STD REL error prediction systole:   {np.std(REL_error_pred[25:]):.1f} - linear interpolation: {np.std(REL_error_lin_interpolation[25:]):.1f} - cubic interpolation: {np.std(REL_error_cubic_interpolation[25:]):.1f}')
+    # print(f'AVG REL error prediction {np.mean(REL_error_pred):.1f}')
+    # print(f'Last frame REL error prediction {REL_error_pred[-1]:.1f}')
+    # print(f'AVG REL error prediction diastole: {np.mean(REL_error_pred[:25]):.1f} - linear interpolation: {np.mean(REL_error_lin_interpolation[:25]):.1f} - cubic interpolation: {np.mean(REL_error_cubic_interpolation[:25]):.1f}')
+    # print(f'STD REL error prediction diastole:  {np.std(REL_error_pred[:25]):.1f} - linear interpolation: {np.std(REL_error_lin_interpolation[:25]):.1f} - cubic interpolation: {np.std(REL_error_cubic_interpolation[:25]):.1f}')
+    # print(f'AVG REL error prediction systole:  {np.mean(REL_error_pred[25:]):.1f} - linear interpolation: {np.mean(REL_error_lin_interpolation[25:]):.1f} - cubic interpolation: {np.mean(REL_error_cubic_interpolation[25:]):.1f}')
+    # print(f'STD REL error prediction systole:   {np.std(REL_error_pred[25:]):.1f} - linear interpolation: {np.std(REL_error_lin_interpolation[25:]):.1f} - cubic interpolation: {np.std(REL_error_cubic_interpolation[25:]):.1f}')
 
-    print('Max mean speed deviation', np.max(np.abs(mean_speed_gt - mean_speed_pred)))
-    print('mean speed deviation', np.mean(np.abs(mean_speed_gt - mean_speed_pred)))
-    print('Max mean speed deviation linear interpolation', np.max(np.abs(mean_speed_gt - mean_speed_lin_interpolation)))
-    print('Max mean speed deviation cubic interpolation', np.max(np.abs(mean_speed_gt - mean_speed_cubic_interpolation)))
-    print('Min mean speed deviation', np.min(mean_speed_gt - mean_speed_pred))
-    print('Max mean speed deviation', np.max(mean_speed_gt - mean_speed_pred))
-    print('Count number of frames, where difference between mean speed gt and pred is smaller than 0', np.sum(mean_speed_gt - mean_speed_pred < 0))
+    # print('Max mean speed deviation', np.max(np.abs(mean_speed_gt - mean_speed_pred)))
+    # print('mean speed deviation', np.mean(np.abs(mean_speed_gt - mean_speed_pred)))
+    # print('Max mean speed deviation linear interpolation', np.max(np.abs(mean_speed_gt - mean_speed_lin_interpolation)))
+    # print('Max mean speed deviation cubic interpolation', np.max(np.abs(mean_speed_gt - mean_speed_cubic_interpolation)))
+    # print('Min mean speed deviation', np.min(mean_speed_gt - mean_speed_pred))
+    # print('Max mean speed deviation', np.max(mean_speed_gt - mean_speed_pred))
+    # print('Count number of frames, where difference between mean speed gt and pred is smaller than 0', np.sum(mean_speed_gt - mean_speed_pred < 0))
 
     print("Plot example time frames..")
-    show_timeframes(gt["u"], lr["u"], pred["u"],gt["mask"],error_pointwise_cap ,[interpolate_linear["u"], interpolate_cubic["u"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["u"],max_v =max_v["u"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VX.png')
-    show_timeframes(gt["v"], lr["v"], pred["v"],gt["mask"],error_pointwise_cap ,[interpolate_linear["v"], interpolate_cubic["v"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["v"],max_v =max_v["v"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VY.png')
-    show_timeframes(gt["w"], lr["w"], pred["w"],gt["mask"],error_pointwise_cap ,[interpolate_linear["w"], interpolate_cubic["w"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["w"],max_v =max_v["w"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VZ.png')
+    if load_interpolation_files:
+        show_timeframes(gt["u"], lr["u"], pred["u"],gt["mask"],error_pointwise_cap ,[interpolate_linear["u"], interpolate_cubic["u"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["u"],max_v =max_v["u"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VX.png')
+        show_timeframes(gt["v"], lr["v"], pred["v"],gt["mask"],error_pointwise_cap ,[interpolate_linear["v"], interpolate_cubic["v"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["v"],max_v =max_v["v"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VY.png')
+        show_timeframes(gt["w"], lr["w"], pred["w"],gt["mask"],error_pointwise_cap ,[interpolate_linear["w"], interpolate_cubic["w"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["w"],max_v =max_v["w"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VZ.png')
+    else:
+        show_timeframes(gt["u"], lr["u"], pred["u"],gt["mask"],error_pointwise_cap ,[], [] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["u"],max_v =max_v["u"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VX.png')
+        show_timeframes(gt["v"], lr["v"], pred["v"],gt["mask"],error_pointwise_cap ,[], [] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["v"],max_v =max_v["v"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VY.png')
+        show_timeframes(gt["w"], lr["w"], pred["w"],gt["mask"],error_pointwise_cap ,[], [] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["w"],max_v =max_v["w"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VZ.png')
+
     plt.clf()
 
-    show_temporal_development_line(gt["u"], interpolate_linear["u"], pred["u"],gt["mask"], axis=3, indices=(20,20), save_as=f'{eval_dir}/{set_name}_temporal_development.png')
+    # show_temporal_development_line(gt["u"], interpolate_linear["u"], pred["u"],gt["mask"], axis=3, indices=(20,20), save_as=f'{eval_dir}/{set_name}_temporal_development.png')
     plt.clf()
     #evaluate where the higest shift (temporal derivative) is for each frame
     #show_quiver(gt["u"][4, :, :, :], gt["v"][4, :, :, :], gt["w"][4, :, :, :],gt["mask"], save_as=f'{result_dir}/plots/test_quiver.png')
@@ -442,8 +461,9 @@ if __name__ == "__main__":
     plt.subplot(2, 1, 1)
     plt.title("Relative error")
     plt.plot(rel_error, label = 'averaged prediction')
-    plt.plot(rel_error_lin_interpolation[:-1], label = 'linear interpolation',color = 'yellowgreen')
-    plt.plot(rel_error_cubic_interpolation, label = 'cubic interpolation', color = 'forestgreen')
+    if load_interpolation_files:
+        plt.plot(rel_error_lin_interpolation[:-1], label = 'linear interpolation',color = 'yellowgreen')
+        plt.plot(rel_error_cubic_interpolation, label = 'cubic interpolation', color = 'forestgreen')
     plt.plot(50*np.ones(len(rel_error)), 'k:')
     plt.xlabel("Frame")
     plt.ylabel("Relative error (%)")
@@ -453,9 +473,10 @@ if __name__ == "__main__":
 
     plt.subplot(2, 1, 2)
     plt.plot(mean_speed_gt, label ='Ground truth',color = 'black')
-    plt.plot(mean_speed_pred,'b', label= set_name, color = 'steelblue')
-    plt.plot(mean_speed_lin_interpolation[:-1], label = 'linear interpolation', color = 'yellowgreen')
-    plt.plot(mean_speed_cubic_interpolation[:-1], label = 'cubic interpoaltion', color = 'forestgreen')
+    plt.plot(mean_speed_pred, label= set_name, color = 'steelblue')
+    if load_interpolation_files:
+        plt.plot(mean_speed_lin_interpolation[:-1], label = 'linear interpolation', color = 'yellowgreen')
+        plt.plot(mean_speed_cubic_interpolation[:-1], label = 'cubic interpoaltion', color = 'forestgreen')
     plt.xlabel("Frame")
     plt.ylabel("Mean speed (cm/s)")
     plt.legend()

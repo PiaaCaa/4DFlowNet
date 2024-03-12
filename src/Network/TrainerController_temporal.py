@@ -12,6 +12,8 @@ import shutil
 import os
 from .STR4DFlowNet_adapted import STR4DFlowNet
 from . import utility, h5util, loss_utils
+from keras.utils.layer_utils import count_params
+
 
 class  TrainerController_temporal:
     # constructor
@@ -248,7 +250,7 @@ class  TrainerController_temporal:
         a = (u_pred - u) + (v_pred-v) + (w-w_pred)
         return delta**2*(tf.sqrt(1+(a**2/delta**2))-1)
 
-    def calculate_l1_mutually_projected_loss(self, u, v, w, u_pred, v_pred, w_pred, alpha= 0.5):
+    def calculate_l1_mutually_projected_loss(self,  u, v, w, u_pred, v_pred, w_pred, alpha= 0.5):
         """
             Calculate L1 mutually projected loss
         """

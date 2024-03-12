@@ -1,6 +1,7 @@
 import numpy as np
 import h5py
 import PatchData as pd
+import os
 
 # def load_data(input_filepath):
 #     with h5py.File(input_filepath, mode = 'r' ) as hdf5:
@@ -37,12 +38,12 @@ if __name__ == "__main__":
     reverse = True
     mask_threshold = 0.5 # Threshold for non-binary mask 
     minimum_coverage = 0.2 # Minimum fluid region within a patch. Any patch with less than this coverage will not be taken. Range 0-1
-    
+
     
     base_path = 'data/CARDIAC'
-    hr_file = 'M4_2mm_step2_invivoP02_magn_temporalsmoothing_toeger_periodic_HRfct.h5'       #HiRes velocity data
-    lr_file = 'M4_2mm_step2_invivoP02_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5' #LowRes velocity data 
-    output_filename = f'{base_path}/Temporal{patch_size}MODEL4_2mm_step2_invivoP02_magn_tempsmooth_toeger.csv'
+    hr_file = 'M1_2mm_step2_cloudmagnRot_boxavg_HRfct.h5'       #HiRes velocity data
+    lr_file = 'M1_2mm_step2_cloudmagnRot_boxavg_LRfct_noise.h5' #LowRes velocity data 
+    output_filename = f'{base_path}/Temporal{patch_size}MODEL1_2mm_step2_cloudmagnRot_boxavg.csv'
 
     #TODO check the compatibility in the test iteratoor
     
@@ -56,7 +57,9 @@ if __name__ == "__main__":
         pd.write_header_temporal(output_filename)
     else:
         pd.write_header(output_filename)
-    
+
+    assert(os.path.isfile(f'{base_path}/{hr_file}'))    # HR file does not exist
+    assert(os.path.isfile(f'{base_path}/{lr_file}'))    # LR file does not exist 
 
     # because the data is homogenous in 1 table, we only need the first data
     with h5py.File(input_filepath, mode = 'r' ) as hdf5:

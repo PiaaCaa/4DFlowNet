@@ -1,7 +1,8 @@
+import matplotlib
+matplotlib.use('WebAgg', force = True)
+matplotlib.use('Agg', force=True)
 import panel as pn
 import param
-
-
 from controller import *
 
 
@@ -19,3 +20,4 @@ controller.run()
 
 # to start enter to commandline
     # panel serve src/panel/run_panel.py --autoreload --port 5000 --show
+    # panel serve src/panel/testing_panelbind.py --autoreload --port 5000 --show
