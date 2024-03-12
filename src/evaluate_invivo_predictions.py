@@ -137,9 +137,9 @@ if __name__ == "__main__":
     # for one network evluation on multiple models
     if True:
         # set directories 
-        input_dir = 'Temporal4DFlowNet/data/PIA/THORAX/'
-        res_dir = 'Temporal4DFlowNet/results/in_vivo/THORAX'
-        eval_dir = 'Temporal4DFlowNet/results/in_vivo/THORAX/plots4'
+        input_dir = 'data/PIA/THORAX'
+        res_dir   = 'results/in_vivo/'
+        eval_dir  = 'results/in_vivo/plots/20240223-1140_boxavg'
 
         if not os.path.isdir(eval_dir):
             os.makedirs(eval_dir)
@@ -149,11 +149,11 @@ if __name__ == "__main__":
         for c in cases:
             print('-------------------', c, '-------------------')
             in_vivo = f'{input_dir}/{c}/h5/{c}.h5'
-            in_vivo_upsampled = f'{res_dir}/{c}_20230602-1701_8_4_arch_25Frames.h5' 
-            name_evaluation = f'THORAX_{c}_{os.path.basename(in_vivo)[:-3]}_ModelII_OriginalMagnitude'
+            in_vivo_upsampled = f'{res_dir}/{c}/{c}_20240223-1140_boxavg_25Frames.h5' 
+            name_evaluation = f'THORAX_{c}_{os.path.basename(in_vivo)[:-3]}_boxavg_25Frames'
 
             #set slice index for animation
-            idx_slice = np.index_exp[61, :, :]
+            idx_slice = np.index_exp[40, :, :]
 
             data_original = {}
             data_predicted = {}
@@ -183,8 +183,6 @@ if __name__ == "__main__":
             with h5py.File(in_vivo_upsampled, mode = 'r' ) as h_pred:
                 for vel, venc in zip(vel_colnames, venc_colnames):
                     data_predicted[vel] = np.asarray(h_pred[f'{vel}_combined']) #/np.max(vencs[venc]) 
-                    print('prediction', vel, data_predicted[vel].shape)
-                    # data_predicted[vel] = data_predicted[vel][:data_1[vel].shape[0]] # TODO delete this, tis is just because it overwrote the file
 
                     # add information considering only the fluid regions  
                     if data_predicted[vel].shape[0] == data_original[vel].shape[0]:
@@ -260,17 +258,14 @@ if __name__ == "__main__":
             
 
 
-            #----------------------------------------------
+            #--------------------calculate mean speed --------------------------
             magn = np.sqrt(data_original['mag_u']**2 + data_original['mag_v']**2 + data_original['mag_w']**2)
             speed = np.sqrt(data_original['u']**2 + data_original['v']**2 + data_original['w']**2)
             pc_mri = np.multiply(magn, speed)
-            data_original['mean_speed'] = calculate_mean_speed(data_original["u_fluid"], data_original["v_fluid"] , data_original["w_fluid"], data_original["mask"])
+            data_original['mean_speed']  = calculate_mean_speed(data_original["u_fluid"], data_original["v_fluid"] , data_original["w_fluid"], data_original["mask"])
             data_predicted['mean_speed'] = calculate_mean_speed(data_predicted["u_fluid"], data_predicted["v_fluid"] , data_predicted["w_fluid"], data_predicted["mask"])
             
             peak_flow_frame = np.argmax(data_original['mean_speed'])
-            # if peak_flow_frame % 2 == 0: 
-            #     eval_peak_flow_frame = peak_flow_frame +1 
-            # else: 
             eval_peak_flow_frame = peak_flow_frame # take next frame if peak flow frame included in lr data
             print('MEAN SPEED', np.average(data_original['mean_speed']))
             print('MAX SPEED', np.max(speed))
@@ -283,7 +278,7 @@ if __name__ == "__main__":
 
                 frame_range_input = np.arange(0, N_frames_input_data)#np.linspace(0, data_1['u'].shape[0]-1,  data_1['u'].shape[0])
                 frame_range_predicted = np.arange(0, N_frames_input_data, step_pred)#np.linspace(0, data_1['u'].shape[0], data_predicted['u'].shape[0])
-                print(frame_range_input, frame_range_predicted)
+
                 plt.title('Mean speed')
                 plt.plot(frame_range_predicted, data_predicted['mean_speed'], '.-', label = 'prediction', color= KTH_colors['blue100'])
                 plt.plot(frame_range_input, data_original['mean_speed'],'--', label = 'noisy input data', color= 'black')
@@ -296,7 +291,7 @@ if __name__ == "__main__":
                 plt.legend()
                 plt.tight_layout()
                 plt.savefig(f'{eval_dir}/Meanspeed_{name_evaluation}.svg')
-                plt.show()
+                # plt.show()
 
                 #---------------correlation + k + r^2 plots -------------------
                 if not super_resolved_prediction:
@@ -323,7 +318,7 @@ if __name__ == "__main__":
 
                     #plot k and r^2 values
                     # plot_k_r2_vals(frames, k,k_bounds, r2,  r2_bounds, peak_flow_frame, name_evaluation, eval_dir)
-                    plot_k_r2_vals(data_original, data_predicted, bounds, peak_flow_frame,color_b = KTH_colors['pink100'] , save_as= '')
+                    plot_k_r2_vals(data_original, data_predicted, bounds, peak_flow_frame,color_b = KTH_colors['pink100'] , save_as= f'K_r2_frame{frame_corr_plot}_{name_evaluation}.svg', eval_dir = eval_dir, model_name = name_evaluation)
 
                     #print mean k and r^2 values
                     dict_intermediate_results = defaultdict(list)
@@ -370,7 +365,9 @@ if __name__ == "__main__":
         rearaanged_columns = ['Patient', 'k_u', 'k_u_std', 'k_v', 'k_v_std', 'k_w', 'k_w_std','R2_u', 'R2_u_std', 'R2_v', 'R2_v_std', 'R2_w', 'R2_w_std', 'k_u_peak',  'k_v_peak',  'k_w_peak', 'R2_u_peak',  'R2_v_peak', 'R2_w_peak']
         r_dt = r_dt[rearaanged_columns]
 
-        print(r_dt.to_latex(index=False))
+        print(r_dt.to_latex(index=False, float_format="%.2f"))
+
+    #-------------------------------------------------------------------------------------------------------------------------
     # comparison of different networks on one dataset
     if False:
         
