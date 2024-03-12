@@ -1,15 +1,15 @@
 # Temporal 4DFlowNet
-Super Resolution 4D Flow MRI using Residual Neural Network
-
+A residual CNN for temporal super-resolution.
 <!-- This repsository includes an implementation of the paper [4DFlowNet: Super-Resolution 4D Flow MRI](https://www.frontiersin.org/articles/10.3389/fphy.2020.00138/full) using Tensorflow 2.9.0 with Keras.  -->
 <!-- In addition, the 4DFlowNet has been used as basis for the implementation of a temporal temporal-super resolution network for 4D Flow MRI. -->
 
 This is an extension of the repository [4DFlowNet](https://gitlab.eecs.umich.edu/bkhardy/4DFlowNet), which includes the implementation of the paper [4DFlowNet: Super-Resolution 4D Flow MRI](https://www.frontiersin.org/articles/10.3389/fphy.2020.00138/full) concerning spatial super resolution problem. 
-The 4DFlowNet has been used as basis for the implementation of a temporal temporal-super resolution network for 4D Flow MRI.
+The 4DFlowNet has been used as basis for the implementation of a temporal-super resolution network for 4D Flow MRI.
 
 
+<!-- # Example results
+ -->
 
-# Example results
 
 <!-- Below are example prediction results from an actual 4D Flow MRI of a bifurcation phantom dataset. 
 
@@ -78,7 +78,7 @@ without worrying about affecting others.
 
 ## Prepare dataset
 
-To prepare training or validation dataset, we assume a high resolution CFD dataset is available. As an example we have provided this under TODO
+To prepare training or validation dataset, we assume a high resolution CFD dataset is available. As an example we have provided this under  example/
 
 How to prepare training/validation dataset.
 
@@ -86,7 +86,7 @@ How to prepare training/validation dataset.
         >> Configure the datapath and filenames in prepare_temporal_lowres_dataset.py
            Optional configurations: 
            downsampling_rate (default = 2); 
-           radial_downsampling: This enables averaged downsampling (Defaulkt is sampling without averaging) 
+           box: This enables averaged downsampling (Default is sampling without averaging)
         >> Run prepare_temporal_lowres_dataset.py
         >> This will generate a separate HDF5 file for the low resolution velocity data.
         
@@ -104,7 +104,7 @@ The trainer accepts csv files to define training and validation. A benchmark set
 To train a new 4DFlowNet Network:
 
     1. Put all data files (HDF5) and CSV patch index files in the same directory (e.g. /data)
-    2. Open trainer_temporal.py and configure the data_dir and the csv filenames
+    2. Open trainer.py and configure the data_dir and the csv filenames
     3. Adjust hyperparameters. The default values from the paper are already provided in the code.
     4. Run trainer_temporal.py
 
