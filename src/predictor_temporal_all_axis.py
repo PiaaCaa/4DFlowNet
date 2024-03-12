@@ -45,7 +45,6 @@ if __name__ == '__main__':
         model_name = '20240207-1150' # this model: training 2, 3, validation: 1, test:4
 
     print("model_name: ", model_name)
-    exit()
     # Define directories and filenames
     if args.model is not None:
         model_name = args.model
