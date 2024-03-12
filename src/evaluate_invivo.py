@@ -4,7 +4,7 @@ import time
 import h5py
 # from Network.PatchHandler3D import PatchHandler3D
 from Network.PatchHandler3D_temporal import PatchHandler4D
-from test_iterator import check_compatibility, load_indexes
+from testing.test_iterator import check_compatibility, load_indexes
 import pandas as pd
 import matplotlib.pyplot as plt
 from IPython.display import display
