@@ -23,20 +23,20 @@ def write_settings_into_csv_file(filename,name, training_file, validation_file, 
                              "upsampling_type": upsampling_type, 'low_block_type': low_block_type, 'high_block_type':high_block_type, 'post_block_type':post_block_type, 'sampling':sampling, "notes":notes })
 
 if __name__ == "__main__":
-    data_dir = 'data/CARDIAC'
+    data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal16MODEL23_2mm_step2_invivoP04P03_magn_tempsmooth_toeger.csv'.format(data_dir) 
-    validate_file = '{}/Temporal16MODEL1_2mm_step2_invivoP01_magn_tempsmooth_toeger.csv'.format(data_dir) #Temporal16MODEL23_2mm_step2_invivoP04P03_magn_tempsmooth_toeger.csv
+    training_file = '{}/Temporal16MODEL23_2mm_step2_flowermagn_boxavg.csv'.format(data_dir) 
+    validate_file = '{}/Temporal16MODEL1_2mm_step2_flowermagn_boxavg.csv'.format(data_dir) #Temporal16MODEL23_2mm_step2_invivoP04P03_magn_tempsmooth_toeger.csv
 
     QUICKSAVE = True
-    benchmark_file = '{}/Temporal16MODEL4_2mm_step2_invivoP02_magn_tempsmooth_toeger.csv'.format(data_dir)
+    benchmark_file = '{}/Temporal16MODEL4_2mm_step2_flowermagn_boxavg.csv'.format(data_dir)
     
-    overview_csv = 'c:/Users/piacal/Code/SuperResolution4DFlowMRI/Temporal4DFlowNet/results/Overview_models.csv'
+    overview_csv = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/results/Overview_models.csv'
 
     restore = False
     if restore:
-        model_dir = "Temporal4DFlowNet/models/Temporal4DFlowNet_20240118-1300"
+        model_dir = "Temporal4DFlowNet/models/Temporal4DFlowNet_20240124-1150"
         model_file = "Temporal4DFlowNet-best.h5"
 
     # Adapt how patches are saved for temporal domain if True a different loading scheme is used
@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     # Hyperparameters optimisation variables
     initial_learning_rate = 2e-4
-    epochs =  100
+    epochs =  160
     batch_size = 32
     mask_threshold = 0.6
     lr_decay_epochs = 0
@@ -63,12 +63,12 @@ if __name__ == "__main__":
     high_res_block = 'resnet_block' #'resnet_block'
     upsampling_block = 'linear'     #'Conv3DTranspose'#'nearest_neigbor'#'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
     post_processing_block = None #  'unet_block'#None#'unet_block'
-    sampling = 'Cartesian' # this is not used for training but saved in the csv file for a better overview of what data it was trained on 
+    sampling = 'Box avg,' # this is not used for training but saved in the csv file for a better overview of what data it was trained on 
 
     shuffle = True       
 
     #notes: if something about this training is more 'special' is can be added to the overview csv file
-    notes= 'Test L1 loss'
+    notes= 'Box data, mse,  random (flower) magnitude'
     # Load data file and indexes
     trainset = load_indexes(training_file)
     valset =   load_indexes(validate_file)
