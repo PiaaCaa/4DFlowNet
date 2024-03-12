@@ -16,3 +16,4 @@ outputfiles/*
 my_job.sbatch
 training.sbatch
 *.h5
+prediction_multiplefiles.sh
