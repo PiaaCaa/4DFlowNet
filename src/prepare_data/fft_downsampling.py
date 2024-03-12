@@ -4,6 +4,17 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 def rectangular_crop3d(f, crop_ratio):
+    """
+    Crop a 3D array in the frequency domain using a rectangular shape in the k-space center.
+
+    Args:
+        f (ndarray): The input 3D array in the frequency domain.
+        crop_ratio (float): The ratio of the crop size to the original size.
+
+    Returns:
+        ndarray: The cropped 3D array in the frequency domain.
+    """
+
     half_x = f.shape[0] // 2
     half_y = f.shape[1] // 2
     half_z = f.shape[2] // 2
@@ -15,6 +26,7 @@ def rectangular_crop3d(f, crop_ratio):
     # shift it to make it easier to crop, otherwise we need to concat half left and half right
     new_kspace = np.fft.fftshift(f)
     new_kspace = new_kspace[half_x-x_crop:half_x+x_crop, half_y-y_crop:half_y+y_crop, half_z-z_crop : half_z+z_crop]
+
     # shift it back to original freq domain
     new_kspace = np.fft.fftshift(new_kspace)
      
@@ -86,22 +98,6 @@ def add_complex_signal_noise(imgfft, targetSNRdb):
 
     return imgfft
 
-def downsample_complex_img_TBD(complex_img, crop_ratio, targetSNRdb, temporal_downsampling = False):
-    imgfft = np.fft.fftn(complex_img)
-    
-    if not temporal_downsampling:
-        imgfft = rectangular_crop3d(imgfft, crop_ratio)
-    
-    shifted_mag  = 20*np.log(np.fft.fftshift(np.abs(imgfft)))
-
-    # add noise on freq domain
-    imgfft = add_complex_signal_noise(imgfft, targetSNRdb)
-
-    # inverse fft to image domain
-    new_complex_img = np.fft.ifftn(imgfft)
-
-    return new_complex_img, shifted_mag
-
 
 def rescale_magnitude_on_ratio(new_mag, old_mag):
     old_mag_flat = np.reshape(old_mag, [-1])
@@ -110,42 +106,46 @@ def rescale_magnitude_on_ratio(new_mag, old_mag):
     rescale_ratio = new_mag_flat.shape[0] / old_mag_flat.shape[0]
 
     return new_mag * rescale_ratio
-    
-def downsample_phase_img_TBD(velocity_img, mag_image, venc, crop_ratio, targetSNRdb, temporal_downsampling = False):
-    # convert to phase
-    phase_image = velocity_img / venc * math.pi
 
-    complex_img = np.multiply(mag_image, np.exp(1j*phase_image))
-    # -----------------------------------------------------------
-    new_complex_img, shifted_freqmag = downsample_complex_img(complex_img, crop_ratio, targetSNRdb, temporal_downsampling)
-    # -----------------------------------------------------------
 
-    # Get the MAGnitude and rescale
-    new_mag = np.abs(new_complex_img)
-    new_mag = rescale_magnitude_on_ratio(new_mag, mag_image)
+def velocity_img_to_kspace(vel_img, mag_image, venc):
+    """
+    Convert velocity image to k-space representation.
 
-    # Get the PHASE
-    new_phase = np.angle(new_complex_img)
+    Parameters:
+    vel_img (ndarray): Velocity image.
+    mag_image (ndarray): Magnitude image.
+    venc (float): Velocity encoding value.
 
-    # Get the velocity image
-    new_velocity_img = new_phase / math.pi * venc
+    Returns:
+    ndarray: K-space representation of the velocity image.
+    """
 
-    return new_velocity_img, new_mag
-
-def velocity_img_to_kspace(vel_img,mag_image, venc):
-
-    # convert to phase
+    # Convert to phase
     phase_image = vel_img / venc * math.pi
 
-    # convert to complex image
-    complex_img = np.multiply(mag_image, np.exp(1j*phase_image))
+    # Convert to complex image
+    complex_img = np.multiply(mag_image, np.exp(1j * phase_image))
 
-    # fft
+    # Perform FFT
     imgfft = np.fft.fftn(complex_img)
 
     return imgfft
 
-def velocity_img_to_centered_kspace(vel_img,mag_image, venc):
+
+def velocity_img_to_centered_kspace(vel_img, mag_image, venc):
+    """
+    Convert velocity image to centered k-space, i.e. including shift
+
+    Args:
+        vel_img (ndarray): Velocity image.
+        mag_image (ndarray): Magnitude image.
+        venc (float): Velocity encoding scale.
+
+    Returns:
+        ndarray: Centered k-space representation of the velocity image.
+    """
+    
     # convert to phase
     phase_image = vel_img / venc * math.pi
 
@@ -164,6 +164,18 @@ def velocity_img_to_centered_kspace(vel_img,mag_image, venc):
     return imgfft
 
 def centered_kspace_to_velocity_img(imgfft, mag_image, venc):
+    """
+    Convert centered k-space data to velocity image.
+
+    Args:
+        imgfft (ndarray): The centered k-space data.
+        mag_image (ndarray): The magnitude image used for rescaling.
+        venc (float): The velocity encoding scale.
+
+    Returns:
+        ndarray: The velocity image.
+        ndarray: The rescaled magnitude image.
+    """
 
     # shift img to center
     imgfft = np.fft.ifftshift(imgfft)
@@ -182,11 +194,22 @@ def centered_kspace_to_velocity_img(imgfft, mag_image, venc):
     # Get the velocity image
     new_velocity_img = new_phase / math.pi * venc
     
-
     return new_velocity_img, new_mag
 
 def kspace_to_velocity_img(imgfft, mag_image, venc):
-    
+    """
+    Converts k-space data to velocity image.
+
+    Parameters:
+    imgfft (ndarray): The input k-space data.
+    mag_image (ndarray): The magnitude image used for rescaling.
+    venc (float): The velocity encoding scale.
+
+    Returns:
+    ndarray: The velocity image.
+    ndarray: The rescaled magnitude image.
+    """
+
     new_complex_img = np.fft.ifftn(imgfft)
 
     # Get the MAGnitude and rescale
@@ -231,10 +254,25 @@ def whole_script_TBD(vel_img, mag_image, venc, targetSNRdb):
 
     return new_velocity_img, new_mag
 
-def noise_and_downsampling(vel_img, mag_image, venc, targetSNRdb, add_noise = True, spatial_crop_ratio = 1.0):
+def noise_and_downsampling(vel_img, mag_image, venc, targetSNRdb, add_noise=True, spatial_crop_ratio=1.0):
+    """
+    Apply noise and downsampling to the velocity image.
 
+    Args:
+        vel_img (ndarray): The velocity image.
+        mag_image (ndarray): The magnitude image.
+        venc (float): The velocity encoding value.
+        targetSNRdb (float): The target signal-to-noise ratio in decibels.
+        add_noise (bool, optional): Whether to add noise to the frequency domain. Defaults to True.
+        spatial_crop_ratio (float, optional): The ratio for rectangular cropping in the spatial domain. Defaults to 1.0.
+
+    Returns:
+        ndarray: The new velocity image after noise and downsampling.
+        ndarray: The new magnitude image after noise and downsampling.
+    """
+    
     # convert to kspace
-    imgfft = velocity_img_to_kspace(vel_img,mag_image, venc)
+    imgfft = velocity_img_to_kspace(vel_img, mag_image, venc)
 
     # downsample the kspace by rectangular cropping
     if spatial_crop_ratio < 1.0:
@@ -244,7 +282,7 @@ def noise_and_downsampling(vel_img, mag_image, venc, targetSNRdb, add_noise = Tr
     # add noise on freq domain
     if add_noise:
         print("Adding noise")
-        shifted_mag  = 20*np.log(np.fft.fftshift(np.abs(imgfft)))
+        shifted_mag = 20 * np.log(np.fft.fftshift(np.abs(imgfft)))
         imgfft = add_complex_signal_noise(imgfft, targetSNRdb)
 
     # inverse fft to image domain
@@ -252,9 +290,3 @@ def noise_and_downsampling(vel_img, mag_image, venc, targetSNRdb, add_noise = Tr
 
     return new_velocity_img, new_mag
 
-
-
-
-
-
-# test_transform()
