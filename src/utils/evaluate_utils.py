@@ -121,27 +121,6 @@ def cv2_psnr(img, noisy_img):
     #TODO check against own method
     return cv2.PSNR(img, noisy_img)   
 
-def power_of_signal():
-    '''
-    Compute power of signal
-    '''
-    #TODO
-    # SNRdb = 10 log SNR
-    # SNRdb / 10 = log SNR
-    # SNR = 10 ^ (SNRdb/10
-    # Pn = Pn / SNR
-    # Pn = variance
-    # Deconstruct the complex numbers into real and imaginary
-    mag_signal = np.abs(imgfft)
-    
-    signal_power = np.mean((mag_signal) ** 2)
-
-    logSNR = targetSNRdb / 10
-    snr = 10 ** logSNR
-
-    noise_power = signal_power / snr
-    return
-
 
 # Crop mask to match desired shape * downsample
 def crop_gt(gt, desired_shape):
@@ -295,8 +274,6 @@ def calculate_relative_error_normalized(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi
     return mean_err
 
 
-
-
 def get_fluid_region_points(data, binary_mask):
     '''
     reshapes input such that we get data of form frames, n_fluid_points
@@ -323,7 +300,7 @@ def calculate_rmse(pred,gt, binary_mask, return_std= False):
     '''
     Calculate root mean squared error between prediction and ground truth for each frame
     i.e. rmse(t) = sqrt((pred - gt)**2/N), where N number of point in fluid region
-    If return_std is set to true, the standard deviation of pred - gt)**2 is returned as well
+    If return_std is set to true, the standard deviation of (pred - gt)**2 is returned as well
     '''
     if len(pred.shape)==3: pred = np.expand_dims(pred, 0)
     if len(gt.shape)==3:  gt = np.expand_dims(gt, 0)
@@ -438,7 +415,7 @@ def calculate_k_R2( pred, gt, binary_mask):
     return slope,  r_value**2
 
 
-def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KTH_colors['pink100'], save_as = None):
+def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KI_colors['Plum'], save_as = None):
     '''
     Plot correlation plot between ground truth and prediction at a given frame
     '''
@@ -1422,7 +1399,7 @@ def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparis
 #     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
 #         plt.subplot(2, 3, i+1)
 #         plt.plot(range(frames), k[i*frames:i*frames+frames] , label = 'k core', color = 'black')
-#         plt.plot(range(frames), k_bounds[i*frames:i*frames+frames] ,'--',  label = 'k boundary', color = KTH_colors['pink100'])
+#         plt.plot(range(frames), k_bounds[i*frames:i*frames+frames] ,'--',  label = 'k boundary', color = KI_colors['Plum'])
 #         plt.plot(np.ones(frames), 'k:')
 #         plt.ylim([min_val, np.maximum(max_val, 1.05)])
 #         plt.title(title)
@@ -1441,7 +1418,7 @@ def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparis
 #     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
 #         plt.subplot(2, 3, i+4)
 #         plt.plot(range(frames), r2[i*frames:i*frames+frames] ,label = r'$R^2$ core', color = 'black')
-#         plt.plot(range(frames), r2_bounds[i*frames:i*frames+frames] ,'--', label = r'$R^2$ boundary', color = KTH_colors['pink100'])
+#         plt.plot(range(frames), r2_bounds[i*frames:i*frames+frames] ,'--', label = r'$R^2$ boundary', color = KI_colors['Plum'])
 #         plt.plot(np.ones(frames), 'k:')
 #         plt.ylim([min_val, np.maximum(max_val, 1.05)])
 #         plt.title(title)
@@ -1458,7 +1435,7 @@ def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparis
 #     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
 #         plt.clf()
 #         plt.plot(range(frames), k[i*frames:i*frames+frames] , label = 'k core', color = 'black')
-#         plt.plot(range(frames), k_bounds[i*frames:i*frames+frames] ,'--',  label = 'k boundary', color = KTH_colors['pink100'])
+#         plt.plot(range(frames), k_bounds[i*frames:i*frames+frames] ,'--',  label = 'k boundary', color = KI_colors['Plum'])
 #         plt.plot(np.ones(frames), 'k:')
 #         plt.ylim([min_val, np.maximum(max_val, 1.05)])
 #         plt.title(title)
@@ -1470,7 +1447,7 @@ def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparis
 #     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
 #         plt.clf()
 #         plt.plot(range(frames), r2[i*frames:i*frames+frames] ,label = r'$R^2$ core', color = 'black')
-#         plt.plot(range(frames), r2_bounds[i*frames:i*frames+frames] ,'--', label = r'$R^2$ boundary', color = KTH_colors['pink100'])
+#         plt.plot(range(frames), r2_bounds[i*frames:i*frames+frames] ,'--', label = r'$R^2$ boundary', color = KI_colors['Plum'])
 #         plt.plot(np.ones(frames), 'k:')
 #         plt.ylim([min_val, np.maximum(max_val, 1.05)])
 #         plt.title(title)
@@ -1481,7 +1458,7 @@ def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparis
 #         plt.savefig(f'{eval_dir}/{name_evaluation}_R2_vals_{vel}__.svg', bbox_inches='tight')
 
 
-def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KTH_colors['pink100'] , save_as= '', eval_dir= '', set_name = '', model_name = ''):
+def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum'] , save_as= '', eval_dir= '', set_name = '', model_name = ''):
     vel_colnames = ['u', 'v', 'w']
     vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
 
@@ -1511,7 +1488,7 @@ def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KTH_colors['pink1
         plt.title(title)
         plt.xlabel('frames')
         plt.ylabel('k')
-        plt.scatter(np.ones(2)*peak_flow_frame, [k[i*frames+peak_flow_frame],k_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['grey80'])
+        plt.scatter(np.ones(2)*peak_flow_frame, [k[i*frames+peak_flow_frame],k_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KI_colors['Grey'])
         plt.legend()
         print(f'Average k vals core {np.average(k[i*frames:i*frames+frames])}')
         print(f'Average k vals boundary {np.average(k_bounds[i*frames:i*frames+frames])}')
@@ -1530,7 +1507,7 @@ def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KTH_colors['pink1
         plt.title(title)
         plt.xlabel('frames')
         plt.ylabel(r'$R^2$')
-        plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['grey80'])
+        plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KI_colors['Grey'])
         plt.legend()
 
     plt.tight_layout()
@@ -1547,7 +1524,7 @@ def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KTH_colors['pink1
         plt.title(title)
         plt.xlabel('frames')
         plt.ylabel('k')
-        plt.scatter(np.ones(2)*peak_flow_frame, [k[i*frames+peak_flow_frame],k_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['grey80'])
+        plt.scatter(np.ones(2)*peak_flow_frame, [k[i*frames+peak_flow_frame],k_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KI_colors['Grey'])
         plt.legend()
         plt.savefig(f'{eval_dir}/k_vals_{vel}_{set_name}_{save_as}.svg', bbox_inches='tight')
     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
@@ -1559,7 +1536,7 @@ def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KTH_colors['pink1
         plt.title(title)
         plt.xlabel('frames')
         plt.ylabel(r'$R^2$')
-        plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['grey80'])
+        plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KI_colors['Grey'])
         plt.legend()
         plt.savefig(f'{eval_dir}/R2_vals_{vel}_M{model_name}_{set_name}_{save_as}_.svg', bbox_inches='tight')
 

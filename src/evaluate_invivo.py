@@ -280,7 +280,7 @@ if __name__ == "__main__":
                 frame_range_predicted = np.arange(0, N_frames_input_data, step_pred)#np.linspace(0, data_1['u'].shape[0], data_predicted['u'].shape[0])
 
                 plt.title('Mean speed')
-                plt.plot(frame_range_predicted, data_predicted['mean_speed'], '.-', label = 'prediction', color= KTH_colors['blue100'])
+                plt.plot(frame_range_predicted, data_predicted['mean_speed'], '.-', label = 'prediction', color= KI_colors['Blue'])
                 plt.plot(frame_range_input, data_original['mean_speed'],'--', label = 'noisy input data', color= 'black')
                 if not super_resolved_prediction:
                     plt.plot(frame_range_input[::2], data_original['mean_speed'][::2],'.',  label ='sample points',  color= 'black')
@@ -318,7 +318,7 @@ if __name__ == "__main__":
 
                     #plot k and r^2 values
                     # plot_k_r2_vals(frames, k,k_bounds, r2,  r2_bounds, peak_flow_frame, name_evaluation, eval_dir)
-                    plot_k_r2_vals(data_original, data_predicted, bounds, peak_flow_frame,color_b = KTH_colors['pink100'] , save_as= f'K_r2_frame{frame_corr_plot}_{name_evaluation}.svg', eval_dir = eval_dir, model_name = name_evaluation)
+                    plot_k_r2_vals(data_original, data_predicted, bounds, peak_flow_frame,color_b = KI_colors['Plum'] , save_as= f'K_r2_frame{frame_corr_plot}_{name_evaluation}.svg', eval_dir = eval_dir, model_name = name_evaluation)
 
                     #print mean k and r^2 values
                     dict_intermediate_results = defaultdict(list)
@@ -476,7 +476,8 @@ if __name__ == "__main__":
         
         #-------------mean speed plot---------------------
         plt.figure(figsize=(7, 4))
-        colors = [KTH_colors['blue100'], KTH_colors['lightblue100'],  KTH_colors['grey100'], KTH_colors['pink80'], KTH_colors['grey40'],]#['steelblue', 'darkorange', 'brown', 'orchid', 'darkviolet', 'olivedrab', 'lightcoral', 'maroon', 'yellow', 'seagreen']
+        colors = [KI_colors['Blue'],  KI_colors['Plum'], KI_colors['LightBlue'], KI_colors['Orange'], KI_colors['Grey'], KI_colors['DarkGreen'],]
+        # colors = [KTH_colors['blue100'], KTH_colors['lightblue100'],  KTH_colors['grey100'], KTH_colors['pink80'], KTH_colors['grey40'],]#['steelblue', 'darkorange', 'brown', 'orchid', 'darkviolet', 'olivedrab', 'lightcoral', 'maroon', 'yellow', 'seagreen']
         markers = ['solid', ':',  '--','-.',  (0, (3, 1, 1, 1)),'-.', ]
         
         step_pred = 0.5 if super_resolved_prediction else 1
@@ -538,7 +539,7 @@ if __name__ == "__main__":
                     
                     
                     plt.plot(range(frames), k , label = f'{name_pred}', color = c, linestyle = marker)
-                    plt.scatter(np.ones(1)*peak_flow_frame, k[peak_flow_frame] , color = KTH_colors['grey80'])
+                    plt.scatter(np.ones(1)*peak_flow_frame, k[peak_flow_frame] , color = KI_colors['Grey'])
                 plt.legend(loc = 'upper right')
                 plt.title(title)
                 plt.xlabel('frame')

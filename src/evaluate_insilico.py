@@ -424,14 +424,14 @@ if __name__ == "__main__":
 
     print("Plot example time frames..")
     if load_interpolation_files:
-        show_timeframes(gt["u"], lr["u"], pred["u"],gt["mask"],error_pointwise_cap ,[interpolate_linear["u"], interpolate_cubic["u"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["u"],max_v =max_v["u"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VX.png')
-        show_timeframes(gt["v"], lr["v"], pred["v"],gt["mask"],error_pointwise_cap ,[interpolate_linear["v"], interpolate_cubic["v"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["v"],max_v =max_v["v"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VY.png')
-        show_timeframes(gt["w"], lr["w"], pred["w"],gt["mask"],error_pointwise_cap ,[interpolate_linear["w"], interpolate_cubic["w"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["w"],max_v =max_v["w"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VZ.png')
+        show_timeframes(gt["u"], lr["u"], pred["u"],gt["mask"],error_pointwise_cap ,[interpolate_linear["u"], interpolate_cubic["u"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["u"],max_v =max_v["u"], save_as=f'{eval_dir}/{set_name}_M{data_model}_Qual_frame_examples_VX.png')
+        show_timeframes(gt["v"], lr["v"], pred["v"],gt["mask"],error_pointwise_cap ,[interpolate_linear["v"], interpolate_cubic["v"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["v"],max_v =max_v["v"], save_as=f'{eval_dir}/{set_name}_M{data_model}_Qual_frame_examples_VY.png')
+        show_timeframes(gt["w"], lr["w"], pred["w"],gt["mask"],error_pointwise_cap ,[interpolate_linear["w"], interpolate_cubic["w"]], ["linear", "cubic"] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["w"],max_v =max_v["w"], save_as=f'{eval_dir}/{set_name}_M{data_model}_Qual_frame_examples_VZ.png')
     else:
-        show_timeframes(gt["u"], lr["u"], pred["u"],gt["mask"],error_pointwise_cap ,[], [] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["u"],max_v =max_v["u"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VX.png')
-        show_timeframes(gt["v"], lr["v"], pred["v"],gt["mask"],error_pointwise_cap ,[], [] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["v"],max_v =max_v["v"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VY.png')
-        show_timeframes(gt["w"], lr["w"], pred["w"],gt["mask"],error_pointwise_cap ,[], [] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["w"],max_v =max_v["w"], save_as=f'{eval_dir}/{set_name}_time_frame_examples_VZ.png')
-
+        show_timeframes(gt["u"], lr["u"], pred["u"],gt["mask"],error_pointwise_cap ,[], [] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["u"],max_v =max_v["u"], save_as=f'{eval_dir}/{set_name}_M{data_model}_Qual_frame_examples_VX.png')
+        show_timeframes(gt["v"], lr["v"], pred["v"],gt["mask"],error_pointwise_cap ,[], [] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["v"],max_v =max_v["v"], save_as=f'{eval_dir}/{eval_dir}/{set_name}_M{data_model}_Qual_frame_examples_VY.png')
+        show_timeframes(gt["w"], lr["w"], pred["w"],gt["mask"],error_pointwise_cap ,[], [] ,timepoints=[4, 5, 6], axis=0, idx = 22,min_v = min_v["w"],max_v =max_v["w"], save_as=f'{eval_dir}/{eval_dir}/{set_name}_M{data_model}_Qual_frame_examples_VZ.png')
+  
     plt.clf()
 
     # show_temporal_development_line(gt["u"], interpolate_linear["u"], pred["u"],gt["mask"], axis=3, indices=(20,20), save_as=f'{eval_dir}/{set_name}_temporal_development.png')
@@ -451,10 +451,10 @@ if __name__ == "__main__":
         # prediction_utils.save_to_h5(f'{eval_dir}/{evaluation_filename}', "mask_u", mask_pred, compression='gzip')
     
     plt.clf()
-    plot_correlation(gt, pred, bounds, frame_idx = T_peak_flow, save_as=f'{result_dir}/plots/{set_name}_regression_')
+    plot_correlation(gt, pred, bounds, frame_idx = T_peak_flow, save_as=f'{result_dir}/plots/{set_name}_M{data_model}_correlation_pred_frame{T_peak_flow}')
     plt.clf()
 
-    # plot_comparison_temporal(lr, gt, pred, frame_idx = 8, axis=1, slice_idx = 40, save_as=f'{eval_dir}/{set_name}_visualize_interporalion_comparison.png')
+    # plot_comparison_temporal(lr, gt, pred, frame_idx = 8, axis=1, slice_idx = 40, save_as=f'{eval_dir}/{set_name}_M{data_model}_visualize_interporalion_comparison.png')
     # plt.clf()
 
     print("Plot relative error and mean speed")
@@ -481,7 +481,7 @@ if __name__ == "__main__":
     plt.ylabel("Mean speed (cm/s)")
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f'{eval_dir}/{set_name}_rel_error_.svg')
+    plt.savefig(f'{eval_dir}/{set_name}_M{data_model}_pred_RE_mean_speed.svg')
     plt.show()
 
             
