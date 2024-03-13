@@ -602,6 +602,68 @@ def get_indices(frames, axis, slice_idx):
     else: 
         print("Invalid axis! Axis must be 0, 1 or 2")
 
+#TODO:merge with other function? 
+def comparison_plot_slices_over_time(gt_cube,lr_cube,  mask_cube, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v, save_as = "Qualitative_Frame_comparison.png", figsize=(10,10)):
+    """ Qualitative comparison of different network models over timeframe for one velocity direction"""
+
+    def row_based_idx(num_rows, num_cols, idx):
+        return np.arange(1, num_rows*num_cols + 1).reshape((num_rows, num_cols)).transpose().flatten()[idx-1]
+    
+    T = 2 + len(comparison_lst)
+    N = len(timepoints)
+
+    fig, axes = plt.subplots(nrows=T, ncols=N, constrained_layout=True, figsize=figsize)
+
+    i = 1
+    idxs = get_indices(timepoints, axis, idx)
+    gt_cube = gt_cube[idxs]
+    mask_cube = mask_cube[idxs]
+    
+    # find same range to plot velocity images to
+    min_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.01)
+    max_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.99)
+
+        
+    for j,t in enumerate(timepoints):
+        gt_slice = gt_cube[j]
+
+        # low resolution
+        lr_slice = np.zeros_like(gt_slice)
+            
+        plt.subplot(T, N, row_based_idx(T, N, i))
+        if t%2 == 0:
+            lr_slice = lr_cube[get_indices(t//2, axis=axis, slice_idx=idx )]
+            plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
+            if i == 1: plt.ylabel("LR")
+            plt.xticks([])
+            plt.yticks([])
+        plt.title('frame '+ str(t))
+        plt.xticks([])
+        plt.yticks([])
+        i +=1
+
+        # ground truth
+        plt.subplot(T, N, row_based_idx(T, N, i))
+        plt.imshow(gt_slice, vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
+        if i == 2: plt.ylabel("HR")
+        plt.xticks([])
+        plt.yticks([])
+        i +=1	
+
+        # plot model predictions
+        for comp, name in zip(comparison_lst, comparison_name):
+            
+            plt.subplot(T, N, row_based_idx(T, N, i))
+            im = plt.imshow(comp[idxs][j], vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
+            if i-1 == (i-1)%T: plt.ylabel(name)
+            plt.xticks([])
+            plt.yticks([])
+            i +=1
+        
+    fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 50, label = 'velocity (m/s)')
+    plt.savefig(save_as,bbox_inches='tight' )
+
+
 
 def crop_center(img,cropx,cropy):
     '''
@@ -900,10 +962,6 @@ def make_3D_quiver_plot(data,mask,  frame, set_to_zero=0.9):
         u = u_new.ravel()
         v = v_new.ravel()
         w = w_new.ravel()
-
-        
-
-
 
         # Color by magnitude
         c = np.sqrt(u_new**2+ v_new**2+ w_new**2) #np.arctan2(w_new, u_new)
@@ -1662,3 +1720,39 @@ def generate_gif_volume(img3D, axis = 0, save_as = "animation"):
     frame_one = frames[0]
     frame_one.save(save_as+".gif", format="GIF", append_images=frames,
                save_all=True, duration=500, loop=0) #/home/pcallmer/Temporal4DFlowNet/results/plots
+    
+
+def compare_peak_flow_pixel(gt,lr, model_names, set_names, labels, colors,name_comparison,patch_size, show_avg, show_pixel, use_dynamical_mask = False):
+
+    plt.figure(figsize=(7, 5))
+    def show_peak_flow_pixel(x, pred_data, label, color, line_style = '-'):
+        '''Plot peak flow vosel in time and also averages cube around it '''
+    
+        if show_pixel: # show only flow of peak flow voxel 
+            plt.plot(x, pred_data['speed'][:, idx_max[1], idx_max[2], idx_max[3]]*100,line_style, label = f'{label} pixel', color = color)
+
+        if show_avg: # show average flow of  region around peak flow voxel. Regsion is depending on patch size
+            plt.plot(x, np.average(pred_data['speed']  [:, idx_max[1]-patch_size:idx_max[1]+patch_size+1, idx_max[2]-patch_size:idx_max[2]+patch_size+1, idx_max[3]-patch_size:idx_max[3]+patch_size+1], axis = (1, 2, 3))*100,line_style,label = f'{label} avg', color = color)
+    
+    # get voxel with maximum flow
+    idx_max = np.unravel_index(np.argmax(gt['speed']), shape = gt['speed'].shape)
+    x = np.arange(gt['speed'].shape[0])
+
+    show_peak_flow_pixel(x, gt, label = 'gt', color='black')
+    show_peak_flow_pixel(x[::2 ], lr, label= 'low res',color='yellowgreen',line_style='-o')
+
+
+    for m_name, s_name, label, color in zip(model_names, set_names, labels, colors):
+        pred = load_velocity_data(f'{result_dir}/Temporal4DFlowNet_{m_name}/{s_name}set_result_model{data_model}_2mm_step{step}_{m_name[-4::]}_temporal.h5', {}, ['u_combined', 'v_combined', 'w_combined'], load_mask = False)
+        show_peak_flow_pixel(x, pred, label, color, line_style='--')
+
+    if show_avg:
+        plt.title(f"Speed at pixel {idx_max[1::]} with average of number of voxels: {(2*patch_size+1)**3}")
+    else:
+         plt.title(f"Speed at pixel {idx_max[1::]}")
+    plt.ylabel('Speed (cm/s)')
+    plt.xlabel('Frame')
+    plt.legend()
+
+    plt.savefig(f'{eval_dir}/{name_comparison}_peak_flow_voxel_speed.png')
+    plt.show()
