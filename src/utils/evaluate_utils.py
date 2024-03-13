@@ -10,13 +10,73 @@ from scipy.ndimage import convolve
 from scipy.interpolate import CubicSpline, RegularGridInterpolator
 from scipy.ndimage import binary_erosion
 from matplotlib import pyplot as plt
+import sys
+sys.path.insert(0, '../src')
 
-from Network.PatchGenerator import PatchGenerator
-from utils import prediction_utils
-from Network.loss_utils import calculate_divergence
 from utils.colors import *
 
 
+
+def load_lossdata(file):
+    print('load ', file)
+
+    # columns = ['epoch', 'train_loss', 'val_loss', 'train_accuracy', 'val_accuracy', 'train_mse', 'val_mse', 'train_div', 'val_div', 'l2_reg_loss', 'learning_rate', 'elapsed', 'best_model', 'benchmark_err', 'benchmark_rel_err', 'benchmark_mse', 'benchmark_divloss']
+    # df_loss = pd.read_csv(file,names=columns,  on_bad_lines='warn', skiprows = 4, skipfooter = 4, header = 5, engine = 'python')
+    df_loss = pd.read_csv(file,  on_bad_lines='warn', skiprows = 4, skipfooter = 4, header = 5, engine = 'python')
+
+    
+    return df_loss
+
+def load_vel_interpolation(dict_interpolation,lr,  filename, method, mask, vel_colnames, savefile = True):
+    """ Load interpolated velocity fields from file if not existing, calculate and save them to h5 file"""
+    
+    if not os.path.isfile(filename):
+        print("Interpolation file does not exist - calculate interpolation and save files")
+        print("Save interpolation files to: ", filename)
+
+        for vel in vel_colnames:
+            if method == 'linear':
+                dict_interpolation[vel] = temporal_linear_interpolation(lr[vel], gt[vel].shape)
+            elif method == 'cubic':
+                dict_interpolation[vel] = temporal_cubic_interpolation(lr[vel], gt[vel].shape)
+            elif method == 'NN':
+                dict_interpolation[vel] = temporal_NN_interpolation(lr[vel], gt[vel].shape)
+            elif method == 'sinc':
+                dict_interpolation[vel] = temporal_sinc_interpolation_ndarray(lr[vel], gt[vel].shape)
+            else:  
+                raise ValueError(f'Interpolation method ({method}) not known')
+            
+            if savefile:
+                prediction_utils.save_to_h5(filename, vel , dict_interpolation[vel], compression='gzip')
+
+            dict_interpolation[f'{vel}_fluid'] = np.multiply(dict_interpolation[vel], mask)
+    
+    else:
+        print("Load existing interpolation file")
+        with h5py.File(filename, mode = 'r' ) as h5:
+            for vel in vel_colnames:
+                dict_interpolation[vel] = np.array(h5[vel]).squeeze()
+    
+                dict_interpolation[f'{vel}_fluid'] = np.multiply(dict_interpolation[vel], mask)
+    
+    return dict_interpolation
+
+def load_velocity_data(filename, datadict, vel_colnames, load_mask = False):
+    """ Load velocity data from h5 file and store in dictionary"""
+    vel_colnames_save = ['u', 'v', 'w']
+    # load h5 file
+    with h5py.File(filename, mode = 'r' ) as h5:
+        for vel, v in zip(vel_colnames, vel_colnames_save):
+            datadict[v] = np.asarray(h5[vel])
+        if load_mask:
+            datadict['mask'] = np.asarray(h5['mask']).squeeze()
+            datadict["mask"][np.where(h5["mask"] !=0)] = 1
+
+            if len(datadict['mask'].shape) == 3:
+                print('Create static temporal mask for model, mask shape before:', datadict["mask"].shape )
+                datadict['mask'] = create_dynamic_mask(datadict['mask'], h5['u'].shape[0])
+
+    return datadict
 
 
 def normalize_to_0_1(data):
@@ -1462,10 +1522,11 @@ def temporal_linear_interpolation(lr, hr_shape):
 
     t_hr = np.linspace(0, lr[0]-downsampling_factor,  hr_shape[0])
     
-    tg, xg, yg ,zg = np.meshgrid(t_hr, np.arange(0, lr.shape[1]), np.arange(0, lr.shape[2]), np.arange(0, lr.shape[3]), indexing='ij', sparse=True)
+    
+    tg, xg, yg ,zg = np.mgrid[0:hr_shape[0], 0:hr_shape[1], 0:hr_shape[2], 0:hr_shape[3]]
+    coord = np.array([tg.flatten(), xg.flatten(), yg.flatten() ,zg.flatten()])
 
-    interpolate = scipy.ndimage.map_coordinates(lr, np.array([tg, xg, yg ,zg]), mode='linear')
-
+    interpolate = scipy.ndimage.map_coordinates(lr,coord, mode='constant').reshape(hr_shape)
     return interpolate
 
 def temporal_linear_interpolation_np(lr, hr_shape, offset = 0):
@@ -1495,9 +1556,12 @@ def temporal_NN_interpolation(lr, hr_shape):
 
     t_hr = np.linspace(0, lr.shape[0]-0.5,  hr_shape[0])
     
-    tg, xg, yg ,zg = np.meshgrid(t_hr, x_lr, y_lr, z_lr, indexing='ij', sparse=True)
+    # tg, xg, yg ,zg = np.mgrid(t_hr, x_lr, y_lr, z_lr, indexing='ij', sparse=True)
 
-    interpolate = scipy.ndimage.map_coordinates(lr, np.array([tg, xg, yg ,zg]), mode='nearest')
+    tg, xg, yg ,zg = np.mgrid[0:hr_shape[0], 0:hr_shape[1], 0:hr_shape[2], 0:hr_shape[3]]
+    coord = np.array([tg.flatten(), xg.flatten(), yg.flatten() ,zg.flatten()])
+
+    interpolate = scipy.ndimage.map_coordinates(lr,coord, mode='constant').reshape(hr_shape)
 
     return interpolate
 
@@ -1514,9 +1578,11 @@ def temporal_cubic_interpolation(lr, hr_shape):
 
     t_hr = np.linspace(0, lr.shape[0]-0.5,  hr_shape[0])
     
-    tg, xg, yg ,zg = np.meshgrid(t_hr, x_lr, y_lr, z_lr, indexing='ij', sparse=True)
+    
+    tg, xg, yg ,zg = np.mgrid[0:hr_shape[0], 0:hr_shape[1], 0:hr_shape[2], 0:hr_shape[3]]
+    coord = np.array([tg.flatten(), xg.flatten(), yg.flatten() ,zg.flatten()])
 
-    interpolate = scipy.ndimage.map_coordinates(lr, np.array([tg, xg, yg ,zg]), mode='cubic')
+    interpolate = scipy.ndimage.map_coordinates(lr,coord, mode='constant').reshape(hr_shape)
     # interp = RegularGridInterpolator((t_lr, x_lr, y_lr, z_lr), lr, method='cubic', bounds_error=False, fill_value=0)
     # interpolate = interp((tg, xg, yg ,zg))
 
@@ -1596,4 +1662,3 @@ def generate_gif_volume(img3D, axis = 0, save_as = "animation"):
     frame_one = frames[0]
     frame_one.save(save_as+".gif", format="GIF", append_images=frames,
                save_all=True, duration=500, loop=0) #/home/pcallmer/Temporal4DFlowNet/results/plots
-
