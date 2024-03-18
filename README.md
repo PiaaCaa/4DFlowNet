@@ -7,8 +7,9 @@ This is an extension of the repository [4DFlowNet](https://gitlab.eecs.umich.edu
 The 4DFlowNet has been used as basis for the implementation of a temporal-super resolution network for 4D Flow MRI.
 
 
-<!-- # Example results
- -->
+# Example results
+
+![](https://github.com/PiaaCaa/Temporal4DFlowNet/tree/develop-temporal-extended/examples/Test_M4_Animate_u__HR_SR_LR_Test.gif)
 
 
 <!-- Below are example prediction results from an actual 4D Flow MRI of a bifurcation phantom dataset. 
