@@ -139,7 +139,7 @@ if __name__ == "__main__":
         # set directories 
         input_dir = 'data/PIA/THORAX'
         res_dir   = 'results/in_vivo/'
-        eval_dir  = 'results/in_vivo/plots/20240223-1140_boxavg'
+        eval_dir  = 'results/in_vivo/plots/20240314-1514_imagenet3Dmag_toeger'
 
         if not os.path.isdir(eval_dir):
             os.makedirs(eval_dir)
@@ -149,8 +149,8 @@ if __name__ == "__main__":
         for c in cases:
             print('-------------------', c, '-------------------')
             in_vivo = f'{input_dir}/{c}/h5/{c}.h5'
-            in_vivo_upsampled = f'{res_dir}/{c}/{c}_20240223-1140_boxavg_25Frames.h5' 
-            name_evaluation = f'THORAX_{c}_{os.path.basename(in_vivo)[:-3]}_boxavg_25Frames'
+            in_vivo_upsampled = f'{res_dir}/{c}/{c}_20240314-1514_25Frames.h5' 
+            name_evaluation = f'THORAX_{c}_{os.path.basename(in_vivo)[:-3]}_25Frames'
 
             #set slice index for animation
             idx_slice = np.index_exp[40, :, :]

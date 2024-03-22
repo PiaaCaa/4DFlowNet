@@ -18,3 +18,5 @@ training.sbatch
 *.h5
 prediction_multiplefiles.sh
 OLD_README.md
+src/create_patch_csvs_win.sh
+src/create_patch_csvs.sh

@@ -4,7 +4,7 @@ import h5py
 from scipy.integrate import trapz
 from matplotlib import pyplot as plt
 # from utils import h5functions
-import h5functions
+from prepare_data import h5functions
 
 """
 This file contains functions for temporal downsampling with the aim to mimic the temporal sampling of MRI machine
@@ -73,7 +73,7 @@ def temporal_box_averaging_and_downsampling(hr, downsampling_factor):
         sampling_2[i, :, :, :] = np.average(data_vel[downsampling_factor*i+offset_sampling:downsampling_factor*i+downsampling_factor+offset_sampling], axis=0)
     
     # TODO check if this is alright!!
-    # sampling_3 = np.roll(sampling_3, axis= 0, shift=1)
+    # sampling_2 = np.roll(sampling_2, axis= 0, shift=1)
     return sampling_1, sampling_2
 
 

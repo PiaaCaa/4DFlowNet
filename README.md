@@ -9,7 +9,7 @@ The 4DFlowNet has been used as basis for the implementation of a temporal-super 
 
 # Example results
 
-![](https://github.com/PiaaCaa/Temporal4DFlowNet/tree/develop-temporal-extended/examples/Test_M4_Animate_u__HR_SR_LR_Test.gif)
+![](https://github.com/PiaaCaa/Temporal4DFlowNet/blob/develop-temporal-extended/examples/Test_M4_Animate_u__HR_SR_LR_Test.gif)
 
 
 <!-- Below are example prediction results from an actual 4D Flow MRI of a bifurcation phantom dataset. 

@@ -223,16 +223,17 @@ def create_difference_field(hr_file, prediction_file,hr_colnames, pred_colnames,
     return u_diff, v_diff, w_diff
 
 if __name__ == "__main__":
-    # input_dir = "/home/pcallmer/Temporal4DFlowNet/results/in_vivo/THORAX" #"/home/pcallmer/Temporal4DFlowNet/data/PIA/THORAX/P01/h5"
-    # mask_file  = "/home/pcallmer/Temporal4DFlowNet/data/PIA/THORAX/P01/h5/P01.h5"
+    input_dir =  "data/CARDIAC/" #"/home/pcallmer/Temporal4DFlowNet/data/PIA/THORAX/P01/h5"
+    mask_file  = "data/CARDIAC/M5_2mm_step2_static_dynamic.h5" #data\CARDIAC
     # output_dir = "/home/pcallmer/Temporal4DFlowNet/results/vtk/"
-    input_dir = "/home/pcallmer/Temporal4DFlowNet/results/Temporal4DFlowNet_20230620-0909" 
-    mask_file  = "/home/pcallmer/Temporal4DFlowNet/data/CARDIAC/M4_2mm_step2_static_dynamic.h5"
-    output_dir = "/home/pcallmer/Temporal4DFlowNet/results/vtk/"
+    # input_dir = "/home/pcallmer/Temporal4DFlowNet/results/Temporal4DFlowNet_20230620-0909" 
+    # mask_file  = "/home/pcallmer/Temporal4DFlowNet/data/CARDIAC/M4_2mm_step2_static_dynamic.h5"
+    output_dir = "results/data/insilico"
 
-    columns = ['u_combined', 'v_combined', 'w_combined']
+    # columns = ['u_combined', 'v_combined', 'w_combined']
+    columns = ['u', 'v', 'w']
     
-    files = ["Testset_result_model4_2mm_step2_0909_temporal"]   
+    files = ["M5_2mm_step2_static_dynamic"]   
     
     for file in files:
         print(f"Processing case {file}")
@@ -248,7 +249,7 @@ if __name__ == "__main__":
         # Load HDF5
         with h5py.File(input_filepath, mode = 'r' ) as hdf5:
             data_nr = len(hdf5[columns[0]])
-            print(hdf5['u_combined'].shape)
+            print(hdf5[columns[0]].shape)
 
         with h5py.File(input_filepath, 'r') as hf:
             if "dx" in hf.keys():
@@ -264,13 +265,14 @@ if __name__ == "__main__":
         for idx in range(0, data_nr, 1):
             print('Processing index', idx)
             
-            # u, v, w = get_vector_fields(input_filepath, columns, idx)
-            u, v, w = create_difference_field(mask_file, input_filepath,['u', 'v', 'w'], columns,  idx)
+            u, v, w = get_vector_fields(input_filepath, columns, idx)
+            # u, v, w = create_difference_field(mask_file, input_filepath,['u', 'v', 'w'], columns,  idx)
             mask = get_mask(mask_file, idx)
             
-            output_filepath = os.path.join(output_path, "{}_{}_absHRdiff.vti".format(output_filename, idx))
+            output_filepath = f'{output_path}/{output_filename}_{idx}_uvw_mask.vti'
+            # output_filepath = os.path.join(output_path, "{}_{}_absHRdiff.vti".format(output_filename, idx))
 
-            #vectors_to_vtk((u,v,w), spacing, output_filepath)
+            # vectors_to_vtk((u,v,w), spacing, output_filepath)
             # scalar_to_vtk(u, spacing, output_filepath)
             #scalar_to_vtk(mask, spacing, output_filepath)
             uvw_mask_to_vtk((u,v,w), mask, spacing, output_filepath, include_mask=True)

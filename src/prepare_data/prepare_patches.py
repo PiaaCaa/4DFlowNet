@@ -2,6 +2,7 @@ import numpy as np
 import h5py
 import PatchData as pd
 import os
+import argparse
 
 def load_data_shape(input_filepath):
     with h5py.File(input_filepath, mode = 'r' ) as hdf5:
@@ -12,7 +13,22 @@ def load_data_shape(input_filepath):
 
 
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description="My script description")
+    parser.add_argument("--lrdata", type=str, help="Optional argument to pass the name of the model")
+    parser.add_argument("--hrdata", type=str, help="Optional argument to pass the name of LR data")
+    args = parser.parse_args()
+
+    if args.lrdata is not None and args.hrdata is not None:
+        print(f"Data model is {args.lrdata}")
+        lr_file = args.lrdata
+        hr_file = args.hrdata
+    else:
+        hr_file = 'M4_2mm_step2_cloudmagnRot_toeger_HRfct.h5'       #HiRes velocity data
+        lr_file = 'M4_2mm_step2_cloudmagnRot_toeger_LRfct_noise.h5' #LowRes velocity data 
+
+    # Parameters
     temporal_preparation = True
     patch_size = 16 # Patch size, this will be checked to make sure the generated patches do not go out of bounds
     n_patch = 20    # number of patch per time frame
@@ -24,9 +40,9 @@ if __name__ == "__main__":
 
     
     base_path = 'data/CARDIAC'
-    hr_file = 'M1_2mm_step2_cloudmagnRot_boxavg_HRfct.h5'       #HiRes velocity data
-    lr_file = 'M1_2mm_step2_cloudmagnRot_boxavg_LRfct_noise.h5' #LowRes velocity data 
-    output_filename = f'{base_path}/Temporal{patch_size}MODEL1_2mm_step2_cloudmagnRot_boxavg.csv'
+
+    output_filename = f'{base_path}/Temporal{patch_size}MODEL{hr_file[1]}_2mm_step2_cloudmagnRot_toeger.csv'
+
 
     #TODO check the compatibility in the test iteratoor
     
@@ -34,14 +50,15 @@ if __name__ == "__main__":
     input_filepath = f'{base_path}/{lr_file}'
     T, X, Y, Z = load_data_shape(input_filepath)
   
+    # Check if the files exist  
+    assert(os.path.isfile(f'{base_path}/{hr_file}'))    # HR file does not exist
+    assert(os.path.isfile(f'{base_path}/{lr_file}'))    # LR file does not exist 
+
     # Prepare the CSV output
     if temporal_preparation:
         pd.write_header_temporal(output_filename)
     else:
         pd.write_header(output_filename)
-
-    assert(os.path.isfile(f'{base_path}/{hr_file}'))    # HR file does not exist
-    assert(os.path.isfile(f'{base_path}/{lr_file}'))    # LR file does not exist 
 
     # because the data is homogenous in 1 table, we only need the first data
     with h5py.File(input_filepath, mode = 'r' ) as hdf5:
