@@ -470,12 +470,9 @@ def k_space_sampling_timeseries_new(path_order,data,save_as):
     
     order = sio.loadmat(path_order)
     phs_max = np.max(order['phs'])
-    Nset = np.max(order['set'])
-    lins = order['lin'].squeeze()
-    pars = order['par'].squeeze()
-    sets = order['set'].squeeze()
-    phss = order['phs'].squeeze()
+    Nset    = np.max(order['set'])
     print(  phs_max)
+    print(order['phs'].shape)
 
     # get spatial shape of kspacemask
     X = order['NCol'].squeeze()//2
@@ -492,31 +489,34 @@ def k_space_sampling_timeseries_new(path_order,data,save_as):
     for vel in ['u', 'v', 'w']:
         data[vel] = adjust_image_size(data[vel], (data[vel].shape[0], X, Y, Z))
     
-    data['magnitude'] = np.ones_like(data['u'])
+    print('-----------------------')
+    
+    # data['magnitude'] = np.ones_like(data['u'][t])
+    print('-----------------------')
+
+    print('Transforming velocity data into centered k space ..')
+    data_ksp = {}
+    for vel in ['u', 'v', 'w']:
+        # data_ksp[vel] = np.zeros((data[vel].shape[0], X, Y, Z), dtype = np.complex64)
+        data_ksp[vel] = fft_fcts.velocity_img_to_centered_kspace(data[vel], np.ones_like(data['u']), venc = data[f'venc_{vel}'])
+        # for t in range(data[vel].shape[0]):
+        #     data_ksp[vel][t] = fft_fcts.velocity_img_to_centered_kspace(data[vel][t], np.ones_like(data['u'][t]), venc = data[f'venc_{vel}'])
+
+    #TODO optimize by make mapping only once for 0 -- phs_max -1
+    # make mapping only once
 
     # t_range of mr k-space mask and cfd data
     mr_range = np.linspace(0, 1, N_frames)
     cfd_range = np.linspace(0, 1 , data['u'].shape[0]) 
 
-    print('Transforming velocity data into centered k space ..')
-    data_ksp = {}
-    for vel in ['u', 'v', 'w']:
-        data_ksp[vel] = np.zeros((data[vel].shape[0], X, Y, Z), dtype = np.complex64)
-        for t in range(data[vel].shape[0]):
-            data_ksp[vel][t] = fft_fcts.velocity_img_to_centered_kspace(data[vel][t], data['magnitude'][t], venc = data[f'venc_{vel}'][t])
-
-    #TODO optimize by make mapping only once for 0 -- phs_max -1
-    # make mapping only once
 
     def find_t_int_idx(phs):
         #find closest index in cfd data
-        idx = np.argmin(np.abs(cfd_range - mr_range[phs-1]))
-
-        return idx
+        return np.argmin(np.abs(cfd_range - mr_range[phs-1]))
 
     print('Sample k space according to order ..')
     sampled_kspace = np.zeros((N_frames, X, Y, Z, Nset), dtype = np.complex64)
-    for lin, par, phs, set_ in zip(lins, pars, phss, sets):
+    for lin, par, phs, set_ in zip(order['lin'].squeeze(), order['par'].squeeze(), order['set'].squeeze(), order['phs'].squeeze()):
         if set_ > 2: continue
         t_idx = find_t_int_idx(phs)
         sampled_kspace[phs-1, :, lin-1, par-1, set_-1] = data_ksp[set_vel[str(set_-1)]][t_idx, :, lin-1, par-1]
@@ -661,11 +661,14 @@ def add_coil_sensitivity(coil_images, vel, venc,  magn = None):
     return vel_vel, vel_comp
 
 if __name__ == '__main__':
+
+    data_dir = '/mnt/c/Users/piacal/Code/SuperResolution4DFlowMRI/Temporal4DFlowNet/data'
+
     # Define datasets
-    path_kmask = 'data/kspacemask.h5'
-    path_order = 'data/order_2mm_40ms.mat'
-    path_datamodel = 'data/CARDIAC/M1_2mm_step2_static_dynamic.h5'
-    save_as = 'results/kspacesampling/'
+    path_kmask = f'{data_dir}/kspacemask.h5'
+    path_order = f'{data_dir}/order_2mm_40ms.mat'
+    path_datamodel = f'{data_dir}/CARDIAC/M1_2mm_step2_static_dynamic.h5'
+    save_as = '/home/piacal/codegit/Temporal4DFlowNet/results/kspacesampling'
 
     if True: 
         # 1. Use coil sensitivity matrix on CFD data
@@ -702,21 +705,18 @@ if __name__ == '__main__':
         # plt.legend()
         # plt.show()
 
-
         coil_images = compute_coil_sensitivity_imgs(coils,  static_mask_vel)
 
         data = {}
-        with h5py.File(path_datamodel, mode = 'r' ) as p1:
-            for vel in ['u', 'v', 'w']:
-                data[vel] = np.asarray(p1[vel]).squeeze()
-                data[f'venc_{vel}'] = np.asarray(p1[f'{vel}_max']).squeeze()
-
         data_c_sens = {}
         print('Add coil sensitivity to velocity data..')
-        for vel in ['u', 'v', 'w']:
-            # generate coil sensitivity maps
-            venc_max = np.max(data[f'venc_{vel}'])
-            data[f'{vel}_sens'], data_c_sens[vel] = add_coil_sensitivity(coil_images, data[vel], venc_max)
+        with h5py.File(path_datamodel, mode = 'r' ) as p1:
+            for vel in ['u', 'v', 'w']:
+                data[f'venc_{vel}'] = np.asarray(p1[f'{vel}_max']).squeeze()
+                
+                # generate coil sensitivity maps
+                venc_max = np.max(data[f'venc_{vel}'])
+                _ , data_c_sens[vel] = add_coil_sensitivity(coil_images, np.asarray(p1[vel]).squeeze(), venc_max)
 
         # save to h5
         # h5functions.save_to_h5(save_as, 'coil_sensitivty', coil_images, expand_dims=False)
@@ -729,18 +729,21 @@ if __name__ == '__main__':
         # 2. Use k-space mask on CFD data
         # k_space_sampling_timeseries(path_kmask, path_order, path_datamodel, save_as, batchsize = 5000)
         # k_space_sampling_static(path_kmask, path_order, path_datamodel, save_as)
-        t, x, y, z = data['u'].shape
+        t, x, y, z, c = data_c_sens['u'].shape
         t_res = 25
         #make a new k-space for every coil
         k_space_sampled_u = np.zeros((t_res, x, y, z, len(coils)), dtype = np.complex64)
         k_space_sampled_v = np.zeros((t_res, x, y, z, len(coils)), dtype = np.complex64)
         k_space_sampled_w = np.zeros((t_res, x, y, z, len(coils)), dtype = np.complex64)
-        for c in len(coils):
+        for c in range(len(coils)):
             data_c = {}
             data_c['u'] = data_c_sens['u'][:, :, :, :, c]
             data_c['v'] = data_c_sens['v'][:, :, :, :, c]
             data_c['w'] = data_c_sens['w'][:, :, :, :, c]
-            # TODO apply this for every coil
+            data_c['venc_u'] = np.max(data[f'venc_u'])
+            data_c['venc_v'] = np.max(data[f'venc_v'])
+            data_c['venc_w'] = np.max(data[f'venc_w'])
+            
             k_space_sampled = k_space_sampling_timeseries_new( path_order, data_c, save_as)
             k_space_sampled_u[:, :, :, :, c] = k_space_sampled[:, :, :, :, 0]
             k_space_sampled_v[:, :, :, :, c] = k_space_sampled[:, :, :, :, 1]
@@ -753,6 +756,7 @@ if __name__ == '__main__':
     # save k-space data  
     # for vel in ['u', 'v', 'w']:
     # h5functions.save_to_h5(save_as, vel, img_space[vel], expand_dims=False)
+    k_space_sampled_u = np.ones((25, 30, 30, 30, 8))
     #reshape to cfl standards, 
     print(k_space_sampled_u.shape)
     t, x, y, z, c = k_space_sampled_u.shape
