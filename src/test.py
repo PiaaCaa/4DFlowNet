@@ -15,6 +15,7 @@ import pandas as pd
 import glob, os
 from prepare_data import h5functions
 from tqdm import tqdm
+import prepare_data.cfl as cfl
 
 def calculate_RST(u, v, w, temporal_window, t_range):
     """
@@ -653,11 +654,57 @@ def k_space_static_test2():
 
 
 
-
+def reshape_from_cfl(cfldata):
+    print(cfldata.squeeze().shape)
+    return cfldata.squeeze().transpose(3,0,1,2)
 
 
 if __name__ == '__main__':
+    # file = 'results/kspacesampling/u_reconstructed_kspacesampled_sens2.h5'
+    # with h5py.File(file, mode = 'r' ) as p1:
+    #     vx = np.asarray(p1['u kspace']).squeeze()
+    #     print(vx.shape, vx.dtype)
+    
+    # reconstr, _ = fft_fcts.kspace_to_velocity_img(vx, np.ones_like(vx), venc = 1.5)
+    # h5functions.save_to_h5('results/kspacesampling/u_reconstructed_kspacesampled_sens3.h5', 'u reconstr', reconstr, expand_dims=False)
 
+
+    # vel_data = '/mnt/c/Users/piacal/Code/SuperResolution4DFlowMRI/Temporal4DFlowNet/data/CARDIAC/M1_2mm_step2_static_dynamic.h5'
+    # with h5py.File(vel_data, mode = 'r' ) as p1:
+    #     vx = np.asarray(p1['u']).squeeze()
+    # venc = 1.5
+
+    # kspace_data = fft_fcts.velocity_img_to_centered_kspace(vx, np.ones_like(vx), venc)
+    # print(kspace_data.shape)
+    # reconstr, _ = fft_fcts.centered_kspace_to_velocity_img(kspace_data, np.ones_like(vx), venc = venc)
+    # h5functions.save_to_h5('results/kspacesampling/u_reconstructed_kspacesampled_example_test.h5', 'u reconstr', reconstr, expand_dims=False)
+    # exit()
+
+
+
+    file = 'results/kspacesampling/output_test12_swap'
+    res = cfl.readcfl(file).squeeze()
+    print(res.shape)
+    res_arr = res#reshape_from_cfl(res)
+    print(res_arr.dtype, res_arr.shape)
+    plt.subplot(1, 2, 1)
+    plt.imshow(np.abs(res_arr[ :, :, 60]))
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(np.angle(res_arr[ :, :, 60]))
+    plt.show()
+    venc = 1.5
+    # print(res_arr.sum())
+    # # res_arr, _ = fft_fcts.centered_kspace_to_velocity_img(res_arr, np.ones_like(res_arr), venc = venc)
+    # # res_arr = np.angle(res_arr)/np.pi * venc
+    # print(res_arr.sum())
+    res_recon, _ = fft_fcts.centered_kspace_to_velocity_img(res_arr, np.ones_like(res_arr), venc = venc)
+
+    # h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test12_swap.h5', 'data abs', np.abs(res_arr), expand_dims=False)
+    # h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test12_swap.h5', 'data angle', np.angle(res_arr)/np.pi * venc, expand_dims=False)
+    h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test12_swap.h5', 'data reconstr', res_recon, expand_dims=False)
+
+    exit()
 
     csv_dir = 'data/CARDIAC'
     data_dir = 'data/CARDIAC'
