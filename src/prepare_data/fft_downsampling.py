@@ -145,7 +145,13 @@ def velocity_img_to_centered_kspace(vel_img, mag_image, venc):
     Returns:
         ndarray: Centered k-space representation of the velocity image.
     """
-    
+    if len(vel_img.shape) == 3:
+        axes = (0, 1, 2)
+    elif len(vel_img.shape) == 4:
+        axes = (1, 2, 3)
+    else:
+        print("Error: Unsupported number of dimensions, please extend function to ", len(vel_img.shape), " dimensions.")
+
     # convert to phase
     phase_image = vel_img / venc * math.pi
 
@@ -153,13 +159,13 @@ def velocity_img_to_centered_kspace(vel_img, mag_image, venc):
     complex_img = np.multiply(mag_image, np.exp(1j*phase_image))
 
     # ifftshift
-    complex_img = np.fft.ifftshift(complex_img)
+    complex_img = np.fft.ifftshift(complex_img, axes=axes)
 
     # fft
-    imgfft = np.fft.fftn(complex_img)
+    imgfft = np.fft.fftn(complex_img, axes = axes)
 
     # shift img to center
-    imgfft = np.fft.fftshift(imgfft)
+    imgfft = np.fft.fftshift(imgfft, axes=axes)
 
     return imgfft
 
@@ -176,13 +182,19 @@ def centered_kspace_to_velocity_img(imgfft, mag_image, venc):
         ndarray: The velocity image.
         ndarray: The rescaled magnitude image.
     """
+    if len(imgfft.shape) == 3:
+        axes = (0, 1, 2)
+    elif len(imgfft.shape) == 4:
+        axes = (1, 2, 3)
+    else:
+        print("Error: Unsupported number of dimensions, please extend function to ", len(imgfft.shape), " dimensions.")
 
     # shift img to center
-    imgfft = np.fft.ifftshift(imgfft)
+    imgfft = np.fft.ifftshift(imgfft, axes=axes)
 
-    new_complex_img = np.fft.ifftn(imgfft)
+    new_complex_img = np.fft.ifftn(imgfft, axes=axes)
 
-    new_complex_img = np.fft.fftshift(new_complex_img)
+    new_complex_img = np.fft.fftshift(new_complex_img, axes=axes)
     
     # Get the MAGnitude and rescale
     new_mag = np.abs(new_complex_img)
