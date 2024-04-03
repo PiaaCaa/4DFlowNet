@@ -653,6 +653,9 @@ if __name__ == '__main__':
     vel_colnames = ['u']
     x_k, y_k, z_k = 192,126,104
 
+    save_state = True
+    save_cfl = True
+
     if True:
 
         # 0. Add noise to dataset
@@ -698,14 +701,15 @@ if __name__ == '__main__':
         print('coil images', coil_images.shape, coil_images.dtype, coil_images.sum(), coil_images.max(), coil_images.min())
 
         print('Save coil sensitivity images..')
-        cfl.writecfl(save_as + '/coil_sensitivity12', transform_cfl_format(np.expand_dims(coil_images, 0)))
+        if save_cfl:
+            cfl.writecfl(save_as + '/coil_sensitivity13', transform_cfl_format(np.expand_dims(coil_images, 0)))
         # h5functions.save_to_h5(f'{save_as}/coil_sensitivity6.h5', 'coil_sensitivty', coil_images, expand_dims=False)
         
         # A = cfl.readcfl(save_as + '/coil_sensitivity')        
         coil_images = adjust_image_size(coil_images, (spatial_res[0],spatial_res[1] ,spatial_res[2],  len(coils)))
         print('coil images', coil_images.sum())
-        # plt.imshow(np.abs(coil_images[:, :, 60, 0]))
-        # plt.show()
+
+
         data = {}
         data_c_sens = {}
         print('Add coil sensitivity to velocity data..')
@@ -715,47 +719,35 @@ if __name__ == '__main__':
                 
                 # generate coil sensitivity maps
                 venc_max = np.max(data[f'venc_{vel}'])
+                print('Venc max', venc_max)
                 data_c_sens[vel] = add_coil_sensitivity2(coil_images, np.asarray(p1[vel]).squeeze(), venc_max)
-                # diff = data_c_sens[vel][:, :, :, :, 0]-np.asarray(p1[vel]).squeeze()
-                # print('sum', np.sum(data_c_sens[vel], axis=(-1)).shape)
-                # h5functions.save_to_h5(f'{save_as}/h5_coilsens_test1.h5', 'u vel', data_c_sens[vel], expand_dims=False)
-                # h5functions.save_to_h5(f'{save_as}/h5_coilsens_test1.h5', 'u diff', diff, expand_dims=False)
-                # h5functions.save_to_h5(f'{save_as}/h5_coilsens_test1.h5', 'coil images', coil_images, expand_dims=False)
-                # data_c_sens[vel] = np.multiply(np.ones_like(data_c_sens[vel]), np.exp(1j*((data_c_sens[vel]/venc_max)*np.pi)))
-                # h5functions.save_to_h5(f'{save_as}/h5_coilsens_test1.h5', 'u c', data_c_sens[vel], expand_dims=False)
 
-                # print('sum', data_c_sens[vel].sum())
-                # #TODO delete this later
-                # data_c_sens[vel] = np.asarray(p1[vel]).squeeze()[:, :, :, :, np.newaxis]
-        # h5functions.save_to_h5(f'{save_as}/h5_coilsens.h5', 'coil_sensitivty', coil_images, expand_dims=False)
-        # # h5functions.save_to_h5(f'{save_as}/h5_coilsens.h5', 'mask', static_mask_vel, expand_dims=False)
-        # h5functions.save_to_h5(f'{save_as}/h5_coilsens13.h5', 'u img', np.angle(data_c_sens['u']), expand_dims=False)
-        # h5functions.save_to_h5(f'{save_as}/h5_coilsens.h5', 'u_sens', data[f'u_sens'], expand_dims=False)
-
-        # kspce = fft_fcts.velocity_img_to_centered_kspace(data_c_sens['u'][0, :, :, :, 0], np.ones_like(data_c_sens['u'][0, :, :, :, 0]), venc = np.max(data[f'venc_u']))
-        # vel_u_recon, _ = fft_fcts.centered_kspace_to_velocity_img(kspce, np.ones(kspce.shape), venc = np.max(data[f'venc_u']))
-        # h5functions.save_to_h5(f'{save_as}/h5_coilsens13.h5', 'u kspace reconstructed' , vel_u_recon, expand_dims=False)
 
         # 2. Use k-space mask on CFD data
-        t, x, y, z, c = 25,192,126,104, len(coils)#data_c_sens['u'].shape
+        c = len(coils)
         t_res = 25
 
-        for vel in vel_colnames: #, 'v', 'w'
+        for vel in vel_colnames: 
             #make a new k-space for every coil
-            k_space_sampled_u = np.zeros((t_res, x, y, z, len(coils)), dtype = np.complex64)
+            k_space_sampled_u = np.zeros((t_res, x_k, y_k, z_k, len(coils)), dtype = np.complex64)
            
             for c in range(len(coils)):
                 k_space_sampled_u[:, :, :, :, c], ksp_u = k_space_sampling_timeseries_vel_new(path_order, data_c_sens[vel][:, :, :, :, c], venc = np.max(data[f'venc_{vel}']), set_=1)
             #save
             print('Save k-space sampled data..')
-            cfl.writecfl(save_as + f'/{vel}_kspace12', transform_cfl_format(k_space_sampled_u))
-            # h5functions.save_to_h5(f'{save_as}/{vel}_reconstructed_kspacesampled_sens4.h5','u kspace' , ksp_u, expand_dims=False)
-            vel_u_recon, _ = fft_fcts.centered_kspace_to_velocity_img(ksp_u, np.ones_like(ksp_u), venc = np.max(data[f'venc_{vel}']))
-            h5functions.save_to_h5(f'{save_as}/{vel}_reconstructed_kspacesampled_sens12.h5','u not sparse sample' , vel_u_recon, expand_dims=False)
-            print('Save..')
-            # make reconstruction to check result
-            vel_u, _ = fft_fcts.centered_kspace_to_velocity_img(k_space_sampled_u[:, :, :, :, 0], np.ones_like(k_space_sampled_u[:, :, :, :, 0]), venc = np.max(data[f'venc_{vel}']))
-            h5functions.save_to_h5(f'{save_as}/{vel}_reconstructed_kspacesampled_sens12.h5','u sparse sample' , vel_u, expand_dims=False)
+            if save_cfl:
+                cfl.writecfl(save_as + f'/{vel}_kspace13', transform_cfl_format(k_space_sampled_u))
+                cfl.writecfl(save_as + f'/{vel}_kspace_13_nonsparse', transform_cfl_format(ksp_u[:, :, :, :, np.newaxis]))
+            if save_state:
+                print('Save reconstructions of k-space sampled data without compressed sensing')
+                h5functions.save_to_h5(f'{save_as}/{vel}_reconstructed_kspacesampled_sens13.h5','u kspace' , ksp_u, expand_dims=False)
+
+                vel_u_recon, _ = fft_fcts.centered_kspace_to_velocity_img(ksp_u, np.ones_like(ksp_u), venc = np.max(data[f'venc_{vel}']))
+                h5functions.save_to_h5(f'{save_as}/{vel}_reconstructed_kspacesampled_sens13.h5','u not sparse sample' , vel_u_recon, expand_dims=False)
+                
+                # make reconstruction to check result
+                vel_u, _ = fft_fcts.centered_kspace_to_velocity_img(k_space_sampled_u[:, :, :, :, 0], np.ones_like(k_space_sampled_u[:, :, :, :, 0]), venc = np.max(data[f'venc_{vel}']))
+                h5functions.save_to_h5(f'{save_as}/{vel}_reconstructed_kspacesampled_sens13.h5','u sparse sample' , vel_u, expand_dims=False)
 
     
     # 3. Reconstruct undersampled k-space with compressed sensing (CS) - save as clf file
