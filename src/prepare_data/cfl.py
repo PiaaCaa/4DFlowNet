@@ -66,7 +66,7 @@ def writecfl(name, array):
         for i in (array.shape):
                 h.write("%d " % i)
         h.write('\n')
-
+    print(array.dtype)
     size = np.prod(array.shape) * np.dtype(np.complex64).itemsize
     
     with open(name + ".cfl", "a+b") as d:
