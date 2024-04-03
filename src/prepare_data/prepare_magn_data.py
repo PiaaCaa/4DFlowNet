@@ -199,12 +199,12 @@ if __name__ == "__main__":
     # path to the directory with the images
     directory = 'data/clouds'
 
-    save_path = 'data/flower_magn_data_4D_spatial_rotated_Alexcode2.h5'
+    save_path = 'data/cloud_magn_data_4D_spatial_rotated_M1-M6.h5'
 
     # get all file paths
     file_paths = get_paths(directory, ending='.JPEG')
 
-    in_silico_model_size = {'M1': (50, 72, 70, 76), 'M2': (50, 84, 60, 96), 'M3': (50, 72, 82, 84), 'M4': (50, 62, 58, 84) }
+    in_silico_model_size = {'M1': (50, 72, 70, 76), 'M2': (50, 84, 60, 96), 'M3': (50, 72, 82, 84), 'M4': (50, 62, 58, 84), 'M5': (50, 70, 70, 71), 'M6': (50, 70, 70, 70)}
     models = list(in_silico_model_size.keys())
 
     new_mag_data = {}
@@ -215,9 +215,9 @@ if __name__ == "__main__":
         exit(0)
 
     #choose random image for each model
-    # random_paths = [np.random.choice(file_paths) for _ in range(len(models))]
+    random_paths = [np.random.choice(file_paths) for _ in range(len(models))]
 
-    random_paths = [f'{directory}/n09247410_1208.JPEG', f'{directory}/n09247410_2033.JPEG', f'{directory}/n09247410_3183.JPEG', f'{directory}/n09247410_3507.JPEG']
+    # random_paths = [f'{directory}/n09247410_1208.JPEG', f'{directory}/n09247410_2033.JPEG', f'{directory}/n09247410_3183.JPEG', f'{directory}/n09247410_3507.JPEG']
 
     magn_ranges = np.asarray([60, 80, 120, 180, 240]) # in px values [0-4095]
 
