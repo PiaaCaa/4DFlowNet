@@ -12,6 +12,7 @@ def biot_savart_simulation(segments, locations):
   """Reference : Esin Y, Alpaslan F, MRI image enhancement using Biot-Savart law at 3 tesla. Turk J Elec Eng & Comp Sci
   """
 
+  eps = 1e-10  
   num_coil_segments = segments.shape[0] - 1
   if num_coil_segments < 1:
       raise ValueError('Insufficient coil segments specified')
@@ -25,19 +26,19 @@ def biot_savart_simulation(segments, locations):
   for segment_index in range(num_coil_segments):
       segment_end = segment_start
       segment_start = segments[segment_index + 1, :]
-      unit_segment_vector = (segment_end - segment_start) / np.linalg.norm(segment_end - segment_start)
+      unit_segment_vector = (segment_end - segment_start) / (np.linalg.norm(segment_end - segment_start))
 
       vector_u = -locations + segment_end
       vector_v = locations - segment_start
 
-      cos_alpha = np.dot(vector_u, unit_segment_vector) / np.linalg.norm(vector_u, axis=1)
-      cos_beta = np.dot(vector_v, unit_segment_vector) / np.linalg.norm(vector_v, axis=1)
+      cos_alpha = np.dot(vector_u, unit_segment_vector) / (np.linalg.norm(vector_u, axis=1)+eps)
+      cos_beta = np.dot(vector_v, unit_segment_vector) / (np.linalg.norm(vector_v, axis=1)+eps)
       sin_beta = np.sin(np.arccos(cos_beta))
 
-      sensitivity_magnitudes = (cos_alpha + cos_beta) / (np.linalg.norm(vector_v, axis=1) / sin_beta)
+      sensitivity_magnitudes = (cos_alpha + cos_beta) / ((np.linalg.norm(vector_v, axis=1) / sin_beta) +eps)
 
       cross_product_matrix = np.cross(np.identity(3), unit_segment_vector)
-      normalized_sensitivity_directions = np.dot(cross_product_matrix, vector_v.T).T / np.linalg.norm(np.dot(cross_product_matrix, vector_v.T).T, axis=1)[:, np.newaxis]
+      normalized_sensitivity_directions = np.dot(cross_product_matrix, vector_v.T).T / (np.linalg.norm(np.dot(cross_product_matrix, vector_v.T).T, axis=1)[:, np.newaxis]+eps)
 
       sensitivity_contribution += normalized_sensitivity_directions * sensitivity_magnitudes[:, np.newaxis]
 
@@ -77,6 +78,7 @@ def compute_mri_coil_sensitivity(segments, locations, volume_shape):
   sensitivities = biot_savart_simulation(segments, locations)
   coil_image = np.zeros(volume_shape)
   coil_image[locations[:, 0], locations[:, 1], locations[:, 2]] = sensitivities
+  print('Coil sensitivity max:', np.max(coil_image), np.min(coil_image))
   return coil_image
 
 def create_sphere_phantom(volume_shape=(192, 192, 192), radius=48):
@@ -463,89 +465,41 @@ def k_space_sampling_static(path_kmask, path_order, path_datamodel, save_as):
         h5functions.save_to_h5(save_as, f'venc_{vel}', interpolated_data[f'venc_{vel}'], expand_dims=False)
 
 
-def k_space_sampling_timeseries_new(path_order,data,save_as):
+def k_space_sampling_timeseries_vel_new(path_order,data_vel,set_, venc):
 
-    # load order data
-        # make batches to process data
-    
-    order = sio.loadmat(path_order)
-    phs_max = np.max(order['phs'])
-    Nset    = np.max(order['set'])
-    print(  phs_max)
-    print(order['phs'].shape)
+    # load order data    
+    order = sio.loadmat(path_order, squeeze_me=True)
+    N_frames = np.max(order['phs'])
+    Nset     = np.max(order['set'])
+    assert set_ <= Nset, 'Set number is larger than the maximum set number'
 
     # get spatial shape of kspacemask
-    X = order['NCol'].squeeze()//2
-    Y = order['NLin'].squeeze()
-    Z = order['NPar'].squeeze()
-    # todo adjust to inout params
-    N_frames = phs_max
-    print(X, Y, Z, N_frames)
-    vel_set = {'u':0, 'v':1,'w':2}
-    set_vel = {'0':'u', '1':'v', '2':'w'}
-    
+    X = order['NCol']//2
+    Y = order['NLin']
+    Z = order['NPar']    
 
     # reshape data to the same size as kspacemask
-    for vel in ['u', 'v', 'w']:
-        data[vel] = adjust_image_size(data[vel], (data[vel].shape[0], X, Y, Z))
+    data_vel = adjust_image_size(data_vel, (data_vel.shape[0], X, Y, Z))
     
-    print('-----------------------')
-    
-    # data['magnitude'] = np.ones_like(data['u'][t])
-    print('-----------------------')
-
     print('Transforming velocity data into centered k space ..')
-    data_ksp = {}
-    for vel in ['u', 'v', 'w']:
-        # data_ksp[vel] = np.zeros((data[vel].shape[0], X, Y, Z), dtype = np.complex64)
-        data_ksp[vel] = fft_fcts.velocity_img_to_centered_kspace(data[vel], np.ones_like(data['u']), venc = data[f'venc_{vel}'])
-        # for t in range(data[vel].shape[0]):
-        #     data_ksp[vel][t] = fft_fcts.velocity_img_to_centered_kspace(data[vel][t], np.ones_like(data['u'][t]), venc = data[f'venc_{vel}'])
-
-    #TODO optimize by make mapping only once for 0 -- phs_max -1
-    # make mapping only once
+    data_ksp = fft_fcts.velocity_img_to_centered_kspace(data_vel, np.ones_like(data_vel), venc = venc)
 
     # t_range of mr k-space mask and cfd data
-    mr_range = np.linspace(0, 1, N_frames)
-    cfd_range = np.linspace(0, 1 , data['u'].shape[0]) 
-
+    mr_range  = np.linspace(0, 1, N_frames)
+    cfd_range = np.linspace(0, 1, data_vel.shape[0]) 
 
     def find_t_int_idx(phs):
-        #find closest index in cfd data
+        # find closest index in cfd data
         return np.argmin(np.abs(cfd_range - mr_range[phs-1]))
 
     print('Sample k space according to order ..')
-    sampled_kspace = np.zeros((N_frames, X, Y, Z, Nset), dtype = np.complex64)
-    for lin, par, phs, set_ in zip(order['lin'].squeeze(), order['par'].squeeze(), order['set'].squeeze(), order['phs'].squeeze()):
-        if set_ > 2: continue
+    sampled_kspace = np.zeros((N_frames, X, Y, Z), dtype = np.complex64)
+    for lin, par, phs, set_sample in zip(order['lin'], order['par'],  order['phs'], order['set']):
+        if set_sample != set_: continue
         t_idx = find_t_int_idx(phs)
-        sampled_kspace[phs-1, :, lin-1, par-1, set_-1] = data_ksp[set_vel[str(set_-1)]][t_idx, :, lin-1, par-1]
+        sampled_kspace[phs-1, :, lin-1, par-1] = data_ksp[t_idx, :, lin-1, par-1]
 
-    
-    # print('Reconstruct velocity images from k-space..')
-    # # convert back to velocity image
-    # velocity_data_sampled = {}
-    # for vel in ['u', 'v', 'w']:
-    #     velocity_data_sampled[vel] = np.zeros((N_frames, X, Y, Z), dtype = np.float32)
-    #     for t in range(N_frames):
-    #         velocity_data_sampled[vel][t], _ = fft_fcts.centered_kspace_to_velocity_img(sampled_kspace[t, :, :, :, vel_set[vel]], data['magnitude'][t], venc = data[f'venc_{vel}'][t])
-
-    # plt.imshow(velocity_data_sampled['u'][10, :, :, 60])
-    # plt.show()
-
-    print('Save..')
-    # # save to h5
-    # for vel in ['v']:
-    #     h5functions.save_to_h5(save_as, vel, velocity_data_sampled[vel], expand_dims=False)
-    #     h5functions.save_to_h5(save_as, f'venc_{vel}', data[f'venc_{vel}'], expand_dims=False)
-    
-    # TODO refactor
-    # k_space_sampled = {}
-    # for vel in ['u','v',  'w']:
-    #     k_space_sampled[vel] = sampled_kspace[:, :, :, :, vel_set[vel]]
-
-    return sampled_kspace
-
+    return sampled_kspace, data_ksp
 
 
 #TBD later
@@ -635,20 +589,29 @@ def compute_coil_sensitivity_imgs(coils,  static_mask):
 
     # Compute coil sensitivity maps
     for idx, coil in enumerate(coils):
-        sens = compute_mri_coil_sensitivity(coil, np.argwhere(static_mask), spatial_res)
-        coil_images[:,:,:,idx] =  sens.reshape(spatial_res)
+        coil_images[:,:,:,idx] =  compute_mri_coil_sensitivity(coil, np.argwhere(static_mask), spatial_res).reshape(spatial_res)
 
     return coil_images
 
+def normalize_coil_sensitivity(coil_images):
+    """
+    Normalize coil sensitivity images
+    """
+    print('Normalize coil sensitivity images..')
+    N_coils = coil_images.shape[-1]
+    norm_coil_images = np.zeros_like(coil_images)
+    for idx in range(N_coils):
+        norm_coil_images[:,:,:,idx] = coil_images[:,:,:,idx] / np.max(coil_images[:,:,:,idx])
+    return norm_coil_images
+
 def add_coil_sensitivity(coil_images, vel, venc,  magn = None):
 
-    # compute coil images
     N_coils = coil_images.shape[-1]
 
     if magn is None: magn = np.ones_like(vel)
 
     # Add coil sensitivity to velocity data
-    vel_comp = np.zeros((vel.shape[0],vel.shape[1], vel.shape[2], vel.shape[3],  N_coils), dtype=np.complex128)
+    vel_comp  = np.zeros((vel.shape[0],vel.shape[1], vel.shape[2], vel.shape[3],  N_coils), dtype=np.complex128)
     vel_vel   = np.zeros((vel.shape[0],vel.shape[1], vel.shape[2], vel.shape[3],  N_coils), dtype=np.float64)
     for idx in range(N_coils):
         
@@ -660,6 +623,24 @@ def add_coil_sensitivity(coil_images, vel, venc,  magn = None):
 
     return vel_vel, vel_comp
 
+def add_coil_sensitivity2(coil_images, vel, venc,  magn = None):
+
+    N_coils = coil_images.shape[-1]
+
+    # Add coil sensitivity to velocity data
+    vel_vel   = np.zeros((vel.shape[0],vel.shape[1], vel.shape[2], vel.shape[3],  N_coils), dtype=np.float64)
+    for idx in range(N_coils):
+        vel_vel[:, :, :,:, idx] = vel * np.real(coil_images[np.newaxis, :, :, :, idx])
+
+    return vel_vel
+
+def transform_cfl_format(data):
+    """Assumption that data is of shape (t, x, y, z, c)"""
+    assert len(data.shape) == 5, 'Data should be of shape (t, x, y, z, c)'
+    print('Convert from shape', data.shape, 'to shape', data.transpose(1, 2, 3, 4, 0)[:, :, :, :, np.newaxis, np.newaxis, np.newaxis, np.newaxis, np.newaxis,np.newaxis, :].shape)
+    return data.transpose(1, 2, 3, 4, 0)[:, :, :, :, np.newaxis, np.newaxis, np.newaxis, np.newaxis, np.newaxis,np.newaxis, :]
+
+
 if __name__ == '__main__':
 
     data_dir = '/mnt/c/Users/piacal/Code/SuperResolution4DFlowMRI/Temporal4DFlowNet/data'
@@ -668,9 +649,15 @@ if __name__ == '__main__':
     path_kmask = f'{data_dir}/kspacemask.h5'
     path_order = f'{data_dir}/order_2mm_40ms.mat'
     path_datamodel = f'{data_dir}/CARDIAC/M1_2mm_step2_static_dynamic.h5'
-    save_as = '/home/piacal/codegit/Temporal4DFlowNet/results/kspacesampling'
+    save_as = 'results/kspacesampling'
+    vel_colnames = ['u']
+    x_k, y_k, z_k = 192,126,104
 
-    if True: 
+    if True:
+
+        # 0. Add noise to dataset
+        # TODO
+
         # 1. Use coil sensitivity matrix on CFD data
         with h5py.File(path_datamodel, mode = 'r' ) as p1: 
             spatial_res = p1['u'].shape[1:]
@@ -681,101 +668,99 @@ if __name__ == '__main__':
         coil_offset = 75  # Distance from the center of the phantom
 
         # Define the coil locations
-        coil_axis = ['x' , 'y', 'x', 'y', 'z', 'z', 'x', 'y', 'z']
+        #TODO place coils is a sphere around the phantom
+        coil_axis = ['x',  'y', 'z']
         coil_location = [coil_offset ,  coil_offset , -coil_offset, -coil_offset, coil_offset, -coil_offset, coil_offset-10, -coil_offset-10]
         coils = [define_coils(coil_radius, phantom_center, pos, ax) for pos, ax in zip(coil_location, coil_axis)]
 
-        # # Visualize the coils
-        # fig = plt.figure()
-        # ax = fig.add_subplot(111, projection='3d')
-        # ax.title.set_text('Coil locations in 3D space')
+        # Visualize the coils
+        if False:
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            ax.title.set_text('Coil locations in 3D space')
 
-        # for idx, coil in enumerate(coils):
-        #     ax.plot(coil[:, 0], coil[:, 1], coil[:, 2], label=f'Coil {idx+1}')
+            for idx, coil in enumerate(coils):
+                ax.plot(coil[:, 0], coil[:, 1], coil[:, 2], label=f'Coil {idx+1}')
+            
+            mask_x, mask_y, mask_z = np.where(static_mask_vel)
+            ax.scatter(mask_x, mask_y, mask_z, c = 'gray', marker = 'o', label= 'Phantom',alpha=0.2 )
+
+            ax.set_xlabel('X axis')
+            ax.set_ylabel('Y axis')
+            ax.set_zlabel('Z axis')
+            ax.set_xlim(0, spatial_res[0]+20)
+            ax.set_ylim(0, spatial_res[1]+20)
+            ax.set_zlim(0, spatial_res[2]+20)
+            plt.legend()
+            plt.show()
         
-        # mask_x, mask_y, mask_z = np.where(static_mask_vel)
-        # ax.scatter(mask_x, mask_y, mask_z, c = 'gray', marker = 'o', label= 'Phantom',alpha=0.2 )
+        coil_images = compute_coil_sensitivity_imgs(coils,  np.ones((x_k, y_k, z_k)))
+        print('coil images', coil_images.shape, coil_images.dtype, coil_images.sum(), coil_images.max(), coil_images.min())
 
-        # ax.set_xlabel('X axis')
-        # ax.set_ylabel('Y axis')
-        # ax.set_zlabel('Z axis')
-        # ax.set_xlim(0, spatial_res[0]+20)
-        # ax.set_ylim(0, spatial_res[1]+20)
-        # ax.set_zlim(0, spatial_res[2]+20)
-        # plt.legend()
+        print('Save coil sensitivity images..')
+        cfl.writecfl(save_as + '/coil_sensitivity12', transform_cfl_format(np.expand_dims(coil_images, 0)))
+        # h5functions.save_to_h5(f'{save_as}/coil_sensitivity6.h5', 'coil_sensitivty', coil_images, expand_dims=False)
+        
+        # A = cfl.readcfl(save_as + '/coil_sensitivity')        
+        coil_images = adjust_image_size(coil_images, (spatial_res[0],spatial_res[1] ,spatial_res[2],  len(coils)))
+        print('coil images', coil_images.sum())
+        # plt.imshow(np.abs(coil_images[:, :, 60, 0]))
         # plt.show()
-
-        coil_images = compute_coil_sensitivity_imgs(coils,  static_mask_vel)
-
         data = {}
         data_c_sens = {}
         print('Add coil sensitivity to velocity data..')
         with h5py.File(path_datamodel, mode = 'r' ) as p1:
-            for vel in ['u', 'v', 'w']:
+            for vel in vel_colnames:
                 data[f'venc_{vel}'] = np.asarray(p1[f'{vel}_max']).squeeze()
                 
                 # generate coil sensitivity maps
                 venc_max = np.max(data[f'venc_{vel}'])
-                _ , data_c_sens[vel] = add_coil_sensitivity(coil_images, np.asarray(p1[vel]).squeeze(), venc_max)
+                data_c_sens[vel] = add_coil_sensitivity2(coil_images, np.asarray(p1[vel]).squeeze(), venc_max)
+                # diff = data_c_sens[vel][:, :, :, :, 0]-np.asarray(p1[vel]).squeeze()
+                # print('sum', np.sum(data_c_sens[vel], axis=(-1)).shape)
+                # h5functions.save_to_h5(f'{save_as}/h5_coilsens_test1.h5', 'u vel', data_c_sens[vel], expand_dims=False)
+                # h5functions.save_to_h5(f'{save_as}/h5_coilsens_test1.h5', 'u diff', diff, expand_dims=False)
+                # h5functions.save_to_h5(f'{save_as}/h5_coilsens_test1.h5', 'coil images', coil_images, expand_dims=False)
+                # data_c_sens[vel] = np.multiply(np.ones_like(data_c_sens[vel]), np.exp(1j*((data_c_sens[vel]/venc_max)*np.pi)))
+                # h5functions.save_to_h5(f'{save_as}/h5_coilsens_test1.h5', 'u c', data_c_sens[vel], expand_dims=False)
 
-        # save to h5
-        # h5functions.save_to_h5(save_as, 'coil_sensitivty', coil_images, expand_dims=False)
-        # h5functions.save_to_h5(save_as, 'u_csens', data[f'u_sens'], expand_dims=False)
-        # h5functions.save_to_h5(save_as, 'v_csens', data[f'v_sens'], expand_dims=False)
-        # h5functions.save_to_h5(save_as, 'w_csens', data[f'w_sens'], expand_dims=False)
-        # h5functions.save_to_h5(save_as, 'sum_coil_images', sum_coil_images, expand_dims=False)
-        # h5functions.save_to_h5(save_as, 'u', data['u'], expand_dims=False)
+                # print('sum', data_c_sens[vel].sum())
+                # #TODO delete this later
+                # data_c_sens[vel] = np.asarray(p1[vel]).squeeze()[:, :, :, :, np.newaxis]
+        # h5functions.save_to_h5(f'{save_as}/h5_coilsens.h5', 'coil_sensitivty', coil_images, expand_dims=False)
+        # # h5functions.save_to_h5(f'{save_as}/h5_coilsens.h5', 'mask', static_mask_vel, expand_dims=False)
+        # h5functions.save_to_h5(f'{save_as}/h5_coilsens13.h5', 'u img', np.angle(data_c_sens['u']), expand_dims=False)
+        # h5functions.save_to_h5(f'{save_as}/h5_coilsens.h5', 'u_sens', data[f'u_sens'], expand_dims=False)
+
+        # kspce = fft_fcts.velocity_img_to_centered_kspace(data_c_sens['u'][0, :, :, :, 0], np.ones_like(data_c_sens['u'][0, :, :, :, 0]), venc = np.max(data[f'venc_u']))
+        # vel_u_recon, _ = fft_fcts.centered_kspace_to_velocity_img(kspce, np.ones(kspce.shape), venc = np.max(data[f'venc_u']))
+        # h5functions.save_to_h5(f'{save_as}/h5_coilsens13.h5', 'u kspace reconstructed' , vel_u_recon, expand_dims=False)
 
         # 2. Use k-space mask on CFD data
-        # k_space_sampling_timeseries(path_kmask, path_order, path_datamodel, save_as, batchsize = 5000)
-        # k_space_sampling_static(path_kmask, path_order, path_datamodel, save_as)
-        t, x, y, z, c = data_c_sens['u'].shape
+        t, x, y, z, c = 25,192,126,104, len(coils)#data_c_sens['u'].shape
         t_res = 25
-        #make a new k-space for every coil
-        k_space_sampled_u = np.zeros((t_res, x, y, z, len(coils)), dtype = np.complex64)
-        k_space_sampled_v = np.zeros((t_res, x, y, z, len(coils)), dtype = np.complex64)
-        k_space_sampled_w = np.zeros((t_res, x, y, z, len(coils)), dtype = np.complex64)
-        for c in range(len(coils)):
-            data_c = {}
-            data_c['u'] = data_c_sens['u'][:, :, :, :, c]
-            data_c['v'] = data_c_sens['v'][:, :, :, :, c]
-            data_c['w'] = data_c_sens['w'][:, :, :, :, c]
-            data_c['venc_u'] = np.max(data[f'venc_u'])
-            data_c['venc_v'] = np.max(data[f'venc_v'])
-            data_c['venc_w'] = np.max(data[f'venc_w'])
-            
-            k_space_sampled = k_space_sampling_timeseries_new( path_order, data_c, save_as)
-            k_space_sampled_u[:, :, :, :, c] = k_space_sampled[:, :, :, :, 0]
-            k_space_sampled_v[:, :, :, :, c] = k_space_sampled[:, :, :, :, 1]
-            k_space_sampled_w[:, :, :, :, c] = k_space_sampled[:, :, :, :, 2]
+
+        for vel in vel_colnames: #, 'v', 'w'
+            #make a new k-space for every coil
+            k_space_sampled_u = np.zeros((t_res, x, y, z, len(coils)), dtype = np.complex64)
+           
+            for c in range(len(coils)):
+                k_space_sampled_u[:, :, :, :, c], ksp_u = k_space_sampling_timeseries_vel_new(path_order, data_c_sens[vel][:, :, :, :, c], venc = np.max(data[f'venc_{vel}']), set_=1)
+            #save
+            print('Save k-space sampled data..')
+            cfl.writecfl(save_as + f'/{vel}_kspace12', transform_cfl_format(k_space_sampled_u))
+            # h5functions.save_to_h5(f'{save_as}/{vel}_reconstructed_kspacesampled_sens4.h5','u kspace' , ksp_u, expand_dims=False)
+            vel_u_recon, _ = fft_fcts.centered_kspace_to_velocity_img(ksp_u, np.ones_like(ksp_u), venc = np.max(data[f'venc_{vel}']))
+            h5functions.save_to_h5(f'{save_as}/{vel}_reconstructed_kspacesampled_sens12.h5','u not sparse sample' , vel_u_recon, expand_dims=False)
+            print('Save..')
+            # make reconstruction to check result
+            vel_u, _ = fft_fcts.centered_kspace_to_velocity_img(k_space_sampled_u[:, :, :, :, 0], np.ones_like(k_space_sampled_u[:, :, :, :, 0]), venc = np.max(data[f'venc_{vel}']))
+            h5functions.save_to_h5(f'{save_as}/{vel}_reconstructed_kspacesampled_sens12.h5','u sparse sample' , vel_u, expand_dims=False)
 
     
     # 3. Reconstruct undersampled k-space with compressed sensing (CS) - save as clf file
     # save undersampled kspace file
 
-    # save k-space data  
-    # for vel in ['u', 'v', 'w']:
-    # h5functions.save_to_h5(save_as, vel, img_space[vel], expand_dims=False)
-    k_space_sampled_u = np.ones((25, 30, 30, 30, 8))
-    #reshape to cfl standards, 
-    print(k_space_sampled_u.shape)
-    t, x, y, z, c = k_space_sampled_u.shape
-
-    reshaped_kspace =  k_space_sampled_u.transpose(1, 2, 3, 4, 0)[:, :, :, :, np.newaxis, np.newaxis, np.newaxis, np.newaxis, np.newaxis, :]
-    print(reshaped_kspace.shape)
-
-    vel = 'TEST'
-    cfl.writecfl(save_as + f'/{vel}_kspace', reshaped_kspace)
-
-
-
-    
-
     # save sensitivity file
-
-    
-
-    
-
 
     # 4. Compare to original data
