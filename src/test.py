@@ -657,8 +657,25 @@ def k_space_static_test2():
 
 
 if __name__ == '__main__':
+    csv_dir = 'data/CARDIAC'
+    csv_files = ['Temporal16MODEL23_2mm_step2_cloudmagnRot_toeger.csv' ,'Temporal16MODEL5_2mm_step2_cloudmagnRot_toeger.csv', 'Temporal16MODEL6_2mm_step2_cloudmagnRot_toeger.csv']
+    new_file = f'{csv_dir}/Temporal16MODEL2356_2mm_step2_cloudmagnRot_toeger.csv'
+    csv_files = [f'{csv_dir}/{f}' for f in csv_files]
 
+    concatenate_csv_files(csv_files, new_file)
+    exit()
+    new_model_names = ['M5_2mm_step2_cloudmagnRot_toeger_LRfct.h5', 'M6_2mm_step2_cloudmagnRot_toeger_LRfct.h5']
+    get_data_from = ['M5_2mm_step2_static_dynamic.h5', 'M6_2mm_step2_static_dynamic.h5']
 
+    for new_model, get_data in zip(new_model_names, get_data_from):
+        with h5py.File(f'data/CARDIAC/{get_data}', mode = 'r' ) as h5:
+            with h5py.File(f'data/CARDIAC/{new_model}', mode = 'a' ) as new_data:
+                for key in h5.keys():
+                    if key not in new_data.keys():
+                        print('Adding', key)
+                        new_data.create_dataset(key, data = np.array(h5[key]).squeeze())
+
+    exit()
     csv_dir = 'data/CARDIAC'
     data_dir = 'data/CARDIAC'
 
@@ -675,12 +692,14 @@ if __name__ == '__main__':
     # make new datasets with flower magnitude
     # merge_models = ['M1_2mm_step2_invivoP01_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5', 'M2_2mm_step2_invivoP04_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5', 'M3_2mm_step2_invivoP03_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5', 'M4_2mm_step2_invivoP02_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5']
     # new_model_names = ['M1_2mm_step2_cloudmagnRot_toeger_LRfct_noise.h5', 'M2_2mm_step2_cloudmagnRot_toeger_LRfct_snoise.h5', 'M3_2mm_step2_cloudmagnRot_toeger_LRfct_noise.h5', 'M4_2mm_step2_cloudmagnRot_toeger_LRfct_noise.h5']
-    merge_models = ['M1_2mm_step2_invivoP01_magn_temporalsmoothing_toeger_periodic_HRfct.h5', 'M2_2mm_step2_invivoP04_magn_temporalsmoothing_toeger_periodic_HRfct.h5', 'M3_2mm_step2_invivoP03_magn_temporalsmoothing_toeger_periodic_HRfct.h5', 'M4_2mm_step2_invivoP02_magn_temporalsmoothing_toeger_periodic_HRfct.h5']
+    # merge_models = ['M1_2mm_step2_invivoP01_magn_temporalsmoothing_toeger_periodic_HRfct.h5', 'M2_2mm_step2_invivoP04_magn_temporalsmoothing_toeger_periodic_HRfct.h5', 'M3_2mm_step2_invivoP03_magn_temporalsmoothing_toeger_periodic_HRfct.h5', 'M4_2mm_step2_invivoP02_magn_temporalsmoothing_toeger_periodic_HRfct.h5']
     # merge_models = ['M1_2mm_step2_invivoP01_toeger_HRfct_noise.h5', 'M2_2mm_step2_invivoP04_toeger_HRfct_noise.h5', 'M3_2mm_step2_invivoP03_toeger_HRfct_noise.h5', 'M4_2mm_step2_invivoP02_toeger_HRfct_noise.h5']
-    new_model_names = ['M1_2mm_step2_cloudmagnRot_toeger_HRfct.h5', 'M2_2mm_step2_cloudmagnRot_toeger_HRfct.h5', 'M3_2mm_step2_cloudmagnRot_toeger_HRfct.h5', 'M4_2mm_step2_cloudmagnRot_toeger_HRfct.h5']
-    
+    # new_model_names = ['M1_2mm_step2_cloudmagnRot_toeger_HRfct.h5', 'M2_2mm_step2_cloudmagnRot_toeger_HRfct.h5', 'M3_2mm_step2_cloudmagnRot_toeger_HRfct.h5', 'M4_2mm_step2_cloudmagnRot_toeger_HRfct.h5']
+    merge_models = ['M5_2mm_step2_temporalsmoothing_toeger_periodic_LRfct.h5', 'M6_2mm_step2_temporalsmoothing_toeger_periodic_LRfct.h5']
+    new_model_names = ['M5_2mm_step2_cloudmagnRot_toeger_LRfct.h5', 'M6_2mm_step2_cloudmagnRot_toeger_LRfct.h5']
+
     # merge_models    = ['M1_2mm_step2_invivoP01_boxavg_LRfct_noise.h5' , 'M2_2mm_step2_invivoP04_boxavg_LRfct_noise.h5', 'M3_2mm_step2_invivoP03_boxavg_LRfct_noise.h5', 'M4_2mm_step2_invivoP02_boxavg_LRfct_noise.h5']
-    flower_magn = 'data/flower_magn_data_4D_spatial_rotated_Alexcode2.h5'
+    flower_magn = 'data/cloud_magn_data_4D_spatial_rotated_M1-M6.h5'
 
     for new_model, orig_model in zip(new_model_names, merge_models):
         MX = new_model.split('_')[0]
@@ -688,9 +707,9 @@ if __name__ == '__main__':
         with h5py.File(flower_magn, mode = 'r' ) as h5:
             flower_magn_data = np.array(h5[MX])
 
-        # if os.path.isfile(f'{data_dir}/{new_model}'):
-        #     print(f"File {new_model} already exists. Not writing to it.")
-        #     continue
+        if os.path.isfile(f'{data_dir}/{new_model}'):
+            print(f"File {new_model} already exists. Not writing to it.")
+            continue
         h5functions.create_h5_file(data_dir, new_model)
 
         with h5py.File(f'{data_dir}/{new_model}', mode = 'a' ) as new_data:
@@ -700,7 +719,8 @@ if __name__ == '__main__':
                     new_data.create_dataset(key, data = orig_data.get(key))
                 
                 for mag in mag_colnames:
-                    del new_data[mag]
+                    if mag in new_data.keys():
+                        del new_data[mag]
 
                     if flower_magn_data.shape != new_data[mag[-1]].shape:
                         print('Check model', new_model, 'for', mag, 'shape', flower_magn_data.shape, 'vs', new_data[mag[-1]].shape)
