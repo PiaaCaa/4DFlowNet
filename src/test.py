@@ -704,7 +704,8 @@ if __name__ == '__main__':
     # h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test12_swap.h5', 'data angle', np.angle(res_arr)/np.pi * venc, expand_dims=False)
     h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test12_swap.h5', 'data reconstr', res_recon, expand_dims=False)
 
-    exit()    csv_dir = 'data/CARDIAC'
+    exit()    
+    csv_dir = 'data/CARDIAC'
     csv_files = ['Temporal16MODEL23_2mm_step2_cloudmagnRot_toeger.csv' ,'Temporal16MODEL5_2mm_step2_cloudmagnRot_toeger.csv', 'Temporal16MODEL6_2mm_step2_cloudmagnRot_toeger.csv']
     new_file = f'{csv_dir}/Temporal16MODEL2356_2mm_step2_cloudmagnRot_toeger.csv'
     csv_files = [f'{csv_dir}/{f}' for f in csv_files]
