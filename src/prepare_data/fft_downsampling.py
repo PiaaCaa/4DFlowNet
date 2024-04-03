@@ -191,12 +191,10 @@ def centered_kspace_to_velocity_img(imgfft, mag_image, venc):
 
     # shift img to center
     imgfft = np.fft.ifftshift(imgfft, axes=axes)
-
-    new_complex_img = np.fft.ifftn(imgfft, axes=axes)
-
-    new_complex_img = np.fft.fftshift(new_complex_img, axes=axes)
+    imgfft = np.fft.ifftn(imgfft, axes=axes)
+    new_complex_img = np.fft.fftshift(imgfft, axes=axes)
     
-    # Get the MAGnitude and rescale
+    # Get the Magnitude and rescale
     new_mag = np.abs(new_complex_img)
     new_mag = rescale_magnitude_on_ratio(new_mag, mag_image)
 

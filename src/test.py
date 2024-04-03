@@ -679,30 +679,27 @@ if __name__ == '__main__':
     # reconstr, _ = fft_fcts.centered_kspace_to_velocity_img(kspace_data, np.ones_like(vx), venc = venc)
     # h5functions.save_to_h5('results/kspacesampling/u_reconstructed_kspacesampled_example_test.h5', 'u reconstr', reconstr, expand_dims=False)
     # exit()
+    venc = 2.9
 
-
-
-    file = 'results/kspacesampling/output_test12_swap'
+    file = 'results/kspacesampling/output_test12_1'
     res = cfl.readcfl(file).squeeze()
+    res = reshape_from_cfl(res)
     print(res.shape)
     res_arr = res#reshape_from_cfl(res)
     print(res_arr.dtype, res_arr.shape)
-    plt.subplot(1, 2, 1)
-    plt.imshow(np.abs(res_arr[ :, :, 60]))
+    plt.subplot(1, 3, 1)
+    plt.imshow(np.abs(res_arr[10,  :,  60, :]))
 
-    plt.subplot(1, 2, 2)
-    plt.imshow(np.angle(res_arr[ :, :, 60]))
+    plt.subplot(1, 3, 2)
+    plt.imshow(np.angle(res_arr[10,  :,  60, :])/ np.pi * venc)
+
+    plt.subplot(1, 3, 3)
+    plt.imshow(np.imag(res_arr[10,  :,  60, :]))
     plt.show()
-    venc = 1.5
-    # print(res_arr.sum())
-    # # res_arr, _ = fft_fcts.centered_kspace_to_velocity_img(res_arr, np.ones_like(res_arr), venc = venc)
-    # # res_arr = np.angle(res_arr)/np.pi * venc
-    # print(res_arr.sum())
-    res_recon, _ = fft_fcts.centered_kspace_to_velocity_img(res_arr, np.ones_like(res_arr), venc = venc)
-
+    
     # h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test12_swap.h5', 'data abs', np.abs(res_arr), expand_dims=False)
     # h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test12_swap.h5', 'data angle', np.angle(res_arr)/np.pi * venc, expand_dims=False)
-    h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test12_swap.h5', 'data reconstr', res_recon, expand_dims=False)
+    # h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test12_swap.h5', 'data reconstr', res_recon, expand_dims=False)
 
     exit()
 
