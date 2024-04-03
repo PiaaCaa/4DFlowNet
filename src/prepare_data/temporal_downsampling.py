@@ -5,7 +5,8 @@ from scipy.integrate import trapz
 from matplotlib import pyplot as plt
 # from utils import h5functions
 from prepare_data import h5functions
-
+# import h5functions
+#from prepare_data 
 """
 This file contains functions for temporal downsampling with the aim to mimic the temporal sampling of MRI machine
 """
@@ -88,10 +89,10 @@ def temporal_smoothing_box_function_toeger(hr,t_range, sigma):
     """
     assert len(hr.shape) == 4, "Input should be 4D"
 
+    hr_avg = np.zeros_like(hr)
     start_t = t_range[0]
     end_t = t_range[-1]
     len_t = end_t - start_t
-    hr_avg = np.zeros_like(hr)
     dt = t_range[1] - t_range[0] # temporal resolution
 
     # extend range to handle periodic boundary conditions
@@ -150,11 +151,11 @@ def temporal_smoothing_box_function_toeger(hr,t_range, sigma):
 
 if __name__ == '__main__':
     # load data
-    hr_file = 'data/CARDIAC/M4_2mm_step1_static_dynamic.h5'
+    hr_file = 'data/CARDIAC/M6_2mm_step2_static_dynamic.h5'
 
     # save data
-    smooth_file_lr  = 'data/CARDIAC/M4_2mm_step2_boxavg_LR_new.h5'
-    smooth_file_hr0 = 'data/CARDIAC/M4_2mm_step2_boxavg0_HR_new.h5'
+    smooth_file_lr  = 'data/CARDIAC/M6_2mm_step2_temporalsmoothing_toeger_periodic_LRfct.h5'
+    smooth_file_hr =  'data/CARDIAC/M6_2mm_step2_temporalsmoothing_toeger_periodic_HRfct.h5'
 
     keys =  ["mask", ] 
     # delete_data_from_h5(smooth_file_lr, keys)
@@ -176,7 +177,7 @@ if __name__ == '__main__':
     #-------LR function smoothing-------
     # Note the output will be in same dimension as HR; but the smoothing function is applied on the downsampled data.
     if True: 
-        if False: 
+        if True: 
             # downsample and then apply smoothing
             hr_u0 = hr_u[::2]
             hr_v0 = hr_v[::2]
@@ -197,6 +198,10 @@ if __name__ == '__main__':
             hr_v_temporal_smoothing1 = temporal_smoothing_box_function_toeger(hr_v1, t_range1, smoothing)
             hr_w_temporal_smoothing1 = temporal_smoothing_box_function_toeger(hr_w1, t_range1, smoothing)
 
+            print('shapes', hr_u_temporal_smoothing0.shape, hr_u_temporal_smoothing1.shape, hr_u.shape)
+            if os.path.exists(smooth_file_lr):
+                    print("STOP - File already exists!")
+            
             u_temp_smoothing = np.zeros_like(hr_u)
             v_temp_smoothing = np.zeros_like(hr_v)
             w_temp_smoothing = np.zeros_like(hr_w)
@@ -208,13 +213,12 @@ if __name__ == '__main__':
             w_temp_smoothing[::2] = hr_w_temporal_smoothing0
             w_temp_smoothing[1::2] = hr_w_temporal_smoothing1
 
-            if os.path.exists(smooth_file_lr):
-                print("STOP - File already exists!")
+            
             
             print(f'saving to {smooth_file_lr}')
-            h5functions.save_to_h5(smooth_file_lr, 'u', u_temp_smoothing)
-            h5functions.save_to_h5(smooth_file_lr, 'v', v_temp_smoothing)
-            h5functions.save_to_h5(smooth_file_lr, 'w', w_temp_smoothing)
+            h5functions.save_to_h5(smooth_file_lr, 'u', u_temp_smoothing, expand_dims=False)
+            h5functions.save_to_h5(smooth_file_lr, 'v', v_temp_smoothing, expand_dims=False)
+            h5functions.save_to_h5(smooth_file_lr, 'w', w_temp_smoothing, expand_dims=False)
         else:
             # apply smoothing on the downsampled data
             print("---------downsampling to 100 to 50------------")
@@ -315,7 +319,7 @@ if __name__ == '__main__':
             # merge_data_to_h5(smooth_file_lr, hr_file)
 
     #-----------HR smoothing------------ 
-    if False: 
+    if True: 
         u_temp_smoothing = temporal_smoothing_box_function_toeger(hr_u, t_range, smoothing)
         v_temp_smoothing = temporal_smoothing_box_function_toeger(hr_v, t_range, smoothing)
         w_temp_smoothing = temporal_smoothing_box_function_toeger(hr_w, t_range, smoothing)
@@ -324,11 +328,11 @@ if __name__ == '__main__':
             print("STOP - File already exists!")
             exit()
         print(f'saving to {smooth_file_hr}')
-        h5functions.save_to_h5(smooth_file_hr, 'u', u_temp_smoothing)
-        h5functions.save_to_h5(smooth_file_hr, 'v', v_temp_smoothing)
-        h5functions.save_to_h5(smooth_file_hr, 'w', w_temp_smoothing)
+        h5functions.save_to_h5(smooth_file_hr, 'u', u_temp_smoothing,  expand_dims=False)
+        h5functions.save_to_h5(smooth_file_hr, 'v', v_temp_smoothing,  expand_dims=False)
+        h5functions.save_to_h5(smooth_file_hr, 'w', w_temp_smoothing,  expand_dims=False)
 
-        merge_data_to_h5(smooth_file_hr, hr_file)
+        h5functions.merge_data_to_h5(smooth_file_hr, hr_file)
 
 
 
