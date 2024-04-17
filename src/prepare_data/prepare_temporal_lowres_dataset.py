@@ -1,15 +1,11 @@
-import numpy as np
 import os
 import sys
+import numpy as np
 import h5py
 import random
 import fft_downsampling as fft
-import scipy.ndimage as ndimage
 from h5functions import save_to_h5
-from temporal_downsampling import temporal_box_averaging_and_downsampling, temporal_smoothing_box_function_toeger
-# from visualize_utils import generate_gif_volume
-# from .utils.evaluate_utils import peak_signal_to_noise_ratio, signaltonoise_fluid_region
-                       
+from temporal_downsampling import temporal_box_averaging_and_downsampling, temporal_smoothing_box_function_toeger                       
 
 def choose_venc():
     '''
@@ -39,32 +35,6 @@ def simple_temporal_downsampling(hr_data, downsample =2, offset = 0):
     return lr_data
 
 
-def symm_box_averaging(hr_u, hr_v, hr_w, radius):
-    """ symmetric box averaging given a radius, note the output is not downsampled and overlapping box functions are used"""
-
-    print(f"_____Symmetric box averaging with avaging over {radius} pixels_____")
-    avg_u = np.zeros_like(hr_u)
-    avg_v = np.zeros_like(hr_v)
-    avg_w = np.zeros_like(hr_w)
-
-    for i in range(idx -radius//2, idx+radius//2+1):
-        j = i
-        # use periodical boundary conditions, i.e. after last frame take first frame again and vice verse
-        if i >= N_frames :
-            j = j%(N_frames)
-        # sum up all the 3D data 
-        avg_u += hr_u[j]
-        avg_v += hr_v[j]
-        avg_w += hr_w[j]
-    
-    # divide by number of frames to take the average
-    avg_u /= radius
-    avg_v /= radius
-    avg_w /= radius
-
-    return avg_u, avg_v, avg_w
-
-
 if __name__ == '__main__':
 
     # Config
@@ -77,7 +47,7 @@ if __name__ == '__main__':
     spatial_downsample = 1.0 #1: no downsampling, 2: half the resolution, 4: quarter the resolution
     temporal_downsample = 1
     keep_framerate = True # if true, the framerate is kept (e.g. creating downsampling in training pipeline), otherwise the number of frames is downsampled by 1/temporal_downsample rate
-    t_downsample_method = 'toeger' # options: 'radial', 'cartesian', 'box', 'toeger'
+    t_downsample_method = 'smooth' # options: 'radial', 'cartesian', 'box', 'smooth'
     
     # add noise to the data
     add_noise = True
@@ -122,28 +92,24 @@ if __name__ == '__main__':
     # temporal downsampling/smoothing here before adding noise for each frame
     if temporal_downsample > 1:
         print("Temporal downsampling/smoothing with method: ", t_downsample_method)
+    elif t_downsample_method == 'box':
+        # overwrite the original data with smoothed data (created two "series" of temporal box averaging)
+        hr_u[::2],hr_u[1::2]  = temporal_box_averaging_and_downsampling(hr_u, temporal_downsample)
+        hr_v[::2],hr_v[1::2]  = temporal_box_averaging_and_downsampling(hr_v, temporal_downsample)
+        hr_w[::2],hr_w[1::2]  = temporal_box_averaging_and_downsampling(hr_w, temporal_downsample)
 
-        if t_downsample_method == 'radial':
-            hr_u, hr_v, hr_w = symm_box_averaging(hr_u, hr_v, hr_w,  3)
+        
+    elif t_downsample_method == 'smooth':
+        #parameters for toeger smoothing
+        t_range = np.linspace(0, 1, hr_u.shape[0])
+        smoothing = 0.004
+        hr_u[::2] = temporal_smoothing_box_function_toeger(hr_u[::2], t_range[::2], smoothing)
+        hr_v[::2] = temporal_smoothing_box_function_toeger(hr_v[::2], t_range[::2], smoothing)
+        hr_w[::2] = temporal_smoothing_box_function_toeger(hr_w[::2], t_range[::2], smoothing)
 
-        elif t_downsample_method == 'box':
-            # overwrite the original data with smoothed data (created two "series" of temporal box averaging)
-            hr_u[::2],hr_u[1::2]  = temporal_box_averaging_and_downsampling(hr_u, temporal_downsample)
-            hr_v[::2],hr_v[1::2]  = temporal_box_averaging_and_downsampling(hr_v, temporal_downsample)
-            hr_w[::2],hr_w[1::2]  = temporal_box_averaging_and_downsampling(hr_w, temporal_downsample)
-
-            
-        elif t_downsample_method == 'toeger':
-            #parameters for toeger smoothing
-            t_range = np.linspace(0, 1, hr_u.shape[0])
-            smoothing = 0.004
-            hr_u[::2] = temporal_smoothing_box_function_toeger(hr_u[::2], t_range[::2], smoothing)
-            hr_v[::2] = temporal_smoothing_box_function_toeger(hr_v[::2], t_range[::2], smoothing)
-            hr_w[::2] = temporal_smoothing_box_function_toeger(hr_w[::2], t_range[::2], smoothing)
-
-            hr_u[1::2] = temporal_smoothing_box_function_toeger(hr_u[1::2], t_range[1::2], smoothing)
-            hr_v[1::2] = temporal_smoothing_box_function_toeger(hr_v[1::2], t_range[1::2], smoothing)
-            hr_w[1::2] = temporal_smoothing_box_function_toeger(hr_w[1::2], t_range[1::2], smoothing)
+        hr_u[1::2] = temporal_smoothing_box_function_toeger(hr_u[1::2], t_range[1::2], smoothing)
+        hr_v[1::2] = temporal_smoothing_box_function_toeger(hr_v[1::2], t_range[1::2], smoothing)
+        hr_w[1::2] = temporal_smoothing_box_function_toeger(hr_w[1::2], t_range[1::2], smoothing)
 
     #TODO extend if needed
 

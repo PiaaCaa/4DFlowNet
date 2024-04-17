@@ -293,8 +293,8 @@ def adjust_image_size(image, new_shape):
         #cropping
         if diff < 0:
             t_mid = int(old_shape[i] // 2)
-            cropl = int(np.floor(abs(new_shape[i]) / 2))
-            cropr = int(np.ceil(abs(new_shape[i]) / 2))
+            cropr = int(np.floor(abs(new_shape[i]) / 2))
+            cropl = int(np.ceil(abs(new_shape[i]) / 2))
             if i == 0:
                 image = image[t_mid - cropl:t_mid + cropr, :, :, :]
             elif i == 1:
@@ -659,46 +659,56 @@ def reshape_from_cfl(cfldata):
     return cfldata.squeeze().transpose(3,0,1,2)
 
 
+def transform_cfl_format_test(data):
+    """Assumption that data is of shape (t, x, y, z, c)"""
+    assert len(data.shape) == 5, 'Data should be of shape (t, x, y, z, c)'
+    print('Convert from shape', data.shape, 'to shape', data.transpose(1, 2, 3, 4, 0)[:, :, :, :, np.newaxis, np.newaxis, np.newaxis, np.newaxis, np.newaxis,np.newaxis, :].shape)
+    return data.transpose(1, 2, 3, 4, 0)[:, :, :, :, np.newaxis, np.newaxis, np.newaxis, np.newaxis, np.newaxis,np.newaxis, :]
+
 if __name__ == '__main__':
-    # file = 'results/kspacesampling/u_reconstructed_kspacesampled_sens2.h5'
-    # with h5py.File(file, mode = 'r' ) as p1:
-    #     vx = np.asarray(p1['u kspace']).squeeze()
-    #     print(vx.shape, vx.dtype)
+    if False:
+        directory = 'results/kspacesampling'
+        h5_files = [ 'u_reconstructed_kspacesampled_sens14.h5']
+
+        with h5py.File(f'{directory}/{h5_files[0]}', mode= 'r') as h5_2:
+            print(h5_2.keys())
+            kspace = np.array(h5_2['u not sparse sample']).squeeze()
+            kspace = kspace[::2, :, :, :]
+        
+            print(kspace.shape)
+        plt.imshow(np.abs(kspace[3, 100, :, :]))
+        # cfl.writecfl(f'{directory}/coil_sensitivity14', transform_cfl_format_test(np.expand_dims(coil_sens, 0)))
+        # cfl.writecfl(f'{directory}/u_kspace14', transform_cfl_format_test(kspace))
+        # cfl.writecfl(f'{directory}/u_kspace14_orig', transform_cfl_format_test(np.expand_dims(kspace, -1)))
+        coil_sens = np.expand_dims(np.expand_dims(np.ones_like(kspace[0, :, :, :]), -1), 0)
+        coil_sens /= np.sum(np.abs(coil_sens))
+        print(np.sum(np.abs(coil_sens)))
+        # cfl.writecfl(f'{directory}/coils_sens_ones_norm', transform_cfl_format_test(coil_sens))
     
-    # reconstr, _ = fft_fcts.kspace_to_velocity_img(vx, np.ones_like(vx), venc = 1.5)
-    # h5functions.save_to_h5('results/kspacesampling/u_reconstructed_kspacesampled_sens3.h5', 'u reconstr', reconstr, expand_dims=False)
-
-
-    # vel_data = '/mnt/c/Users/piacal/Code/SuperResolution4DFlowMRI/Temporal4DFlowNet/data/CARDIAC/M1_2mm_step2_static_dynamic.h5'
-    # with h5py.File(vel_data, mode = 'r' ) as p1:
-    #     vx = np.asarray(p1['u']).squeeze()
-    # venc = 1.5
-
-    # kspace_data = fft_fcts.velocity_img_to_centered_kspace(vx, np.ones_like(vx), venc)
-    # print(kspace_data.shape)
-    # reconstr, _ = fft_fcts.centered_kspace_to_velocity_img(kspace_data, np.ones_like(vx), venc = venc)
-    # h5functions.save_to_h5('results/kspacesampling/u_reconstructed_kspacesampled_example_test.h5', 'u reconstr', reconstr, expand_dims=False)
-    # exit()
     venc = 2.9
 
-    file = 'results/kspacesampling/output_test12_1'
+    file = 'results/kspacesampling/output_test15'
     res = cfl.readcfl(file).squeeze()
     res = reshape_from_cfl(res)
     print(res.shape)
+    res = adjust_image_size(res, (25, 72, 70, 76))
     res_arr = res#reshape_from_cfl(res)
     print(res_arr.dtype, res_arr.shape)
     plt.subplot(1, 3, 1)
     plt.imshow(np.abs(res_arr[10,  :,  60, :]))
+    plt.title('absolute value')
 
     plt.subplot(1, 3, 2)
-    plt.imshow(np.angle(res_arr[10,  :,  60, :])/ np.pi * venc)
+    plt.imshow(np.angle(res_arr[10,  :,  60, :])/ (2*np.pi) * venc)
+    plt.title('angle()/pi * venc')
 
     plt.subplot(1, 3, 3)
     plt.imshow(np.imag(res_arr[10,  :,  60, :]))
+    plt.title('imaginary part')
     plt.show()
     
-    # h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test12_swap.h5', 'data abs', np.abs(res_arr), expand_dims=False)
-    # h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test12_swap.h5', 'data angle', np.angle(res_arr)/np.pi * venc, expand_dims=False)
+    h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test15.h5', 'data abs', np.abs(res_arr), expand_dims=False)
+    h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test15.h5', 'data angle', np.angle(res_arr)/(2*np.pi) * venc, expand_dims=False)
     # h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test12_swap.h5', 'data reconstr', res_recon, expand_dims=False)
 
     exit()    
