@@ -223,17 +223,17 @@ if __name__ == '__main__':
             hr_v, hrmag_v = fft_downsample(lr_v, mag_v, venc_v, upsample_rate)
             hr_w, hrmag_w = fft_downsample(lr_w, mag_w, venc_w, upsample_rate)
 
-            h5utils.save_to_h5(output_filename, "lr_u", hr_u)
-            h5utils.save_to_h5(output_filename, "lr_v", hr_v)
-            h5utils.save_to_h5(output_filename, "lr_w", hr_w)
+            h5functions.save_to_h5(output_filename, "lr_u", hr_u)
+            h5functions.save_to_h5(output_filename, "lr_v", hr_v)
+            h5functions.save_to_h5(output_filename, "lr_w", hr_w)
 
-            h5utils.save_to_h5(output_filename, "mag_u", hrmag_u)
-            h5utils.save_to_h5(output_filename, "mag_v", hrmag_v)
-            h5utils.save_to_h5(output_filename, "mag_w", hrmag_w)
+            h5functions.save_to_h5(output_filename, "mag_u", hrmag_u)
+            h5functions.save_to_h5(output_filename, "mag_v", hrmag_v)
+            h5functions.save_to_h5(output_filename, "mag_w", hrmag_w)
             
-            h5utils.save_to_h5(output_filename, "venc_u", venc_u)
-            h5utils.save_to_h5(output_filename, "venc_v", venc_v)
-            h5utils.save_to_h5(output_filename, "venc_w", venc_w)
+            h5functions.save_to_h5(output_filename, "venc_u", venc_u)
+            h5functions.save_to_h5(output_filename, "venc_v", venc_v)
+            h5functions.save_to_h5(output_filename, "venc_w", venc_w)
         else:
             print("Upsample rate", upsample_rate, "not supported")
 
