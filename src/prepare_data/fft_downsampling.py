@@ -1,7 +1,5 @@
-import time
 import math
 import numpy as np
-from matplotlib import pyplot as plt
 
 def rectangular_crop3d(f, crop_ratio):
     """
