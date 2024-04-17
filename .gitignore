@@ -6,6 +6,7 @@ __pycache__/
 *.out
 *.err
 *.sbatch
+*.sh
 models/
 4DFlowNet/*
 data/*
@@ -20,3 +21,4 @@ prediction_multiplefiles.sh
 OLD_README.md
 src/create_patch_csvs_win.sh
 src/create_patch_csvs.sh
+src/utils/recover_fcts.py
