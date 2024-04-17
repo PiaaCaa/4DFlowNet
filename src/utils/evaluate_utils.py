@@ -1,8 +1,10 @@
-import tensorflow as tf
+
+from utils.colors import *
+import os
 import numpy as np
 import time
-import os
-import cv2
+
+# import cv2
 import h5py
 import scipy
 from scipy.signal import convolve2d
@@ -10,11 +12,9 @@ from scipy.ndimage import convolve
 from scipy.interpolate import CubicSpline, RegularGridInterpolator
 from scipy.ndimage import binary_erosion
 from matplotlib import pyplot as plt
+import pandas as pd
 import sys
 sys.path.insert(0, '../src')
-
-from utils.colors import *
-
 
 
 def load_lossdata(file):
@@ -24,7 +24,6 @@ def load_lossdata(file):
     # df_loss = pd.read_csv(file,names=columns,  on_bad_lines='warn', skiprows = 4, skipfooter = 4, header = 5, engine = 'python')
     df_loss = pd.read_csv(file,  on_bad_lines='warn', skiprows = 4, skipfooter = 4, header = 5, engine = 'python')
 
-    
     return df_loss
 
 def load_vel_interpolation(dict_interpolation,lr,  filename, method, mask, vel_colnames, savefile = True):
@@ -91,13 +90,14 @@ def signal_to_noise_ratio_db(Px, Pn):
 
 def signaltonoise_fluid_region(data, mask):
     assert len(data.shape) == 3 # look at three dimensional data
-    return signaltonoise(normalize_to_0_1(data)[np.where(mask==1)], normalize_to_0_1(data)[np.where(mask ==0)], axis=0)
+    norm_data = normalize_to_0_1(data)
+    return signaltonoise(norm_data[np.where(mask==1)], norm_data[np.where(mask ==0)], axis=0)
 
 def signaltonoise(fluid_region, non_fluid_region, axis=0, ddof=0):
     '''
     source: https://stackoverflow.com/questions/63177236/how-to-calculate-signal-to-noise-ratio-using-python
     '''
-    m = fluid_region.mean(axis)
+    m  = fluid_region.mean(axis)
     sd = non_fluid_region.std(axis=axis, ddof=ddof)
     return np.where(sd == 0, 0, m/sd)
 
@@ -164,10 +164,10 @@ def random_indices3D(mask, n):
 
 
 def sigmoid(x):
-  '''
-  Sigmoid function
-  '''
-  return 1 / (1 + np.exp(-x))
+    '''
+    Sigmoid function
+    '''
+    return 1 / (1 + np.exp(-x))
 
 
 def create_dynamic_mask(mask, n_frames):
@@ -200,7 +200,7 @@ def calculate_relative_error_np(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary
     relative_speed_loss = np.clip(relative_speed_loss, 0., 1.)
 
     # Apply correction, only use the diff speed if actual speed is zero
-    condition = np.not_equal(actual_speed, np.array(tf.constant(0.)))
+    condition = np.not_equal(actual_speed, np.array(0.))
     corrected_speed_loss = np.where(condition, relative_speed_loss, diff_speed)
 
     multiplier = 1e4 # round it so we don't get any infinitesimal number
@@ -251,7 +251,7 @@ def calculate_relative_error_normalized(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi
     #relative_speed_loss = np.clip(relative_speed_loss, 0., 1.)
 
     # Apply correction, only use the diff speed if actual speed is zero
-    condition = np.not_equal(actual_speed, np.array(tf.constant(0.)))
+    condition = np.not_equal(actual_speed, np.array(0.)) # chnages from condition = np.not_equal(actual_speed, np.array(tf.constant(0.)))
     corrected_speed_loss = np.where(condition, relative_speed_loss, diff_speed)
 
     multiplier = 1e4 # round it so we don't get any infinitesimal number
