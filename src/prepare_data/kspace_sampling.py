@@ -1,53 +1,52 @@
+import os
+import sys
+import argparse
+import math
 import numpy as np 
 import h5py
 import scipy.io as sio
 import matplotlib.pyplot as plt
-from tqdm import tqdm
-import math
-# from prepare_data import h5functions
 import h5functions
 import fft_downsampling as fft_fcts
 import cfl 
-import os
-import sys
-import argparse
+
 
 # --------this code is copied from Alexander Fyrdahl:------
 def biot_savart_simulation(segments, locations):
-  """Reference : Esin Y, Alpaslan F, MRI image enhancement using Biot-Savart law at 3 tesla. Turk J Elec Eng & Comp Sci
-  """
+    """Reference : Esin Y, Alpaslan F, MRI image enhancement using Biot-Savart law at 3 tesla. Turk J Elec Eng & Comp Sci
+    """
 
-  eps = 1e-10  
-  num_coil_segments = segments.shape[0] - 1
-  if num_coil_segments < 1:
-      raise ValueError('Insufficient coil segments specified')
+    eps = 1e-10  
+    num_coil_segments = segments.shape[0] - 1
+    if num_coil_segments < 1:
+        raise ValueError('Insufficient coil segments specified')
 
-  if segments.shape[1] == 2:
-      segments = np.hstack((segments, np.zeros((num_coil_segments, 1))))
+    if segments.shape[1] == 2:
+        segments = np.hstack((segments, np.zeros((num_coil_segments, 1))))
 
-  sensitivity_contribution = np.zeros((locations.shape[0], 3))
+    sensitivity_contribution = np.zeros((locations.shape[0], 3))
 
-  segment_start = segments[0, :]
-  for segment_index in range(num_coil_segments):
-      segment_end = segment_start
-      segment_start = segments[segment_index + 1, :]
-      unit_segment_vector = (segment_end - segment_start) / (np.linalg.norm(segment_end - segment_start))
+    segment_start = segments[0, :]
+    for segment_index in range(num_coil_segments):
+        segment_end = segment_start
+        segment_start = segments[segment_index + 1, :]
+        unit_segment_vector = (segment_end - segment_start) / (np.linalg.norm(segment_end - segment_start))
 
-      vector_u = -locations + segment_end
-      vector_v = locations - segment_start
+        vector_u = -locations + segment_end
+        vector_v = locations - segment_start
 
-      cos_alpha = np.dot(vector_u, unit_segment_vector) / (np.linalg.norm(vector_u, axis=1)+eps)
-      cos_beta = np.dot(vector_v, unit_segment_vector) / (np.linalg.norm(vector_v, axis=1)+eps)
-      sin_beta = np.sin(np.arccos(cos_beta))
+        cos_alpha = np.dot(vector_u, unit_segment_vector) / (np.linalg.norm(vector_u, axis=1)+eps)
+        cos_beta = np.dot(vector_v, unit_segment_vector) / (np.linalg.norm(vector_v, axis=1)+eps)
+        sin_beta = np.sin(np.arccos(cos_beta))
 
-      sensitivity_magnitudes = (cos_alpha + cos_beta) / ((np.linalg.norm(vector_v, axis=1) / sin_beta) +eps)
+        sensitivity_magnitudes = (cos_alpha + cos_beta) / ((np.linalg.norm(vector_v, axis=1) / sin_beta) +eps)
 
-      cross_product_matrix = np.cross(np.identity(3), unit_segment_vector)
-      normalized_sensitivity_directions = np.dot(cross_product_matrix, vector_v.T).T / (np.linalg.norm(np.dot(cross_product_matrix, vector_v.T).T, axis=1)[:, np.newaxis]+eps)
+        cross_product_matrix = np.cross(np.identity(3), unit_segment_vector)
+        normalized_sensitivity_directions = np.dot(cross_product_matrix, vector_v.T).T / (np.linalg.norm(np.dot(cross_product_matrix, vector_v.T).T, axis=1)[:, np.newaxis]+eps)
 
-      sensitivity_contribution += normalized_sensitivity_directions * sensitivity_magnitudes[:, np.newaxis]
+        sensitivity_contribution += normalized_sensitivity_directions * sensitivity_magnitudes[:, np.newaxis]
 
-  return np.linalg.norm(sensitivity_contribution, axis=1)
+    return np.linalg.norm(sensitivity_contribution, axis=1)
 
 
 
@@ -82,17 +81,27 @@ def define_coils(radius, center, pos, axis, segments=21):
     return np.column_stack((x, y, z))
 
 def compute_mri_coil_sensitivity(segments, locations, volume_shape):
-  sensitivities = biot_savart_simulation(segments, locations)
-  coil_image = np.zeros(volume_shape)
-  coil_image[locations[:, 0], locations[:, 1], locations[:, 2]] = sensitivities
-  print('Coil sensitivity max:', np.max(coil_image), np.min(coil_image))
-  return coil_image
+    sensitivities = biot_savart_simulation(segments, locations)
+    coil_image = np.zeros(volume_shape)
+    coil_image[locations[:, 0], locations[:, 1], locations[:, 2]] = sensitivities
+    print('Coil sensitivity max:', np.max(coil_image), np.min(coil_image))
+    return coil_image
 
 # --------End copy code from Alexander Fyrdahl------
 
 def fibonacci_sphere(samples=1000, r= 1):
     """
     Create a fibonacci sphere with a given number of samples and radius.
+    Aim is to have equally spaced points on the sphere.
+    Code is adapted from https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere
+
+    samples: number of points on the sphere
+    r: radius of the sphere
+
+    Output:
+    points: array of points on the sphere (samples, 3)
+    tangent: array of a tangent vector at each point (samples, 3)
+
     """
 
     points = []
@@ -100,7 +109,7 @@ def fibonacci_sphere(samples=1000, r= 1):
     phi = math.pi * (math.sqrt(5.) - 1.)  # golden angle in radians
 
     for i in range(samples):
-        y = (1 - (i / float(samples - 1)) * 2) # y goes from 1 to -1
+        y = 1 - (i / float(samples - 1)) * 2 # y goes from 1 to -1
         radius = math.sqrt(1 - y * y)*r  # radius at y
 
         theta = phi * i  # golden angle increment
@@ -109,8 +118,7 @@ def fibonacci_sphere(samples=1000, r= 1):
         z = math.sin(theta) * radius
 
         points.append((x, y*r, z))
-        tangent.append((-r*np.cos(theta)*np.sin(phi), 0, r*np.cos(theta)*np.cos(phi)))
-    
+        tangent.append((-r*np.cos(theta)*np.sin(phi), 0, r*np.cos(theta)*np.cos(phi)))   
     return points, tangent
 
 def define_circle_on_sphere(point, tangent, n, radius):
@@ -191,8 +199,6 @@ def vel_to_phase_norm(vel):
     print('Normalizing velocity data between -2pi and 0..')
     print('Velocity min', np.min(vel), ' max ', np.max(vel))
     return (vel-np.min(vel))/(np.max(vel) - np.min(vel)) * np.pi - np.pi
-
-
 
 
 def k_space_sampling_timeseries_vel_new(path_order,vel_c,set_):
@@ -318,7 +324,6 @@ if __name__ == '__main__':
             coil_images = coil_images.transpose(4, 0, 1, 2, 3)
 
         n_coils = coil_images.shape[-1]
-        
     else:
 
         #second approach 
@@ -369,7 +374,7 @@ if __name__ == '__main__':
             # h5functions.save_to_h5(f'{save_as}/coil_sensitivity6.h5', 'coil_sensitivty', coil_images, expand_dims=False)
             
         coil_images = adjust_image_size(coil_images, (spatial_res[0],spatial_res[1] ,spatial_res[2], n_coils))
-        
+
         magn = mask.copy()
 
         data = {}
