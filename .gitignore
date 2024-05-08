@@ -25,3 +25,4 @@ src/utils/recover_fcts.py
 src/test3.py
 src/test4.py
 src/prepare_data/cfl.py
+src/test5_cs_cfltoh5.py

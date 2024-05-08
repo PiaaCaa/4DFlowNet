@@ -16,8 +16,8 @@ def load_data_shape(input_filepath):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="My script description")
-    parser.add_argument("--lrdata", type=str, help="Optional argument to pass the name of the model")
-    parser.add_argument("--hrdata", type=str, help="Optional argument to pass the name of LR data")
+    parser.add_argument("--lrdata", type=str, help="Optional argument to pass the name of LR data")
+    parser.add_argument("--hrdata", type=str, help="Optional argument to pass the name of HR data")
     args = parser.parse_args()
 
     if args.lrdata is not None and args.hrdata is not None:
@@ -67,6 +67,20 @@ if __name__ == "__main__":
             mask = pd.create_temporal_mask(mask, T)
     
         frames = hdf5["u"].shape[0]
+        t_lr, x_lr, y_lr, z_lr = np.array(hdf5['u']).shape
+
+
+    with h5py.File(f'{base_path}/{lr_file}', 'r') as hf:
+        t_hr, x_hr, y_hr, z_hr = np.array(hf['u']).shape
+
+    assert((x_lr, y_lr, z_lr) == (x_hr, y_hr, z_hr))
+
+    # check on temporal aspect
+    if t_hr == t_lr:
+        step_t = 2 #or adjust this to downsampling size, default is factor 2
+    else:
+        print('Set step size to 1, means it is expected that downsampling is already done in the data and not on the fly.')
+        step_t = 1
 
     # We basically need the mask on the lowres data, the patches index are retrieved based on the LR data.
     print("Overall shape", mask.shape)
@@ -82,15 +96,15 @@ if __name__ == "__main__":
             if a == 0: 
                 print("______Create patches for (t, y, z) slices_____________")
                 for idx in range(1, X):
-                    pd.generate_temporal_random_patches_all_axis(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, patch_size, minimum_coverage, n_empty_patch_allowed, reverse)
+                    pd.generate_temporal_random_patches_all_axis(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, patch_size, minimum_coverage, n_empty_patch_allowed, reverse, step_t)
             elif a == 1:
                 print("______Create patches for (t, x, z) slices_____________")
                 for idx in range(1, Y):
-                    pd.generate_temporal_random_patches_all_axis(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, patch_size, minimum_coverage, n_empty_patch_allowed, reverse)
+                    pd.generate_temporal_random_patches_all_axis(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, patch_size, minimum_coverage, n_empty_patch_allowed, reverse, step_t)
             elif a == 2:
                 print("______Create patches for (t, x, y) slices_____________")
                 for idx in range(1, Z):
-                    pd.generate_temporal_random_patches_all_axis(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, patch_size, minimum_coverage, n_empty_patch_allowed, reverse)
+                    pd.generate_temporal_random_patches_all_axis(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, patch_size, minimum_coverage, n_empty_patch_allowed, reverse, step_t)
     else:
         # Generate random patches for all time frames
         for index in range(0, T):
