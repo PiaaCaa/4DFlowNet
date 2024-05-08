@@ -99,7 +99,7 @@ def generate_random_patches(input_filename, target_filename, output_filename, in
     # /end of while n_patch
 
 
-def generate_temporal_random_patches_all_axis(input_filename, target_filename, output_filename, axis, index, n_patch, binary_mask, patch_size, minimum_coverage, empty_patch_allowed, reverse=False):
+def generate_temporal_random_patches_all_axis(input_filename, target_filename, output_filename, axis, index, n_patch, binary_mask, patch_size, minimum_coverage, empty_patch_allowed, reverse=False, step_t =2):
     """
     Generate temporal random patches along a specified axis.
 
@@ -116,24 +116,7 @@ def generate_temporal_random_patches_all_axis(input_filename, target_filename, o
         empty_patch_allowed (int): The maximum number of empty patches allowed.
         reverse (bool, optional): Whether to reverse the created patches. Defaults to False.
     """
-
-    # set step size accoring to lr and hr resolution
-    with h5py.File(input_filename, 'r') as hf:
-        t_lr, x_lr, y_lr, z_lr = np.array(hf['u']).shape
-
-    with h5py.File(target_filename, 'r') as hf:
-        t_hr, x_hr, y_hr, z_hr = np.array(hf['u']).shape
-
-    assert((x_lr, y_lr, z_lr) == (x_hr, y_hr, z_hr))
-
-    # check on temporal aspect
-    if t_hr == t_lr:
-        step_t = 2 #or adjust this to downsampling size, default is factor 2
-    else:
-        print('Set step size to 1, means it is expected that downsampling is already done in the data and not on the fly.')
-        step_t = 1
-
-
+    
     empty_patch_counter = 0
             
     # foreach row, create n number of patches
