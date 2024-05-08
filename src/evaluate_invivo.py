@@ -139,17 +139,17 @@ if __name__ == "__main__":
         # set directories 
         input_dir = 'data/PIA/THORAX'
         res_dir   = 'results/in_vivo/'
-        eval_dir  = 'results/in_vivo/plots/20240314-1514_imagenet3Dmag_toeger'
+        eval_dir  = 'results/in_vivo/plots/20230602_1701'
 
         if not os.path.isdir(eval_dir):
             os.makedirs(eval_dir)
 
         dict_results = defaultdict(list)
-        cases = ['P01', 'P02', 'P03', 'P04', 'P05'] 
+        cases = ['P01' ]#, 'P02', 'P03', 'P04', 'P05'] 
         for c in cases:
             print('-------------------', c, '-------------------')
             in_vivo = f'{input_dir}/{c}/h5/{c}.h5'
-            in_vivo_upsampled = f'{res_dir}/{c}/{c}_20240314-1514_25Frames.h5' 
+            in_vivo_upsampled = f'{res_dir}/{c}_20230602-1701_8_4_arch_25Frames.h5' 
             name_evaluation = f'THORAX_{c}_{os.path.basename(in_vivo)[:-3]}_25Frames'
 
             #set slice index for animation
@@ -252,7 +252,7 @@ if __name__ == "__main__":
             
                 plt.tight_layout()
                 plt.savefig(f'{eval_dir}/{c}_SUBPLOT_Invivo_Original_Frame{time_point}.png', bbox_inches='tight')
-
+                plt.show()
             
 
             
@@ -295,51 +295,63 @@ if __name__ == "__main__":
 
                 #---------------correlation + k + r^2 plots -------------------
                 if not super_resolved_prediction:
-                    # correlation
-                    peak_flow_frame = np.argmax(data_original['mean_speed'])
-                    bounds, core_mask = get_boundaries(data_original['mask'])
-                    frame_corr_plot = peak_flow_frame.copy()
-                    if frame_corr_plot % 2 == 0: frame_corr_plot +=1 # take next frame if peak flow frame included in lr data
-                    plt.figure(figsize=(15, 5))
-                    plot_correlation(data_original, data_predicted, bounds=bounds, frame_idx=frame_corr_plot, save_as=f'{eval_dir}/Correlation_frame{frame_corr_plot}_{name_evaluation}.svg')
+                    if True: 
+                        font = { # 'weight' : 'bold',
+                            'size'   : 28}
 
+                        matplotlib.rc('font', **font)
+                        #---------------linear regression plot and its parameters-------------------------------
+                        peak_flow_frame = np.argmax(data_original['mean_speed'])
+                        bounds, core_mask = get_boundaries(data_original['mask'])
+                        frame_corr_plot = peak_flow_frame.copy()
+                        if frame_corr_plot % 2 == 0: frame_corr_plot +=1 # take next frame if peak flow frame included in lr data
+                        plt.figure(figsize=(15, 5))
+                        plot_correlation_nobounds(data_original, data_predicted, frame_idx=frame_corr_plot, save_as=f'{eval_dir}/Correlation_frame{frame_corr_plot}_{name_evaluation}.svg')
+
+                        
+                        print('Peak flow frame:', peak_flow_frame)
+                        frames = data_original['mean_speed'].shape[0]
+                        k, r2, k_bounds, r2_bounds = np.zeros(3*frames), np.zeros(3*frames), np.zeros(3*frames), np.zeros(3*frames)
+                        bounds_mask = bounds.copy()
+                        inner_mask = data_original['mask'] - bounds_mask
+
+                        #calculate k values in core and boundary region
+                        for i, vel in enumerate(vel_colnames):
+                            for t in range(frames):
+                                k[t+i*frames], r2[t+i*frames]  = calculate_k_R2( data_predicted[vel][t], data_original[vel][t], core_mask[t])
+                                k_bounds[t+i*frames], r2_bounds[t+i*frames]  = calculate_k_R2( data_predicted[vel][t], data_original[vel][t], bounds[t])
+
+                        #plot k and r^2 values
+                        # plot_k_r2_vals(frames, k,k_bounds, r2,  r2_bounds, peak_flow_frame, name_evaluation, eval_dir)
+                        plot_k_r2_vals(data_original, data_predicted, bounds, peak_flow_frame,color_b = KI_colors['Plum'] , save_as= f'K_r2_frame{frame_corr_plot}_{name_evaluation}.svg', eval_dir = eval_dir, model_name = name_evaluation)
+
+                        #print mean k and r^2 values
+                        dict_intermediate_results = defaultdict(list)
                     
-                    print('Peak flow frame:', peak_flow_frame)
-                    frames = data_original['mean_speed'].shape[0]
-                    k, r2, k_bounds, r2_bounds = np.zeros(3*frames), np.zeros(3*frames), np.zeros(3*frames), np.zeros(3*frames)
-                    bounds_mask = bounds.copy()
-                    inner_mask = data_original['mask'] - bounds_mask
+                        for i, vel in enumerate(vel_colnames):
+                            for t in range(frames):
+                                k, r2 = calculate_k_R2( data_predicted[vel][t], data_original[vel][t], data_original['mask'][t])
+                                
+                                dict_intermediate_results[f'k_{vel}'].append(k)
+                                dict_intermediate_results[f'R2_{vel}'].append(r2)
+                        
+                        dict_results['Patient'].append(c)
+                        for key in dict_intermediate_results.keys():
+                            dict_results[key].append(np.mean(dict_intermediate_results[key]))
+                            dict_results[f'{key}_std'].append(np.std(dict_intermediate_results[key]))
+                            dict_results[f'{key}_peak'].append(dict_intermediate_results[key][eval_peak_flow_frame])
+                        
 
-                    #calculate k values in core and boundary region
-                    for i, vel in enumerate(vel_colnames):
-                        for t in range(frames):
-                            k[t+i*frames], r2[t+i*frames]  = calculate_k_R2( data_predicted[vel][t], data_original[vel][t], core_mask[t])
-                            k_bounds[t+i*frames], r2_bounds[t+i*frames]  = calculate_k_R2( data_predicted[vel][t], data_original[vel][t], bounds[t])
+                        print('Mean k values over all patients:', np.average(dict_results[f'k_u']), np.average(dict_results[f'k_v']), np.average(dict_results[f'k_w']))
+                        print('Mean R2 values over all patients:', np.average(dict_results[f'R2_u']), np.average(dict_results[f'R2_v']), np.average(dict_results[f'R2_w']))
+                        print('Eval peak flow frame:', eval_peak_flow_frame, peak_flow_frame)
 
-                    #plot k and r^2 values
-                    # plot_k_r2_vals(frames, k,k_bounds, r2,  r2_bounds, peak_flow_frame, name_evaluation, eval_dir)
-                    plot_k_r2_vals(data_original, data_predicted, bounds, peak_flow_frame,color_b = KI_colors['Plum'] , save_as= f'K_r2_frame{frame_corr_plot}_{name_evaluation}.svg', eval_dir = eval_dir, model_name = name_evaluation)
-
-                    #print mean k and r^2 values
-                    dict_intermediate_results = defaultdict(list)
-                
-                    for i, vel in enumerate(vel_colnames):
-                        for t in range(frames):
-                            k, r2 = calculate_k_R2( data_predicted[vel][t], data_original[vel][t], data_original['mask'][t])
-                            
-                            dict_intermediate_results[f'k_{vel}'].append(k)
-                            dict_intermediate_results[f'R2_{vel}'].append(r2)
-                    
-                    dict_results['Patient'].append(c)
-                    for key in dict_intermediate_results.keys():
-                        dict_results[key].append(np.mean(dict_intermediate_results[key]))
-                        dict_results[f'{key}_std'].append(np.std(dict_intermediate_results[key]))
-                        dict_results[f'{key}_peak'].append(dict_intermediate_results[key][eval_peak_flow_frame])
-                    
-                    print('Eval peak flow frame:', eval_peak_flow_frame, peak_flow_frame)
-
-
-
+                #-----------------plot slices over time---------------------
+                idx_cube = np.index_exp[:, :, 15:70, 20:100]
+                # plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v,exclude_rel_error = True, save_as = "Frame_comparison.png", figsize = (30,20)):
+                plot_slices_over_time1(data_original['u'][idx_cube], data_original['u'][::2][idx_cube], data_original['mask'][idx_cube] , None, [data_predicted['u'][idx_cube], ], ['SR',], [2, 3, 4, 5], 0, 30,  min_v['u'], max_v['u'], exclude_rel_error = True, save_as = f"{eval_dir}/{name_evaluation}_u_comparison.svg", figsize = (7, 4))
+                # plot_comparison_temporal_slices(data_original, data_predicted, idx_slice, eval_dir, name_evaluation, super_resolved_prediction, min_v, max_v, exclude_rel_error = True)
+                # plt.show()
 
             #---------create animation------------------------
             if False:
