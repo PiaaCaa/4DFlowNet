@@ -1,7 +1,5 @@
-import time
 import math
 import numpy as np
-from matplotlib import pyplot as plt
 
 def rectangular_crop3d(f, crop_ratio):
     """
@@ -33,7 +31,7 @@ def rectangular_crop3d(f, crop_ratio):
     return new_kspace
 
 
-def add_complex_signal_noise(imgfft, targetSNRdb):
+def add_complex_signal_noise(imgfft, targetSNRdb, add_complex_noise=False):
     """
         Add gaussian noise to real and imaginary signal
         The sigma is assumed to be the same (Gudbjartsson et al. 1995)
@@ -56,7 +54,6 @@ def add_complex_signal_noise(imgfft, targetSNRdb):
         Half the variance is in the I channel, and half is in the Q channel.  "
 
     """    
-    add_complex_noise =True
     # adding noise on the real and complex image
     # print("--------------Adding Gauss noise to COMPLEX signal----------------")
 
@@ -67,6 +64,7 @@ def add_complex_signal_noise(imgfft, targetSNRdb):
 
     logSNR = targetSNRdb / 10
     snr = 10 ** logSNR
+    print('SNR is', snr, 'with target snr is ', targetSNRdb)
 
     noise_power = signal_power / snr
 
@@ -80,7 +78,7 @@ def add_complex_signal_noise(imgfft, targetSNRdb):
         imgfft += gauss_noise
     else:
         # Add the noise to real and imaginary separately
-        sigma  = np.sqrt(noise_power/2)
+        sigma  = np.sqrt(noise_power/2) #note: deleted /2 from here
         # print('Target SNR ', targetSNRdb, "db, sigma (real/imj)", sigma)
         
         real_signal = np.real(imgfft)
@@ -90,8 +88,8 @@ def add_complex_signal_noise(imgfft, targetSNRdb):
         imj_noise  = np.random.normal(0, sigma, imj_signal.shape)
         
         # add the noise to both components
-        real_signal = real_signal + real_noise
-        imj_signal  = imj_signal + imj_noise
+        real_signal += real_noise
+        imj_signal  += imj_noise
         
         # reconstruct the image back to complex numbers
         imgfft = real_signal + 1j * imj_signal
@@ -133,7 +131,7 @@ def velocity_img_to_kspace(vel_img, mag_image, venc):
     return imgfft
 
 
-def velocity_img_to_centered_kspace(vel_img, mag_image, venc):
+def velocity_img_to_centered_kspace(vel_img, mag_image, venc, normalize_0_2pi = False):
     """
     Convert velocity image to centered k-space, i.e. including shift
 
@@ -145,25 +143,74 @@ def velocity_img_to_centered_kspace(vel_img, mag_image, venc):
     Returns:
         ndarray: Centered k-space representation of the velocity image.
     """
-    
+    if len(vel_img.shape) == 3:
+        axes = (0, 1, 2)
+    elif len(vel_img.shape) == 4:
+        axes = (1, 2, 3)
+    else:
+        print("Error: Unsupported number of dimensions, please extend function to ", len(vel_img.shape), " dimensions.")
+
     # convert to phase
-    phase_image = vel_img / venc * math.pi
+    if normalize_0_2pi:
+        phase_image = vel_img / venc * np.pi + np.pi 
+    else:
+        phase_image = vel_img / venc * np.pi 
 
     # convert to complex image
     complex_img = np.multiply(mag_image, np.exp(1j*phase_image))
 
     # ifftshift
-    complex_img = np.fft.ifftshift(complex_img)
+    complex_img = np.fft.ifftshift(complex_img, axes=axes)
 
     # fft
-    imgfft = np.fft.fftn(complex_img)
+    imgfft = np.fft.fftn(complex_img, axes = axes)
 
     # shift img to center
-    imgfft = np.fft.fftshift(imgfft)
+    imgfft = np.fft.fftshift(imgfft, axes=axes)
 
     return imgfft
 
-def centered_kspace_to_velocity_img(imgfft, mag_image, venc):
+def complex_image_to_centered_kspace(complex_img):
+
+    if len(complex_img.shape) == 3:
+        axes = (0, 1, 2)
+    elif len(complex_img.shape) == 4:
+        axes = (1, 2, 3)
+    else:
+        print("Error: Unsupported number of dimensions, please extend function to ", len(complex_img.shape), " dimensions.")
+
+    # ifftshift
+    complex_img = np.fft.ifftshift(complex_img, axes=axes)
+
+    # fft
+    imgfft = np.fft.fftn(complex_img, axes = axes)
+
+    # shift img to center
+    imgfft = np.fft.fftshift(imgfft, axes=axes)
+    return imgfft
+
+def centered_kspace_to_complex_img(imgfft):
+    if len(imgfft.shape) == 3:
+        axes = (0, 1, 2)
+    elif len(imgfft.shape) == 4:
+        axes = (1, 2, 3)
+    else:
+        print("Error: Unsupported number of dimensions, please extend function to ", len(imgfft.shape), " dimensions.")
+
+    # ifftshift
+    imgfft = np.fft.ifftshift(imgfft, axes=axes)
+
+    # ifft
+    complex_img = np.fft.ifftn(imgfft, axes = axes)
+
+    # shift img to center
+    complex_img = np.fft.fftshift(complex_img, axes=axes)
+    return complex_img
+
+
+
+
+def centered_kspace_to_velocity_img(imgfft, mag_image, venc, normalized_0_2pi=False):
     """
     Convert centered k-space data to velocity image.
 
@@ -176,15 +223,19 @@ def centered_kspace_to_velocity_img(imgfft, mag_image, venc):
         ndarray: The velocity image.
         ndarray: The rescaled magnitude image.
     """
+    if len(imgfft.shape) == 3:
+        axes = (0, 1, 2)
+    elif len(imgfft.shape) == 4:
+        axes = (1, 2, 3)
+    else:
+        print("Error: Unsupported number of dimensions, please extend function to ", len(imgfft.shape), " dimensions.")
 
     # shift img to center
-    imgfft = np.fft.ifftshift(imgfft)
-
-    new_complex_img = np.fft.ifftn(imgfft)
-
-    new_complex_img = np.fft.fftshift(new_complex_img)
+    imgfft = np.fft.ifftshift(imgfft, axes=axes)
+    imgfft = np.fft.ifftn(imgfft, axes=axes)
+    new_complex_img = np.fft.fftshift(imgfft, axes=axes)
     
-    # Get the MAGnitude and rescale
+    # Get the Magnitude and rescale
     new_mag = np.abs(new_complex_img)
     new_mag = rescale_magnitude_on_ratio(new_mag, mag_image)
 
@@ -192,7 +243,11 @@ def centered_kspace_to_velocity_img(imgfft, mag_image, venc):
     new_phase = np.angle(new_complex_img)
 
     # Get the velocity image
-    new_velocity_img = new_phase / math.pi * venc
+    #Note changes to scaling betwen 0 and 2*pi
+    if normalized_0_2pi:
+        new_velocity_img = (new_phase- np.pi) / (np.pi) * venc
+    else:
+        new_velocity_img = new_phase / math.pi * venc
     
     return new_velocity_img, new_mag
 

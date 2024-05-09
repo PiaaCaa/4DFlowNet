@@ -6,6 +6,7 @@ __pycache__/
 *.out
 *.err
 *.sbatch
+*.sh
 models/
 4DFlowNet/*
 data/*
@@ -18,3 +19,10 @@ training.sbatch
 *.h5
 prediction_multiplefiles.sh
 OLD_README.md
+src/create_patch_csvs_win.sh
+src/create_patch_csvs.sh
+src/utils/recover_fcts.py
+src/test3.py
+src/test4.py
+src/prepare_data/cfl.py
+src/test5_cs_cfltoh5.py

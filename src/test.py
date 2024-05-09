@@ -15,6 +15,7 @@ import pandas as pd
 import glob, os
 from prepare_data import h5functions
 from tqdm import tqdm
+import prepare_data.cfl as cfl
 
 def calculate_RST(u, v, w, temporal_window, t_range):
     """
@@ -292,8 +293,8 @@ def adjust_image_size(image, new_shape):
         #cropping
         if diff < 0:
             t_mid = int(old_shape[i] // 2)
-            cropl = int(np.floor(abs(new_shape[i]) / 2))
-            cropr = int(np.ceil(abs(new_shape[i]) / 2))
+            cropr = int(np.floor(abs(new_shape[i]) / 2))
+            cropl = int(np.ceil(abs(new_shape[i]) / 2))
             if i == 0:
                 image = image[t_mid - cropl:t_mid + cropr, :, :, :]
             elif i == 1:
@@ -653,11 +654,83 @@ def k_space_static_test2():
 
 
 
+def reshape_from_cfl(cfldata):
+    print(cfldata.squeeze().shape)
+    return cfldata.squeeze().transpose(3,0,1,2)
 
 
+def transform_cfl_format_test(data):
+    """Assumption that data is of shape (t, x, y, z, c)"""
+    assert len(data.shape) == 5, 'Data should be of shape (t, x, y, z, c)'
+    print('Convert from shape', data.shape, 'to shape', data.transpose(1, 2, 3, 4, 0)[:, :, :, :, np.newaxis, np.newaxis, np.newaxis, np.newaxis, np.newaxis,np.newaxis, :].shape)
+    return data.transpose(1, 2, 3, 4, 0)[:, :, :, :, np.newaxis, np.newaxis, np.newaxis, np.newaxis, np.newaxis,np.newaxis, :]
 
 if __name__ == '__main__':
+    if False:
+        directory = 'results/kspacesampling'
+        h5_files = [ 'u_reconstructed_kspacesampled_sens14.h5']
 
+        with h5py.File(f'{directory}/{h5_files[0]}', mode= 'r') as h5_2:
+            print(h5_2.keys())
+            kspace = np.array(h5_2['u not sparse sample']).squeeze()
+            kspace = kspace[::2, :, :, :]
+        
+            print(kspace.shape)
+        plt.imshow(np.abs(kspace[3, 100, :, :]))
+        # cfl.writecfl(f'{directory}/coil_sensitivity14', transform_cfl_format_test(np.expand_dims(coil_sens, 0)))
+        # cfl.writecfl(f'{directory}/u_kspace14', transform_cfl_format_test(kspace))
+        # cfl.writecfl(f'{directory}/u_kspace14_orig', transform_cfl_format_test(np.expand_dims(kspace, -1)))
+        coil_sens = np.expand_dims(np.expand_dims(np.ones_like(kspace[0, :, :, :]), -1), 0)
+        coil_sens /= np.sum(np.abs(coil_sens))
+        print(np.sum(np.abs(coil_sens)))
+        # cfl.writecfl(f'{directory}/coils_sens_ones_norm', transform_cfl_format_test(coil_sens))
+    
+    venc = 2.9
+
+    file = 'results/kspacesampling/output_test15'
+    res = cfl.readcfl(file).squeeze()
+    res = reshape_from_cfl(res)
+    print(res.shape)
+    res = adjust_image_size(res, (25, 72, 70, 76))
+    res_arr = res#reshape_from_cfl(res)
+    print(res_arr.dtype, res_arr.shape)
+    plt.subplot(1, 3, 1)
+    plt.imshow(np.abs(res_arr[10,  :,  60, :]))
+    plt.title('absolute value')
+
+    plt.subplot(1, 3, 2)
+    plt.imshow(np.angle(res_arr[10,  :,  60, :])/ (2*np.pi) * venc)
+    plt.title('angle()/pi * venc')
+
+    plt.subplot(1, 3, 3)
+    plt.imshow(np.imag(res_arr[10,  :,  60, :]))
+    plt.title('imaginary part')
+    plt.show()
+    
+    h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test15.h5', 'data abs', np.abs(res_arr), expand_dims=False)
+    h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test15.h5', 'data angle', np.angle(res_arr)/(2*np.pi) * venc, expand_dims=False)
+    # h5functions.save_to_h5('results/kspacesampling/k_space_samlp_coilsens_test12_swap.h5', 'data reconstr', res_recon, expand_dims=False)
+
+    exit()    
+    csv_dir = 'data/CARDIAC'
+    csv_files = ['Temporal16MODEL23_2mm_step2_cloudmagnRot_toeger.csv' ,'Temporal16MODEL5_2mm_step2_cloudmagnRot_toeger.csv', 'Temporal16MODEL6_2mm_step2_cloudmagnRot_toeger.csv']
+    new_file = f'{csv_dir}/Temporal16MODEL2356_2mm_step2_cloudmagnRot_toeger.csv'
+    csv_files = [f'{csv_dir}/{f}' for f in csv_files]
+
+    concatenate_csv_files(csv_files, new_file)
+    exit()
+    new_model_names = ['M5_2mm_step2_cloudmagnRot_toeger_LRfct.h5', 'M6_2mm_step2_cloudmagnRot_toeger_LRfct.h5']
+    get_data_from = ['M5_2mm_step2_static_dynamic.h5', 'M6_2mm_step2_static_dynamic.h5']
+
+    for new_model, get_data in zip(new_model_names, get_data_from):
+        with h5py.File(f'data/CARDIAC/{get_data}', mode = 'r' ) as h5:
+            with h5py.File(f'data/CARDIAC/{new_model}', mode = 'a' ) as new_data:
+                for key in h5.keys():
+                    if key not in new_data.keys():
+                        print('Adding', key)
+                        new_data.create_dataset(key, data = np.array(h5[key]).squeeze())
+
+    exit()
     csv_dir = 'data/CARDIAC'
     data_dir = 'data/CARDIAC'
 
@@ -672,9 +745,16 @@ if __name__ == '__main__':
     mag_colnames = [ 'mag_u', 'mag_v', 'mag_w']
 
     # make new datasets with flower magnitude
-    new_model_names = ['M1_2mm_step2_cloudmagnRot_boxavg_LRfct_noise.h5', 'M2_2mm_step2_cloudmagnRot_boxavg_LRfct_noise.h5', 'M3_2mm_step2_cloudmagnRot_boxavg_LRfct_noise.h5', 'M4_2mm_step2_cloudmagnRot_boxavg_LRfct_noise.h5']
-    merge_models    = ['M1_2mm_step2_invivoP01_boxavg_LRfct_noise.h5' , 'M2_2mm_step2_invivoP04_boxavg_LRfct_noise.h5', 'M3_2mm_step2_invivoP03_boxavg_LRfct_noise.h5', 'M4_2mm_step2_invivoP02_boxavg_LRfct_noise.h5']
-    flower_magn = 'data/flower_magn_data_4D_spatial_rotated_Alexcode2.h5'
+    # merge_models = ['M1_2mm_step2_invivoP01_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5', 'M2_2mm_step2_invivoP04_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5', 'M3_2mm_step2_invivoP03_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5', 'M4_2mm_step2_invivoP02_magn_temporalsmoothing_toeger_periodic_LRfct_noise.h5']
+    # new_model_names = ['M1_2mm_step2_cloudmagnRot_toeger_LRfct_noise.h5', 'M2_2mm_step2_cloudmagnRot_toeger_LRfct_snoise.h5', 'M3_2mm_step2_cloudmagnRot_toeger_LRfct_noise.h5', 'M4_2mm_step2_cloudmagnRot_toeger_LRfct_noise.h5']
+    # merge_models = ['M1_2mm_step2_invivoP01_magn_temporalsmoothing_toeger_periodic_HRfct.h5', 'M2_2mm_step2_invivoP04_magn_temporalsmoothing_toeger_periodic_HRfct.h5', 'M3_2mm_step2_invivoP03_magn_temporalsmoothing_toeger_periodic_HRfct.h5', 'M4_2mm_step2_invivoP02_magn_temporalsmoothing_toeger_periodic_HRfct.h5']
+    # merge_models = ['M1_2mm_step2_invivoP01_toeger_HRfct_noise.h5', 'M2_2mm_step2_invivoP04_toeger_HRfct_noise.h5', 'M3_2mm_step2_invivoP03_toeger_HRfct_noise.h5', 'M4_2mm_step2_invivoP02_toeger_HRfct_noise.h5']
+    # new_model_names = ['M1_2mm_step2_cloudmagnRot_toeger_HRfct.h5', 'M2_2mm_step2_cloudmagnRot_toeger_HRfct.h5', 'M3_2mm_step2_cloudmagnRot_toeger_HRfct.h5', 'M4_2mm_step2_cloudmagnRot_toeger_HRfct.h5']
+    merge_models = ['M5_2mm_step2_temporalsmoothing_toeger_periodic_LRfct.h5', 'M6_2mm_step2_temporalsmoothing_toeger_periodic_LRfct.h5']
+    new_model_names = ['M5_2mm_step2_cloudmagnRot_toeger_LRfct.h5', 'M6_2mm_step2_cloudmagnRot_toeger_LRfct.h5']
+
+    # merge_models    = ['M1_2mm_step2_invivoP01_boxavg_LRfct_noise.h5' , 'M2_2mm_step2_invivoP04_boxavg_LRfct_noise.h5', 'M3_2mm_step2_invivoP03_boxavg_LRfct_noise.h5', 'M4_2mm_step2_invivoP02_boxavg_LRfct_noise.h5']
+    flower_magn = 'data/cloud_magn_data_4D_spatial_rotated_M1-M6.h5'
 
     for new_model, orig_model in zip(new_model_names, merge_models):
         MX = new_model.split('_')[0]
@@ -682,10 +762,10 @@ if __name__ == '__main__':
         with h5py.File(flower_magn, mode = 'r' ) as h5:
             flower_magn_data = np.array(h5[MX])
 
-        # if os.path.isfile(f'{data_dir}/{new_model}'):
-        #     print(f"File {new_model} already exists. Not writing to it.")
-        #     continue
-        create_h5_file(data_dir, new_model)
+        if os.path.isfile(f'{data_dir}/{new_model}'):
+            print(f"File {new_model} already exists. Not writing to it.")
+            continue
+        h5functions.create_h5_file(data_dir, new_model)
 
         with h5py.File(f'{data_dir}/{new_model}', mode = 'a' ) as new_data:
             with h5py.File(f'{data_dir}/{orig_model}', mode = 'r' ) as orig_data:
@@ -694,12 +774,13 @@ if __name__ == '__main__':
                     new_data.create_dataset(key, data = orig_data.get(key))
                 
                 for mag in mag_colnames:
-                    del new_data[mag]
+                    if mag in new_data.keys():
+                        del new_data[mag]
 
                     if flower_magn_data.shape != new_data[mag[-1]].shape:
                         print('Check model', new_model, 'for', mag, 'shape', flower_magn_data.shape, 'vs', new_data[mag[-1]].shape)
                         flower_magn_data = adjust_image_size(flower_magn_data, new_data[mag[-1]].shape)
-                        
+                         
                     new_data.create_dataset(mag, data = flower_magn_data)
 
     exit()

@@ -1,15 +1,11 @@
-import numpy as np
 import os
 import sys
+import numpy as np
 import h5py
 import random
 import fft_downsampling as fft
-import scipy.ndimage as ndimage
 from h5functions import save_to_h5
-from temporal_downsampling import temporal_box_averaging_and_downsampling, temporal_smoothing_box_function_toeger
-# from visualize_utils import generate_gif_volume
-# from .utils.evaluate_utils import peak_signal_to_noise_ratio, signaltonoise_fluid_region
-                       
+from temporal_downsampling import temporal_box_averaging_and_downsampling, temporal_smoothing_box_function_toeger                       
 
 def choose_venc():
     '''
@@ -39,45 +35,19 @@ def simple_temporal_downsampling(hr_data, downsample =2, offset = 0):
     return lr_data
 
 
-def symm_box_averaging(hr_u, hr_v, hr_w, radius):
-    """ symmetric box averaging given a radius, note the output is not downsampled and overlapping box functions are used"""
-
-    print(f"_____Symmetric box averaging with avaging over {radius} pixels_____")
-    avg_u = np.zeros_like(hr_u)
-    avg_v = np.zeros_like(hr_v)
-    avg_w = np.zeros_like(hr_w)
-
-    for i in range(idx -radius//2, idx+radius//2+1):
-        j = i
-        # use periodical boundary conditions, i.e. after last frame take first frame again and vice verse
-        if i >= N_frames :
-            j = j%(N_frames)
-        # sum up all the 3D data 
-        avg_u += hr_u[j]
-        avg_v += hr_v[j]
-        avg_w += hr_w[j]
-    
-    # divide by number of frames to take the average
-    avg_u /= radius
-    avg_v /= radius
-    avg_w /= radius
-
-    return avg_u, avg_v, avg_w
-
-
 if __name__ == '__main__':
 
     # Config
     base_path = 'data/CARDIAC'
     # Put your path to Hires Dataset
-    input_filepath  =  f'{base_path}/M2_2mm_step2_flowermagn_boxavg_HRfct.h5'
-    output_filename =  f'{base_path}/M2_2mm_step2_flowermagn_boxavg_LRfct_noise.h5' 
+    input_filepath  =  f'{base_path}/M6_2mm_step2_cloudmagnRot_toeger_LRfct.h5'
+    output_filename =  f'{base_path}/M6_2mm_step2_cloudmagnRot_toeger_LRfct_noise.h5' 
 
     # Downsample rate, set to 1 to keep the same resolution 
     spatial_downsample = 1.0 #1: no downsampling, 2: half the resolution, 4: quarter the resolution
-    temporal_downsample = 2
+    temporal_downsample = 1
     keep_framerate = True # if true, the framerate is kept (e.g. creating downsampling in training pipeline), otherwise the number of frames is downsampled by 1/temporal_downsample rate
-    t_downsample_method = 'box' # options: 'radial', 'cartesian', 'box', 'toeger'
+    t_downsample_method = 'smooth' # options: 'radial', 'cartesian', 'box', 'smooth'
     
     # add noise to the data
     add_noise = True
@@ -97,7 +67,7 @@ if __name__ == '__main__':
 
     # Possible magnitude and venc values
     mag_values  =  np.asarray([60, 80, 120, 180, 240]) # in px values [0-4095]
-    venc_values =  np.asarray([0.3, 0.6, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4, 4.5]) # in m/s
+    venc_values =  np.asarray([0.3, 0.6, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4, 4.5, 5.0, 6.0]) # in m/s
 
     # Load the mask once
     with h5py.File(input_filepath, mode = 'r' ) as hf:
@@ -120,9 +90,8 @@ if __name__ == '__main__':
     
     #--------------temporal smoothing---------------
     # temporal downsampling/smoothing here before adding noise for each frame
-    if t_downsample_method == 'radial':
-        hr_u, hr_v, hr_w = symm_box_averaging(hr_u, hr_v, hr_w,  3)
-
+    if temporal_downsample > 1:
+        print("Temporal downsampling/smoothing with method: ", t_downsample_method)
     elif t_downsample_method == 'box':
         # overwrite the original data with smoothed data (created two "series" of temporal box averaging)
         hr_u[::2],hr_u[1::2]  = temporal_box_averaging_and_downsampling(hr_u, temporal_downsample)
@@ -130,7 +99,7 @@ if __name__ == '__main__':
         hr_w[::2],hr_w[1::2]  = temporal_box_averaging_and_downsampling(hr_w, temporal_downsample)
 
         
-    elif t_downsample_method == 'toeger':
+    elif t_downsample_method == 'smooth':
         #parameters for toeger smoothing
         t_range = np.linspace(0, 1, hr_u.shape[0])
         smoothing = 0.004
@@ -229,7 +198,7 @@ if __name__ == '__main__':
         
         #----------------- Spatial downsample and add noise -----------------
         # Downsample the data in the frequency domain (spatial) and add white gaussian noise
-        if spatial_downsample != 1.0 and add_noise:
+        if  add_noise:
             lr_u[idx, :, :, :], lr_mag_u[idx, :, :, :] =  fft.noise_and_downsampling(hr_u_frame, mag_image[idx], venc_u,  targetSNRdb, spatial_crop_ratio=crop_ratio, add_noise=add_noise)   
             lr_v[idx, :, :, :], lr_mag_v[idx, :, :, :] =  fft.noise_and_downsampling(hr_v_frame, mag_image[idx], venc_v,  targetSNRdb, spatial_crop_ratio=crop_ratio, add_noise=add_noise)   
             lr_w[idx, :, :, :], lr_mag_w[idx, :, :, :] =  fft.noise_and_downsampling(hr_w_frame, mag_image[idx], venc_w,  targetSNRdb, spatial_crop_ratio=crop_ratio, add_noise=add_noise)  

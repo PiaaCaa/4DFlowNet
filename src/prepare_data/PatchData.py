@@ -1,6 +1,7 @@
 import random as rnd
 import numpy as np
 import csv
+import h5py
 
 def write_header(filename):
     fieldnames = ['source', 'target','index', 'start_x', 'start_y', 'start_z', 'rotate', 'rotation_plane', 'rotation_degree_idx', 'coverage']
@@ -73,7 +74,7 @@ def generate_random_patches(input_filename, target_filename, output_filename, in
 
         patch.write_to_csv(output_filename)
 
-        # apply ALL  rotation
+        # apply ALL rotation
         if apply_all_rotation:
             patch.rotate = 1
             for plane_nr in range(1,4):
@@ -98,7 +99,7 @@ def generate_random_patches(input_filename, target_filename, output_filename, in
     # /end of while n_patch
 
 
-def generate_temporal_random_patches_all_axis(input_filename, target_filename, output_filename, axis, index, n_patch, binary_mask, patch_size, minimum_coverage, empty_patch_allowed, reverse=False):
+def generate_temporal_random_patches_all_axis(input_filename, target_filename, output_filename, axis, index, n_patch, binary_mask, patch_size, minimum_coverage, empty_patch_allowed, reverse=False, step_t =2):
     """
     Generate temporal random patches along a specified axis.
 
@@ -115,6 +116,7 @@ def generate_temporal_random_patches_all_axis(input_filename, target_filename, o
         empty_patch_allowed (int): The maximum number of empty patches allowed.
         reverse (bool, optional): Whether to reverse the created patches. Defaults to False.
     """
+    
     empty_patch_counter = 0
             
     # foreach row, create n number of patches
@@ -139,7 +141,7 @@ def generate_temporal_random_patches_all_axis(input_filename, target_filename, o
         patch = TemporalPatchData(input_filename, target_filename, patch_size)
         
         # default, no rotation
-        patch.create_random_patch(binary_mask, index, axis)
+        patch.create_random_patch(binary_mask, index, axis, step_t=step_t)
         patch.calculate_patch_coverage(binary_mask, minimum_coverage)
 
         # before saving, do a check
