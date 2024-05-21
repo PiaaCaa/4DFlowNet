@@ -196,14 +196,12 @@ def adjust_image_size(image, new_shape):
 
 
 def vel_to_phase_norm(vel):
-    print('Normalizing velocity data between -2pi and 0..')
+    print('Normalizing velocity data between -pi and 0..')
     print('Velocity min', np.min(vel), ' max ', np.max(vel))
     return (vel-np.min(vel))/(np.max(vel) - np.min(vel)) * np.pi - np.pi
 
 
 def k_space_sampling_timeseries_vel_new(path_order,vel_c,set_):
-
-    #assume velocity image is already complex
 
     # load order data    
     order = sio.loadmat(path_order, squeeze_me=True)
@@ -220,12 +218,10 @@ def k_space_sampling_timeseries_vel_new(path_order,vel_c,set_):
     vel_c  = adjust_image_size(vel_c, (vel_c.shape[0], X, Y, Z))
     
     print('Transforming velocity data into centered k space ..')
-    # complex_img = np.multiply(data_magn, np.exp(1j * vel_to_phase_norm(vel_u)))
     data_ksp = fft_fcts.complex_image_to_centered_kspace(vel_c)
-    # data_ksp = fft_fcts.velocity_img_to_centered_kspace(data_vel, data_magn, venc = venc)
-    # TODO use min and max values for normalization for reconstruction
 
     # t_range of mr k-space mask and cfd data
+    # mr kspace mask: assume a heart cycle of 1s
     mr_range  = np.linspace(0, 1, N_frames)
     cfd_range = np.linspace(0, 1, vel_c.shape[0]) 
     
@@ -298,12 +294,12 @@ if __name__ == '__main__':
 
     # Define datasets
     path_kmask = f'{data_dir}/kspacemask.h5'
-    path_order = f'{data_dir}/order_2mm_20ms.mat'
-    path_datamodel = f'{data_dir}/CARDIAC/{model_name}_2mm_step2_static_dynamic.h5'
+    path_order = f'{data_dir}/order_2mm_40ms.mat'
+    path_datamodel = f'{data_dir}/CARDIAC/{model_name}_2mm_step1_static_dynamic.h5'
     save_as = 'results/kspacesampling'
     vel_colnames = [velocity] # this can be set to ['u', 'v', 'w'] to sample all velocities but be aware of memory usage
-    x_k, y_k, z_k = 192,126,104
-    t_res = 50
+    x_k, y_k, z_k = 192,126,104 # k-space mask size
+    t_res = 25     # number of time frames for sampling mask
 
     add_noise = False
     save_state = False
@@ -311,12 +307,13 @@ if __name__ == '__main__':
 
     save_coil_sens = f'{save_as}/coil_sensitivity16_sphere'
 
-    # 1. Use coil sensitivity matrix on CFD data
+    # Load data
     with h5py.File(path_datamodel, mode = 'r' ) as p1: 
         spatial_res = p1['u'].shape[1:]
         mask = np.array(p1['mask']).squeeze()
 
 
+    # Load coil sensitivty images, otherwise generate new images
     if os.path.isfile(save_coil_sens + '.hdr'):
         print('Load existing coil sensitivity images with ', save_coil_sens )
         coil_images = cfl.readcfl(save_coil_sens).squeeze()
@@ -326,9 +323,8 @@ if __name__ == '__main__':
         n_coils = coil_images.shape[-1]
     else:
 
-        #second approach 
         n_coils = 9
-        sphere_radius = 192//2 +10  # similar to coil offset
+        sphere_radius = 192//2 + 10  # similar to coil offset
         coil_radius = 30
         segments = 25
         # put coil centers on a sphere with equally spaced
@@ -385,10 +381,14 @@ if __name__ == '__main__':
             data[f'venc_{vel}'] = np.asarray(p1[f'{vel}_max']).squeeze()
             
             # generate coil sensitivity maps
-            venc_max = np.max(data[f'venc_{vel}'])
+            venc_max = np.max(data[f'venc_{vel}']).squeeze()
+
             print('Venc max', venc_max)
 
-            complex_img = np.multiply(magn, np.exp(1j * vel_to_phase_norm(np.asarray(p1[vel]).squeeze())))
+            vel = np.asarray(p1[vel])
+            vel = (vel/venc_max)*np.pi + np.pi
+            # load velocity data and convert to complex image
+            complex_img = np.multiply(magn, np.exp(1j * vel_to_phase_norm(vel)))
 
             if add_noise:
                 targetSNRdb = np.random.randint(140,170) / 10
@@ -399,9 +399,8 @@ if __name__ == '__main__':
                 img_fft = None
                 
             # resulting shape (T, X, Y, Z, C)
-            # data_c_sens[vel] = coil_images[np.newaxis, :, :, :, :] * complex_img[..., np.newaxis] 
-            data_c_sens[vel] = complex_img[..., np.newaxis] 
-            n_coils = 1
+            # create coil sensitivity images for each coil
+            data_c_sens[vel] = coil_images[np.newaxis, :, :, :, :] * complex_img[..., np.newaxis] 
     
     # Free up memory
     coil_images = None
@@ -419,7 +418,7 @@ if __name__ == '__main__':
         print('Save k-space sampled data..')
         if save_cfl:
             cfl.writecfl(f'{save_as}/{vel}_kspace{model_name}_hr_nocoilsens', transform_cfl_format(k_space_sampled_u))
-            print(f'Saved file under {save_as}/{vel}_kspace{model_name}_hr')
+            print(f'Saved file under {save_as}/{vel}_kspace{model_name}_lr')
             # cfl.writecfl(save_as + f'/{vel}_kspace_17_nonsparse', transform_cfl_format(ksp_u[:, :, :, :, np.newaxis]))
 
         if False:

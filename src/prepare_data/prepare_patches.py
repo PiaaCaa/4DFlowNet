@@ -25,8 +25,8 @@ if __name__ == "__main__":
         lr_file = args.lrdata
         hr_file = args.hrdata
     else:
-        hr_file = 'M4_2mm_step2_cloudmagnRot_toeger_HRfct.h5'       #HiRes velocity data
-        lr_file = 'M4_2mm_step2_cloudmagnRot_toeger_LRfct_noise.h5' #LowRes velocity data 
+        hr_file = 'M6_2mm_step2_dynamic_cs_20ms.h5'       #HiRes velocity data
+        lr_file = 'M6_2mm_step2_dynamic_cs_40ms_noise.h5' #LowRes velocity data 
 
     # Parameters
     temporal_preparation = True
@@ -39,9 +39,10 @@ if __name__ == "__main__":
     minimum_coverage = 0.2 # Minimum fluid region within a patch. Any patch with less than this coverage will not be taken. Range 0-1
 
     
-    base_path = 'data/CARDIAC'
+    base_path = '/mnt/c/Users/piacal/Code/SuperResolution4DFlowMRI/Temporal4DFlowNet/data/CARDIAC'#'data/CARDIAC'
+    # base_path = 'data/CARDIAC'
 
-    output_filename = f'{base_path}/Temporal{patch_size}MODEL{hr_file[1]}_2mm_step2_cloudmagnRot_toeger.csv'
+    output_filename = f'{base_path}/Temporal{patch_size}MODEL{hr_file[1]}_2mm_step2_cs_cloudmagn.csv'
 
 
     #TODO check the compatibility in the test iteratoor
@@ -70,8 +71,12 @@ if __name__ == "__main__":
         t_lr, x_lr, y_lr, z_lr = np.array(hdf5['u']).shape
 
 
-    with h5py.File(f'{base_path}/{lr_file}', 'r') as hf:
+    with h5py.File(f'{base_path}/{hr_file}', 'r') as hf:
         t_hr, x_hr, y_hr, z_hr = np.array(hf['u']).shape
+        # mask = np.asarray(hf['mask']).squeeze()
+        # if (len(mask.shape) == 4 and mask.shape[0]==1) or len(mask.shape) == 3:  
+        #     mask = pd.create_temporal_mask(mask, t_hr)
+        # print(f"Mask shape: {mask.shape}")
 
     assert((x_lr, y_lr, z_lr) == (x_hr, y_hr, z_hr))
 

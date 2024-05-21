@@ -139,17 +139,17 @@ if __name__ == "__main__":
         # set directories 
         input_dir = 'data/PIA/THORAX'
         res_dir   = 'results/in_vivo/'
-        eval_dir  = 'results/in_vivo/plots/20230602_1701'
+        eval_dir  = 'results/in_vivo/plots/20240509-1614'
 
         if not os.path.isdir(eval_dir):
             os.makedirs(eval_dir)
 
         dict_results = defaultdict(list)
-        cases = ['P01' ]#, 'P02', 'P03', 'P04', 'P05'] 
+        cases = ['P01' , 'P02', 'P03', 'P04', 'P05'] 
         for c in cases:
             print('-------------------', c, '-------------------')
             in_vivo = f'{input_dir}/{c}/h5/{c}.h5'
-            in_vivo_upsampled = f'{res_dir}/{c}_20230602-1701_8_4_arch_25Frames.h5' 
+            in_vivo_upsampled = f'{res_dir}/{c}/{c}_20240509-1614_25Frames.h5' 
             name_evaluation = f'THORAX_{c}_{os.path.basename(in_vivo)[:-3]}_25Frames'
 
             #set slice index for animation
@@ -297,7 +297,7 @@ if __name__ == "__main__":
                 if not super_resolved_prediction:
                     if True: 
                         font = { # 'weight' : 'bold',
-                            'size'   : 28}
+                            'size'   : 12}
 
                         matplotlib.rc('font', **font)
                         #---------------linear regression plot and its parameters-------------------------------

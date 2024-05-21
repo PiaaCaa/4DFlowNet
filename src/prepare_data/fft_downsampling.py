@@ -78,7 +78,7 @@ def add_complex_signal_noise(imgfft, targetSNRdb, add_complex_noise=False):
         imgfft += gauss_noise
     else:
         # Add the noise to real and imaginary separately
-        sigma  = np.sqrt(noise_power/2) #note: deleted /2 from here
+        sigma  = np.sqrt(noise_power/2) 
         # print('Target SNR ', targetSNRdb, "db, sigma (real/imj)", sigma)
         
         real_signal = np.real(imgfft)

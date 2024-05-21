@@ -49,25 +49,27 @@ if __name__ == '__main__':
     if args.model is not None:
         model_name = args.model
     else:
-        model_name = '20240226-2026' # this model: training 2, 3, validation: 1, test:4
+        model_name = '20230602-1701' # this model: training 2, 3, validation: 1, test:4
     print("Model name: ", model_name)
     set_names = ['Test', 'Validation', 'Training', 'Training']
     data_models= ['4', '1', '2', '3', ]
-    steps = [ 2, 2, 2, 2]
-    file_names = ['M4_2mm_step2_flowermagn_boxavg_LRfct_noise.h5', 'M1_2mm_step2_flowermagn_boxavg_LRfct_noise.h5', 
-                  'M2_2mm_step2_flowermagn_boxavg_LRfct_noise.h5', 'M3_2mm_step2_flowermagn_boxavg_LRfct_noise.h5']
+    steps = [ 2 ]#, 2 ]#, 2, 2]
+    file_names = ['M4_2mm_step2_invivoP02_magnitude_noise.h5', 'M1_2mm_step2_invivoP01_magnitude_noise.h5', 
+                  'M2_2mm_step2_invivoP02_magnitude_noise.h5', 'M3_2mm_step2_invivoP03_magnitude_noise.h5']
     #file_names = ['M4_2mm_step2_static_dynamic_noise.h5', 'M1_2mm_step2_static_dynamic_noise.h5'] #'M2_2mm_step2_static_dynamic_noise.h5', 'M3_2mm_step2_static_dynamic_noise.h5', 
     # file_names = ['M4_2mm_step2_temporalsmoothing_toeger_periodic_LRfct_noise.h5', 'M1_2mm_step2_temporalsmoothing_toeger_periodic_LRfct_noise.h5'] #'M2_2mm_step2_static_dynamic_noise.h5', 'M3_2mm_step2_static_dynamic_noise.h5', 
     # set filenamaes and directories
-    data_dir = 'Temporal4DFlowNet/data/CARDIAC'  
+    data_dir = 'data/CARDIAC'
+    output_dir = f'results/Temporal4DFlowNet_{model_name}'
+    model_dir = f'models/Temporal4DFlowNet_{model_name}'
 
     for set_name, data_model, step, filename in zip(set_names, data_models, steps, file_names):
 
         # set filenamaes and directories
-        output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
-        output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal2.h5'
         
-        model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
+        output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'
+        
+        model_path = f'{model_dir}/Temporal4DFlowNet-best.h5'
 
         # Params
         patch_size = 16
@@ -86,8 +88,8 @@ if __name__ == '__main__':
         # Setting up
         input_filepath = '{}/{}'.format(data_dir, filename)
         output_filepath = '{}/{}'.format(output_dir, output_filename)
-
-        assert(not os.path.exists(output_filepath)) #STOP if output file is already created
+        print("Output file path: ", output_filepath)
+        assert(not os.path.exists(output_filepath))  #STOP if output file is already created
 
         pgen = PatchGenerator(patch_size, res_increase,include_all_axis = True)
         dataset = ImageDataset_temporal()

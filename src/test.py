@@ -7,7 +7,7 @@ import sys
 import os
 import pyvista as pv
 # from utils import prediction_utils
-from prepare_data import temporal_downsampling
+# from prepare_data import temporal_downsampling
 from prepare_data import fft_downsampling as fft_fcts
 from scipy.integrate import trapz
 import scipy.io as sio
@@ -15,7 +15,7 @@ import pandas as pd
 import glob, os
 from prepare_data import h5functions
 from tqdm import tqdm
-import prepare_data.cfl as cfl
+# import prepare_data.cfl as cfl
 
 def calculate_RST(u, v, w, temporal_window, t_range):
     """
@@ -666,6 +666,14 @@ def transform_cfl_format_test(data):
     return data.transpose(1, 2, 3, 4, 0)[:, :, :, :, np.newaxis, np.newaxis, np.newaxis, np.newaxis, np.newaxis,np.newaxis, :]
 
 if __name__ == '__main__':
+
+    csv_dir = 'data/CARDIAC'
+    csv_files = [ 'Temporal16MODEL2_2mm_step2_cs_cloudmagn.csv', 'Temporal16MODEL3_2mm_step2_cs_cloudmagn.csv', 'Temporal16MODEL5_2mm_step2_cs_cloudmagn.csv', 'Temporal16MODEL6_2mm_step2_cs_cloudmagn.csv']
+    csv_files = [f'{csv_dir}/{f}' for f in csv_files]
+    new_file = f'{csv_dir}/Temporal16MODEL2356_2mm_step2_cs_cloudmagn.csv'
+    concatenate_csv_files(csv_files, new_file)
+
+    exit()
     if False:
         directory = 'results/kspacesampling'
         h5_files = [ 'u_reconstructed_kspacesampled_sens14.h5']
