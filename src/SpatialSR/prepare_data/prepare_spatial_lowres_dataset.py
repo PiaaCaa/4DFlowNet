@@ -5,8 +5,6 @@ import random
 import fft_downsampling as fft
 import scipy.ndimage as ndimage
 from h5functions import save_to_h5
-from visualize_utils import generate_gif_volume
-
 def choose_venc():
     '''
         Give a 68% that data will have a same venc on all 3 velocity components.

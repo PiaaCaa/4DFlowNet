@@ -1691,7 +1691,6 @@ def temporal_linear_interpolation(lr, hr_shape):
 
     t_hr = np.linspace(0, lr[0]-downsampling_factor,  hr_shape[0])
     
-    
     tg, xg, yg ,zg = np.mgrid[0:hr_shape[0], 0:hr_shape[1], 0:hr_shape[2], 0:hr_shape[3]]
     coord = np.array([tg.flatten(), xg.flatten(), yg.flatten() ,zg.flatten()])
 
@@ -1791,7 +1790,8 @@ def temporal_linear_interpolation_np(lr, hr_shape):
 
 
 def spatial3D_NN_interpolation(lr, hr_shape, method = 'nearest'):
-
+    assert len(lr.shape) == 3
+    assert len(hr_shape) == 3
 
     x_hr = np.linspace(0, lr.shape[0],  int(hr_shape[0]))
     y_hr = np.linspace(0, lr.shape[1],  int(hr_shape[1]))
@@ -1829,8 +1829,7 @@ def generate_gif_volume(img3D, axis = 0, save_as = "animation"):
         print("Invalid axis input.")
     
     frame_one = frames[0]
-    frame_one.save(save_as+".gif", format="GIF", append_images=frames,
-               save_all=True, duration=500, loop=0) #/home/pcallmer/Temporal4DFlowNet/results/plots
+    frame_one.save(save_as+".gif", format="GIF", append_images=frames,save_all=True, duration=500, loop=0) #/home/pcallmer/Temporal4DFlowNet/results/plots
     
 
 def compare_peak_flow_pixel(gt,lr, model_names, set_names, labels, colors,name_comparison,patch_size, show_avg, show_pixel, use_dynamical_mask = False):
