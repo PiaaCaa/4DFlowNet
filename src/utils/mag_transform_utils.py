@@ -32,6 +32,11 @@ def idx_invivo_to_insilico(mask_v_transformed, mask_LV_s):
                                 int(np.maximum(0, -(y_LV_s-y_LV_v))):int(np.minimum(Y_v-1, y_LV_v+ Y_s- y_LV_s-1)), 
                                 int(np.maximum(0, -(z_LV_s-z_LV_v))):int(np.minimum(Z_v-1, z_LV_v+ Z_s- z_LV_s-1))]
 
+
+    print('insilico indices: x min/max', int(np.maximum(0, x_LV_s - x_LV_v )),int(np.minimum(x_LV_s +X_v- x_LV_v-1, X_s -1)), 
+                            'y min/max', int(np.maximum(0, y_LV_s - y_LV_v )),int(np.minimum(y_LV_s +Y_v- y_LV_v-1, Y_s -1)), 
+                            'z min/max', int(np.maximum(0, z_LV_s - z_LV_v )),int(np.minimum(z_LV_s +Z_v- z_LV_v-1, Z_s -1)))
+
     # indices for 4D data
     idx_t_insilico = np.index_exp[:, int(np.maximum(0, x_LV_s - x_LV_v )):int(np.minimum(x_LV_s +X_v- x_LV_v-1, X_s -1)), 
                                 int(np.maximum(0, y_LV_s - y_LV_v )):int(np.minimum(y_LV_s +Y_v- y_LV_v-1, Y_s -1)), 

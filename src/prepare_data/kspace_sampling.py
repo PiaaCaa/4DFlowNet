@@ -430,5 +430,6 @@ if __name__ == '__main__':
     h5functions.save_to_h5(f'{path_h5}.h5', vel, vel_cs, expand_dims=False)
     h5functions.save_to_h5(f'{path_h5}.h5', f'mag_{vel}', magn_cs,  expand_dims=False)
     h5functions.save_to_h5(f'{path_h5}.h5', 'venc_max', venc_max, expand_dims=True)
+    h5functions.save_to_h5(f'{path_h5}.h5', 'mask', mask, expand_dims=False)
     if res == 'lr':
         h5functions.save_to_h5(f'{path_h5}.h5', 'targetSNRdb', np.array(targetSNRdbs), expand_dims=True)
