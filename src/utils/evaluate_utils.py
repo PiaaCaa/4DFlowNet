@@ -414,7 +414,7 @@ def calculate_k_R2( pred, gt, binary_mask):
     slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(hr_vals, sr_vals)
     return slope,  r_value**2
 
-def plot_correlation_nobounds(gt, prediction, frame_idx,color_b = KI_colors['Plum'], save_as = None):
+def plot_correlation_nobounds(gt, prediction, frame_idx,color_b = KI_colors['Plum'],show_text = False, save_as = None):
     '''
     Plot correlation plot between ground truth and prediction at a given frame
     '''
@@ -463,7 +463,8 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_b = KI_colors['Plu
         corr_line, text = get_corr_line_and_r2(all_hr, all_sr, x_range)
 
         # plot linear correlation line and parms
-        # plt.gca().text(0.05, 0.95, text,transform=plt.gca().transAxes, fontsize=12, verticalalignment='top')
+        if show_text:
+            plt.gca().text(0.05, 0.95, text,transform=plt.gca().transAxes, fontsize=12, verticalalignment='top')
         plt.plot(x_range, x_range, color= 'grey', label = 'diagonal line')
         plt.plot(x_range, corr_line, 'k--')
         plt.scatter(hr_vals, sr_vals, s=30, c=["black"], label = 'core voxels')
@@ -531,7 +532,7 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_b = KI_colors['Plu
         plt.subplot(1, 3, 3)
         plot_regression_points(hr_w_core, sr_w_vals, hr_w[idx_core], sr_w[idx_core],  direction=r'$V_z$')
         plt.tight_layout()
-        if save_as is not None: plt.savefig(f"{save_as}_all_notext_LRXYZ_subplots.svg")
+        if save_as is not None: plt.savefig(f"{save_as}_all_notext_LRXYZ_subplots.pdf")
     
 
 
@@ -666,7 +667,7 @@ def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KI_colors['Plum
         plt.subplot(1, 3, 3)
         plot_regression_points(hr_w_core, sr_w_vals, hr_w_bounds, sr_w_bounds,hr_w[idx_core], sr_w[idx_core], hr_w[idx_bounds], sr_w[idx_bounds], direction=r'$V_z$')
         plt.tight_layout()
-        if save_as is not None: plt.savefig(f"{save_as}_LRXYZ_subplots.svg")
+        if save_as is not None: plt.savefig(f"{save_as}_LRXYZ_subplots.pdf")
     
 
     
@@ -1082,6 +1083,86 @@ def make_3D_quiver_plot(data,mask,  frame, set_to_zero=0.9):
         plt.ylabel('y')
         # plt.zlabel('z')
         # plt.show()
+
+
+
+def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, comparison_lst, comparison_name, timepoints, min_v, max_v, figsize = (10, 10), save_as = "Qualitative_frame_seq.png"):
+    def row_based_idx(num_rows, num_cols, idx):
+        return np.arange(1, num_rows*num_cols + 1).reshape((num_rows, num_cols)).transpose().flatten()[idx-1]
+
+    print(f"Plotting qualitative comparison of timepoints {timepoints}...")
+
+    ups_factor = 2
+    cmap = 'viridis'
+
+    T = 4 + len(comparison_lst)
+    N = len(timepoints)
+
+    fig = plt.figure(figsize=figsize)
+    fig, axes = plt.subplots(nrows=T, ncols=N, constrained_layout=True)
+
+    min_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.01)
+    max_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.99)
+
+    min_rel_error = np.min(np.array(abserror_cube))
+    max_rel_error = np.max(np.array(abserror_cube))
+
+    img_cnt = 1
+    for j,t in enumerate(timepoints):
+
+        plt.subplot(T, N, row_based_idx(T, N, img_cnt))
+        if t%ups_factor == 0:
+            lr_slice = lr_cube[j//2]
+            plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap=cmap, aspect='auto')
+            if img_cnt == 1: plt.ylabel("LR")
+            plt.xticks([])
+            plt.yticks([])
+ 
+        plt.title('frame '+ str(t))
+        plt.xticks([])
+        plt.yticks([])
+        
+        img_cnt +=1
+        plt.subplot(T, N, row_based_idx(T, N, img_cnt))
+        plt.imshow(gt_cube[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap, aspect='auto')
+        if img_cnt == 2: plt.ylabel("HR")
+        plt.xticks([])
+        plt.yticks([])
+
+        img_cnt +=1
+        plt.subplot(T, N, row_based_idx(T, N, img_cnt))
+        im = plt.imshow(pred_cube[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap,aspect='auto')
+        if img_cnt == 3: plt.ylabel("4DFlowNet")
+        plt.xticks([])
+        plt.yticks([])
+
+
+        for comp, name in zip(comparison_lst, comparison_name):
+            img_cnt +=1
+            plt.subplot(T, N, row_based_idx(T, N, img_cnt))
+            im = plt.imshow(comp[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap, aspect='auto')
+            if img_cnt-1 == (img_cnt-1)%T: plt.ylabel(name)
+            plt.xticks([])
+            plt.yticks([])
+        
+
+        img_cnt +=1
+        plt.subplot(T, N, row_based_idx(T, N, img_cnt))
+        err_img = plt.imshow(abserror_cube[j, :, :],vmin=min_rel_error, vmax=max_rel_error, cmap=cmap,aspect='auto')
+        if img_cnt-1 == (img_cnt-1)%T: plt.ylabel("abs. error")
+        plt.xticks([])
+        plt.yticks([])
+        if t == timepoints[-1]:
+            plt.colorbar(err_img, ax = axes[-1], aspect = 10, label = 'abs. error (m/s)')
+
+        
+        img_cnt +=1
+
+    fig.colorbar(im, ax=axes.ravel()[:-N].tolist(), aspect = 35, label = 'velocity (m/s)')
+    plt.savefig(save_as,bbox_inches='tight' )
+
+
+
 
 
 def show_timeframes(gt,lr,  pred,mask, rel_error, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v,save_as = "Frame_comparison.png"):
@@ -1584,13 +1665,13 @@ def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparis
 #         plt.savefig(f'{eval_dir}/{name_evaluation}_R2_vals_{vel}__.svg', bbox_inches='tight')
 
 
-def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum'] , save_as= '', eval_dir= '', set_name = '', model_name = ''):
+def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum'] , save_as= 'K_R2_values'):
     vel_colnames = ['u', 'v', 'w']
     vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
 
 
     print('Peak flow frame:', peak_flow_frame)
-    frames = gt['mean_speed'].shape[0]
+    frames = gt['u'].shape[0]
     k, r2, k_bounds,r2_bounds  = np.zeros(3*frames), np.zeros(3*frames), np.zeros(3*frames), np.zeros(3*frames)
     bounds_mask = bounds.copy()
     core_mask = gt['mask'] - bounds_mask
@@ -1658,7 +1739,7 @@ def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum']
         plt.locator_params(axis='x', nbins=3)
         plt.scatter(np.ones(2)*peak_flow_frame, [k[i*frames+peak_flow_frame],k_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KI_colors['Grey'])
         plt.legend()
-        plt.savefig(f'{eval_dir}/k_vals_{vel}_{set_name}_{save_as}.svg', bbox_inches='tight')
+        plt.savefig(f'{save_as}.svg', bbox_inches='tight')
     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
         plt.clf()
         plt.plot(range(frames), r2[i*frames:i*frames+frames] ,label = r'$R^2$ core', color = 'black')
@@ -1672,7 +1753,7 @@ def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum']
         plt.locator_params(axis='x', nbins=3)
         plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KI_colors['Grey'])
         plt.legend()
-        plt.savefig(f'{eval_dir}/R2_vals_{vel}_M{model_name}_{set_name}_{save_as}_.svg', bbox_inches='tight')
+        plt.savefig(f'{save_as}_.svg', bbox_inches='tight')
 
 
 

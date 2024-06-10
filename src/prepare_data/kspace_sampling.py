@@ -299,6 +299,9 @@ if __name__ == '__main__':
     path_order = f"{data_dir}/{settings['sampling_mask']}"
     path_datamodel = f'{data_dir}/CARDIAC/{model_name}_2mm_step1_static_dynamic.h5'
 
+    load_external_magnitude = False
+    path_magnitude = f'{data_dir}/CARDIAC/{model_name}_2mm_step2_cs_invivoP01_hr.h5'
+
     # Settings
     x_k, y_k, z_k = 72,126,104    # k-space mask size
     n_coils = 8
@@ -308,9 +311,9 @@ if __name__ == '__main__':
     save_cfl   = True
 
     path_csm = f'{save_dir}/csm/csm_64_126_resized'
-    path_ksp = f'{save_dir}/final/ksp/{vel}_kspace_{model_name}_{res}'
-    path_cs  = f'{save_dir}/final/output_{vel}_{model_name}_{res}_fpqr' 
-    path_h5  = f'{save_dir}/final/output_{model_name}_{res}_fpqr' 
+    path_ksp = f'{save_dir}/final/ksp/{vel}_kspace_{model_name}_{res}_magn80'
+    path_cs  = f'{save_dir}/final/output_{vel}_{model_name}_{res}_magn80' 
+    path_h5  = f'{save_dir}/final/output_{model_name}_{res}_magn80' 
 
     velocity_to_set = {'u':1, 'v':2, 'w':3}
 
@@ -338,6 +341,9 @@ if __name__ == '__main__':
     with h5py.File(path_datamodel, mode = 'r' ) as p1:
         spatial_res = p1['u'].shape[1:]
         mask = np.array(p1['mask']).squeeze().astype(np.int8)
+
+        if not load_external_magnitude:
+            magn = np.array(p1['mag_u']).squeeze()*80
         
         venc_u = np.max(np.array(p1[f'u_max']))
         venc_v = np.max(np.array(p1[f'v_max']))
@@ -346,7 +352,9 @@ if __name__ == '__main__':
         print('Venc max', venc_max)
 
         velocity = adjust_image_size_centered(np.asarray(p1[vel]), (np.asarray(p1[vel].shape[0]), *coil_images.shape[:3]))
-        magn     = adjust_image_size_centered(mask, (mask.shape[0], *coil_images.shape[:3]))
+        magn     = adjust_image_size_centered(magn, (mask.shape[0], *coil_images.shape[:3]))
+
+
 
         # normalize velocity to [0, 2pi]
         phase    = (velocity/venc_max)*np.pi + np.pi

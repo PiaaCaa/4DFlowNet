@@ -64,7 +64,7 @@ def add_complex_signal_noise(imgfft, targetSNRdb, add_complex_noise=False):
 
     logSNR = targetSNRdb / 10
     snr = 10 ** logSNR
-    print(f'SNR is {snr:.1f} with target snr is {targetSNRdb}')
+    print(f'SNR is {snr:.1f} with targetsnrdb is {targetSNRdb}')
 
     noise_power = signal_power / snr
 

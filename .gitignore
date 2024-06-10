@@ -26,4 +26,5 @@ src/test3.py
 src/test4.py
 src/prepare_data/cfl.py
 src/test5_cs_cfltoh5.py
+src/test3_merge_cs_data.py
 src/test6_invivomag_to_insilicovel.py
