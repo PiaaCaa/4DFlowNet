@@ -71,8 +71,157 @@ def load_velocity_data(filename, datadict, vel_colnames, load_mask = False):
 
     return datadict
 
+
+#--------------IMG UTILITIES----------------
+# Crop mask to match desired shape * downsample
+def crop_gt(gt, desired_shape):
+    '''
+    This function crops the ground truth to match the desired shape.
+    It assumes that the ground truth is a 4D array.'''
+    crop = np.array(gt.shape) - np.array(desired_shape)
+    if crop[0]:
+        gt = gt[1:-1,:,:]
+    if crop[1]:
+        gt = gt[:,1:-1,:]
+    if crop[2]:
+        gt = gt[:,:,1:-1]
+    if len(crop)>3 and crop[3]:
+        gt = gt[:,:,:, 1:-1]
+        
+    return gt
+
+def random_indices3D(mask, n):
+    '''
+    This function generates random indices in a 3D mask based on a given threshold.
+    It assumes that the mask is a 3D array.
+    The function randomly selects 'n' samples from the mask that have values greater than the threshold.
+    It returns the x, y, and z indices of the selected samples.
+    '''
+
+    assert(len(mask.shape)==3) # Ensure that the mask is 3D
+
+    mask_threshold = 0.9
+    sample_pot = np.where(mask > mask_threshold)  # Find indices where mask values are greater than the threshold
+    rng = np.random.default_rng()
+
+    # Sample 'n' random samples without replacement
+    sample_idx = rng.choice(len(sample_pot[0]), replace=False, size=n)
+
+    # Get the x, y, and z indices of the selected samples
+    x_idx = sample_pot[0][sample_idx]
+    y_idx = sample_pot[1][sample_idx]
+    z_idx = sample_pot[2][sample_idx]
+    return x_idx, y_idx, z_idx
+
+
+def create_dynamic_mask(mask, n_frames):
+    '''
+    from static mask create dynamic mask of shape (n_frames, h, w, d)
+    '''
+    assert(len(mask.shape) == 3), " shape: " + str(mask.shape) # shape of mask is assumed to be 3 dimensional
+    print('Create static temporal mask.')
+    return np.repeat(np.expand_dims(mask, 0), n_frames, axis=0)
+
+
+def get_fluid_region_points(data, binary_mask):
+    '''
+    reshapes input such that we get data of form frames, n_fluid_points
+    '''
+    assert len(binary_mask.shape) == 1 #remove this function from here
+    if len(binary_mask.squeeze().shape) ==3:
+            binary_mask = create_dynamic_mask(binary_mask, data.shape[0])
+        
+    points_in_mask = np.where(binary_mask !=0)
+    return data[:, points_in_mask[1], points_in_mask[2], points_in_mask[3]].reshape(data.shape[0], -1)
+
+def get_fluid_region_points_frame(data_frame, binary_mask):
+    '''
+    returns flattened array with all the fluid boundary points in 3D data frame
+    '''
+    assert len(binary_mask.shape) == 3 # mask should be 3D
+    assert len(data_frame.shape) == 3 # data should be 3D
+        
+    return data_frame[np.where(binary_mask != 0 )].flatten()
+
+def normalize_to_0_1(data):
+    """
+    Normalize data to 0-1 range
+    """
+    return (np.array(data, dtype=float)- np.min(data))/(np.max(data)-np.min(data))
+
+def check_and_normalize(img):
+        if img.dtype == np.uint8:
+                return np.asarray(img, dtype=float)/255
+
+        return (img - np.min(img))/(np.max(img) - np.min(img))
+
+def get_2Dslice(data, frame, axis, slice_idx):
+    '''
+    Returns 2D slice from 4D data with given time frame, axis and index
+    '''
+    if len(data.squeeze().shape) == 3:
+        frame = 0
+        print("Only one frame available: take first frame.")
+        if len(data.shape) == 3:
+            data = np.expand_dims(data, 0)
+        
+    if axis == 0 :
+        return data[frame, slice_idx, :, :]
+    elif axis == 1:
+        return data[frame, :, slice_idx, :]
+    elif axis == 2:
+        return data[frame, :, :, slice_idx]
+    else: 
+        print("Invalid axis! Axis must be 0, 1 or 2")
+
+def get_indices(frames, axis, slice_idx):
+    '''
+    Returns indices for 4D data with given time frames, axis and index
+    '''
+    if axis == 0 :
+        return np.index_exp[frames, slice_idx, :, :]
+    elif axis == 1:
+        return np.index_exp[frames, :, slice_idx, :]
+    elif axis == 2:
+        return np.index_exp[frames, :, :, slice_idx]
+    else: 
+        print("Invalid axis! Axis must be 0, 1 or 2")
+
+def crop_center(img,croph,cropw):
+    '''
+    Crop center of image given size of the new image
+    '''
+    # from https://stackoverflow.com/questions/39382412/crop-center-portion-of-a-numpy-image
+    x,y = img.shape
+    starth = y//2-(croph//2)
+    startw = x//2-(cropw//2)    
+    return img[starth:starth+cropw,startw:startw+cropw]
+
+def get_boundaries(binary_mask):
+    '''
+    returns boundary and core mask given a binary mask. 
+    Note that mask values should be 0 and 1
+    '''
+
+    if (len(binary_mask.shape)==3):
+        print("Create boundary mask for 3D data")
+        core_mask = binary_erosion(binary_mask)
+        boundary_mask = binary_mask - core_mask
+        return boundary_mask, core_mask
+    
+    core_mask       = np.zeros_like(binary_mask)
+    boundary_mask   = np.zeros_like(binary_mask)
+
+    for t in range(binary_mask.shape[0]):
+        core_mask[t, :, :, :] = binary_erosion(binary_mask[t, :, :, :])
+        boundary_mask[t, :, :, :] = binary_mask[t, :, :, :] - core_mask[t, :, :, :]
+
+        
+    assert(np.linalg.norm(binary_mask - (boundary_mask + core_mask))== 0 ) # check that there is no overlap between core and boundary mask
+    return boundary_mask, core_mask
+
+
 # ---------------EVALUATION METRICS---------- 
-# TODO SORT
 
 def calculate_relative_error_np(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_mask):
     '''
@@ -267,22 +416,6 @@ def sigmoid(x):
     '''
     return 1 / (1 + np.exp(-x))
 
-
-
-
-def normalize_to_0_1(data):
-    """
-    Normalize data to 0-1 range
-    """
-    return (np.array(data, dtype=float)- np.min(data))/(np.max(data)-np.min(data))
-
-def check_and_normalize(img):
-        if img.dtype == np.uint8:
-                return np.asarray(img, dtype=float)/255
-
-        return (img - np.min(img))/(np.max(img) - np.min(img))
-
-
 def signaltonoise_fluid_region(data, mask):
     assert len(data.shape) == 3 # look at three dimensional data
     norm_data = normalize_to_0_1(data)
@@ -308,81 +441,6 @@ def peak_signal_to_noise_ratio(img, noisy_img):
     max_pixel = np.max(img)-np.min(img) #since smallest values can be smaller than 0
     psnr = 20*np.log10(max_pixel/np.sqrt(mse))
     return psnr
-
-
-# Crop mask to match desired shape * downsample
-def crop_gt(gt, desired_shape):
-    '''
-    This function crops the ground truth to match the desired shape.
-    It assumes that the ground truth is a 4D array.'''
-    crop = np.array(gt.shape) - np.array(desired_shape)
-    if crop[0]:
-        gt = gt[1:-1,:,:]
-    if crop[1]:
-        gt = gt[:,1:-1,:]
-    if crop[2]:
-        gt = gt[:,:,1:-1]
-    if len(crop)>3 and crop[3]:
-        gt = gt[:,:,:, 1:-1]
-        
-    return gt
-
-def random_indices3D(mask, n):
-    '''
-    This function generates random indices in a 3D mask based on a given threshold.
-    It assumes that the mask is a 3D array.
-    The function randomly selects 'n' samples from the mask that have values greater than the threshold.
-    It returns the x, y, and z indices of the selected samples.
-    '''
-
-    assert(len(mask.shape)==3) # Ensure that the mask is 3D
-
-    mask_threshold = 0.9
-    sample_pot = np.where(mask > mask_threshold)  # Find indices where mask values are greater than the threshold
-    rng = np.random.default_rng()
-
-    # Sample 'n' random samples without replacement
-    sample_idx = rng.choice(len(sample_pot[0]), replace=False, size=n)
-
-    # Get the x, y, and z indices of the selected samples
-    x_idx = sample_pot[0][sample_idx]
-    y_idx = sample_pot[1][sample_idx]
-    z_idx = sample_pot[2][sample_idx]
-    return x_idx, y_idx, z_idx
-
-
-
-def create_dynamic_mask(mask, n_frames):
-    '''
-    from static mask create dynamic mask of shape (n_frames, h, w, d)
-    '''
-    assert(len(mask.shape) == 3), " shape: " + str(mask.shape) # shape of mask is assumed to be 3 dimensional
-    print('Create static temporal mask.')
-    return np.repeat(np.expand_dims(mask, 0), n_frames, axis=0)
-
-
-
-def get_fluid_region_points(data, binary_mask):
-    '''
-    reshapes input such that we get data of form frames, n_fluid_points
-    '''
-    assert len(binary_mask.shape) == 1 #remove this function from here
-    if len(binary_mask.squeeze().shape) ==3:
-            binary_mask = create_dynamic_mask(binary_mask, data.shape[0])
-        
-    points_in_mask = np.where(binary_mask !=0)
-    return data[:, points_in_mask[1], points_in_mask[2], points_in_mask[3]].reshape(data.shape[0], -1)
-
-def get_fluid_region_points_frame(data_frame, binary_mask):
-    '''
-    returns flattened array with all the fluid boundary points in 3D data frame
-    '''
-    assert len(binary_mask.shape) == 3 # mask should be 3D
-    assert len(data_frame.shape) == 3 # data should be 3D
-        
-    return data_frame[np.where(binary_mask != 0 )].flatten()
-
-
 
 
 def compare_mask_and_velocitymask(u_hi, v_hi, w_hi, binary_mask):
@@ -420,7 +478,7 @@ def calculate_k_R2( pred, gt, binary_mask):
     slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(hr_vals, sr_vals)
     return slope,  r_value**2
 
-#---------------PLOTTING----------
+#---------------PLOTTING-------------------
 
 
 def plot_correlation_nobounds(gt, prediction, frame_idx,color_b = KI_colors['Plum'],show_text = False, save_as = None):
@@ -675,70 +733,6 @@ def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KI_colors['Plum
         plt.tight_layout()
         if save_as is not None: plt.savefig(f"{save_as}_LRXYZ_subplots.pdf")
     
-def get_2Dslice(data, frame, axis, slice_idx):
-    '''
-    Returns 2D slice from 4D data with given time frame, axis and index
-    '''
-    if len(data.squeeze().shape) == 3:
-        frame = 0
-        print("Only one frame available: take first frame.")
-        if len(data.shape) == 3:
-            data = np.expand_dims(data, 0)
-        
-    if axis == 0 :
-        return data[frame, slice_idx, :, :]
-    elif axis == 1:
-        return data[frame, :, slice_idx, :]
-    elif axis == 2:
-        return data[frame, :, :, slice_idx]
-    else: 
-        print("Invalid axis! Axis must be 0, 1 or 2")
-
-def get_indices(frames, axis, slice_idx):
-    '''
-    Returns indices for 4D data with given time frames, axis and index
-    '''
-    if axis == 0 :
-        return np.index_exp[frames, slice_idx, :, :]
-    elif axis == 1:
-        return np.index_exp[frames, :, slice_idx, :]
-    elif axis == 2:
-        return np.index_exp[frames, :, :, slice_idx]
-    else: 
-        print("Invalid axis! Axis must be 0, 1 or 2")
-
-def crop_center(img,cropx,cropy):
-    '''
-    Crop center of image given size of the new image
-    '''
-    # from https://stackoverflow.com/questions/39382412/crop-center-portion-of-a-numpy-image
-    y,x = img.shape
-    startx = x//2-(cropx//2)
-    starty = y//2-(cropy//2)    
-    return img[starty:starty+cropy,startx:startx+cropx]
-
-def get_boundaries(binary_mask):
-    '''
-    returns boundary and core mask given a binary mask. 
-    Note that mask values should be 0 and 1
-    '''
-
-    if (len(binary_mask.shape)==3):
-        print("Create boundary mask for 3D data")
-        core_mask = binary_erosion(binary_mask)
-        boundary_mask = binary_mask - core_mask
-        return boundary_mask, core_mask
-    
-    core_mask       = np.zeros_like(binary_mask)
-    boundary_mask   = np.zeros_like(binary_mask)
-
-    for t in range(binary_mask.shape[0]):
-        core_mask[t, :, :, :] = binary_erosion(binary_mask[t, :, :, :])
-        boundary_mask[t, :, :, :] = binary_mask[t, :, :, :] - core_mask[t, :, :, :]
-
-        
-    assert(np.linalg.norm(binary_mask - (boundary_mask + core_mask))== 0 ) # check that there is no overlap between core and boundary mask
-    return boundary_mask, core_mask
 
 def show_temporal_development_line(gt, lr, pred, mask, axis, indices, save_as = "Temporal_development.png"):
     mask[np.where(mask !=0)] = 1
@@ -1013,7 +1007,6 @@ def comparison_plot_slices_over_time(gt_cube,lr_cube,  mask_cube, comparison_lst
         
     fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 50, label = 'velocity (m/s)')
     plt.savefig(save_as,bbox_inches='tight' )
-
 
 def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, comparison_lst, comparison_name, timepoints, min_v, max_v, include_error = False,  figsize = (10, 10), save_as = "Qualitative_frame_seq.png"):
     def row_based_idx(num_rows, num_cols, idx):
