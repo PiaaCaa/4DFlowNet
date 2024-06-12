@@ -1,27 +1,21 @@
 
 from utils.colors import *
 import os
+import sys
 import numpy as np
 import time
-
-# import cv2
 import h5py
 import scipy
-from scipy.signal import convolve2d
-from scipy.ndimage import convolve
-from scipy.interpolate import CubicSpline, RegularGridInterpolator
 from scipy.ndimage import binary_erosion
 from matplotlib import pyplot as plt
+import matplotlib.ticker as ticker
 import pandas as pd
-import sys
+
 sys.path.insert(0, '../src')
 
-
+#---------------LOAD DATA--------------------
 def load_lossdata(file):
-    print('load ', file)
-
-    # columns = ['epoch', 'train_loss', 'val_loss', 'train_accuracy', 'val_accuracy', 'train_mse', 'val_mse', 'train_div', 'val_div', 'l2_reg_loss', 'learning_rate', 'elapsed', 'best_model', 'benchmark_err', 'benchmark_rel_err', 'benchmark_mse', 'benchmark_divloss']
-    # df_loss = pd.read_csv(file,names=columns,  on_bad_lines='warn', skiprows = 4, skipfooter = 4, header = 5, engine = 'python')
+    print('Loading ', file)
     df_loss = pd.read_csv(file,  on_bad_lines='warn', skiprows = 4, skipfooter = 4, header = 5, engine = 'python')
 
     return df_loss
@@ -77,107 +71,8 @@ def load_velocity_data(filename, datadict, vel_colnames, load_mask = False):
 
     return datadict
 
-
-def normalize_to_0_1(data):
-    """
-    Normalize data to 0-1 range
-    """
-    return (np.array(data, dtype=float)- np.min(data))/(np.max(data)-np.min(data))
-
-def signal_to_noise_ratio_db(Px, Pn):
-    #TODO
-    return 10*np.log(Px/Pn)
-
-def signaltonoise_fluid_region(data, mask):
-    assert len(data.shape) == 3 # look at three dimensional data
-    norm_data = normalize_to_0_1(data)
-    return signaltonoise(norm_data[np.where(mask==1)], norm_data[np.where(mask ==0)], axis=0)
-
-def signaltonoise(fluid_region, non_fluid_region, axis=0, ddof=0):
-    '''
-    source: https://stackoverflow.com/questions/63177236/how-to-calculate-signal-to-noise-ratio-using-python
-    '''
-    m  = fluid_region.mean(axis)
-    sd = non_fluid_region.std(axis=axis, ddof=ddof)
-    return np.where(sd == 0, 0, m/sd)
-
-def signaltonoise_db(a, axis=0, ddof=0):
-    return 20*np.log10(np.abs(signaltonoise(a, axis, ddof)))
-
-def peak_signal_to_noise_ratio(img, noisy_img):
-    #TODO
-    ''' 
-    Compute PSNR with PSNR=20log10(max()/RMSE)
-    '''
-    mse = np.mean((img - noisy_img) ** 2)
-    max_pixel = np.max(img)-np.min(img) #since smallest values can be smaller than 0
-    psnr = 20*np.log10(max_pixel/np.sqrt(mse))
-    return psnr
-
-def cv2_psnr(img, noisy_img):
-    '''
-    Compute PSNR with cv2 library
-    '''
-    #TODO check against own method
-    return cv2.PSNR(img, noisy_img)   
-
-
-# Crop mask to match desired shape * downsample
-def crop_gt(gt, desired_shape):
-    '''
-    This function crops the ground truth to match the desired shape.
-    It assumes that the ground truth is a 4D array.'''
-    crop = np.array(gt.shape) - np.array(desired_shape)
-    if crop[0]:
-        gt = gt[1:-1,:,:]
-    if crop[1]:
-        gt = gt[:,1:-1,:]
-    if crop[2]:
-        gt = gt[:,:,1:-1]
-    if len(crop)>3 and crop[3]:
-        gt = gt[:,:,:, 1:-1]
-        
-    return gt
-
-def random_indices3D(mask, n):
-    '''
-    This function generates random indices in a 3D mask based on a given threshold.
-    It assumes that the mask is a 3D array.
-    The function randomly selects 'n' samples from the mask that have values greater than the threshold.
-    It returns the x, y, and z indices of the selected samples.
-    '''
-
-    assert(len(mask.shape)==3) # Ensure that the mask is 3D
-
-    mask_threshold = 0.9
-    sample_pot = np.where(mask > mask_threshold)  # Find indices where mask values are greater than the threshold
-    rng = np.random.default_rng()
-
-    # Sample 'n' random samples without replacement
-    sample_idx = rng.choice(len(sample_pot[0]), replace=False, size=n)
-
-    # Get the x, y, and z indices of the selected samples
-    x_idx = sample_pot[0][sample_idx]
-    y_idx = sample_pot[1][sample_idx]
-    z_idx = sample_pot[2][sample_idx]
-    return x_idx, y_idx, z_idx
-
-
-def sigmoid(x):
-    '''
-    Sigmoid function
-    '''
-    return 1 / (1 + np.exp(-x))
-
-
-def create_dynamic_mask(mask, n_frames):
-    '''
-    from static mask create dynamic mask of shape (n_frames, h, w, d)
-    '''
-    assert(len(mask.shape) == 3), " shape: " + str(mask.shape) # shape of mask is assumed to be 3 dimensional
-    print('Create static temporal mask.')
-    return np.repeat(np.expand_dims(mask, 0), n_frames, axis=0)
-
+# ---------------EVALUATION METRICS---------- 
+# TODO SORT
 
 def calculate_relative_error_np(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_mask):
     '''
@@ -274,27 +169,15 @@ def calculate_relative_error_normalized(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi
     return mean_err
 
 
-def get_fluid_region_points(data, binary_mask):
-    '''
-    reshapes input such that we get data of form frames, n_fluid_points
-    '''
-    assert len(binary_mask.shape) == 1 #remove this function from here
-    if len(binary_mask.squeeze().shape) ==3:
-            binary_mask = create_dynamic_mask(binary_mask, data.shape[0])
-        
-    points_in_mask = np.where(binary_mask !=0)
-    return data[:, points_in_mask[1], points_in_mask[2], points_in_mask[3]].reshape(data.shape[0], -1)
+def cosine_similarity(u_hr, v_hr, w_hr, u_sr, v_sr, w_sr, eps =1e-10):
+    """
+    cosine similarity calculation. 1 if simlar direction, 0 if orthogonal, -1 if opposite direction
+    """
 
-def get_fluid_region_points_frame(data_frame, binary_mask):
-    '''
-    returns flattened array with all the fluid boundary points in 3D data frame
-    '''
-    assert len(binary_mask.shape) == 3 # mask should be 3D
-    assert len(data_frame.shape) == 3 # data should be 3D
-        
-    return data_frame[np.where(binary_mask != 0 )].flatten()
+    return (u_hr*u_sr + v_hr*v_sr + w_hr*w_sr)/(l2_norm(u_hr, v_hr, w_hr)* (l2_norm(u_sr, v_sr, w_sr) )+ eps)
 
-
+def l2_norm(u, v, w):
+    return np.sqrt(u**2 + v**2 + w**2)
 
 def calculate_rmse(pred,gt, binary_mask, return_std= False):
     '''
@@ -361,7 +244,6 @@ def calculate_pointwise_error(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_m
 
     return relative_speed_loss, error_absolut
 
-
 def calculate_mean_speed(u_hi, v_hi, w_hi, binary_mask):
     '''
     Calculate mean speed of given values. Assumption: Values are in m/sec and mean speed returned in cm/sec
@@ -378,6 +260,130 @@ def calculate_mean_speed(u_hi, v_hi, w_hi, binary_mask):
     speed = np.sqrt(np.square(u_hi) + np.square(v_hi) + np.square(w_hi))
     mean_speed = np.sum(speed, axis=(1,2,3)) / (np.sum(binary_mask, axis=(1, 2, 3)) + 1) *100
     return mean_speed
+
+def sigmoid(x):
+    '''
+    Sigmoid function
+    '''
+    return 1 / (1 + np.exp(-x))
+
+
+
+
+def normalize_to_0_1(data):
+    """
+    Normalize data to 0-1 range
+    """
+    return (np.array(data, dtype=float)- np.min(data))/(np.max(data)-np.min(data))
+
+def check_and_normalize(img):
+        if img.dtype == np.uint8:
+                return np.asarray(img, dtype=float)/255
+
+        return (img - np.min(img))/(np.max(img) - np.min(img))
+
+
+def signaltonoise_fluid_region(data, mask):
+    assert len(data.shape) == 3 # look at three dimensional data
+    norm_data = normalize_to_0_1(data)
+    return signaltonoise(norm_data[np.where(mask==1)], norm_data[np.where(mask ==0)], axis=0)
+
+def signaltonoise(fluid_region, non_fluid_region, axis=0, ddof=0):
+    '''
+    source: https://stackoverflow.com/questions/63177236/how-to-calculate-signal-to-noise-ratio-using-python
+    '''
+    m  = fluid_region.mean(axis)
+    sd = non_fluid_region.std(axis=axis, ddof=ddof)
+    return np.where(sd == 0, 0, m/sd)
+
+def signaltonoise_db(a, axis=0, ddof=0):
+    return 20*np.log10(np.abs(signaltonoise(a, axis, ddof)))
+
+def peak_signal_to_noise_ratio(img, noisy_img):
+    #TODO
+    ''' 
+    Compute PSNR with PSNR=20log10(max()/RMSE)
+    '''
+    mse = np.mean((img - noisy_img) ** 2)
+    max_pixel = np.max(img)-np.min(img) #since smallest values can be smaller than 0
+    psnr = 20*np.log10(max_pixel/np.sqrt(mse))
+    return psnr
+
+
+# Crop mask to match desired shape * downsample
+def crop_gt(gt, desired_shape):
+    '''
+    This function crops the ground truth to match the desired shape.
+    It assumes that the ground truth is a 4D array.'''
+    crop = np.array(gt.shape) - np.array(desired_shape)
+    if crop[0]:
+        gt = gt[1:-1,:,:]
+    if crop[1]:
+        gt = gt[:,1:-1,:]
+    if crop[2]:
+        gt = gt[:,:,1:-1]
+    if len(crop)>3 and crop[3]:
+        gt = gt[:,:,:, 1:-1]
+        
+    return gt
+
+def random_indices3D(mask, n):
+    '''
+    This function generates random indices in a 3D mask based on a given threshold.
+    It assumes that the mask is a 3D array.
+    The function randomly selects 'n' samples from the mask that have values greater than the threshold.
+    It returns the x, y, and z indices of the selected samples.
+    '''
+
+    assert(len(mask.shape)==3) # Ensure that the mask is 3D
+
+    mask_threshold = 0.9
+    sample_pot = np.where(mask > mask_threshold)  # Find indices where mask values are greater than the threshold
+    rng = np.random.default_rng()
+
+    # Sample 'n' random samples without replacement
+    sample_idx = rng.choice(len(sample_pot[0]), replace=False, size=n)
+
+    # Get the x, y, and z indices of the selected samples
+    x_idx = sample_pot[0][sample_idx]
+    y_idx = sample_pot[1][sample_idx]
+    z_idx = sample_pot[2][sample_idx]
+    return x_idx, y_idx, z_idx
+
+
+
+def create_dynamic_mask(mask, n_frames):
+    '''
+    from static mask create dynamic mask of shape (n_frames, h, w, d)
+    '''
+    assert(len(mask.shape) == 3), " shape: " + str(mask.shape) # shape of mask is assumed to be 3 dimensional
+    print('Create static temporal mask.')
+    return np.repeat(np.expand_dims(mask, 0), n_frames, axis=0)
+
+
+
+def get_fluid_region_points(data, binary_mask):
+    '''
+    reshapes input such that we get data of form frames, n_fluid_points
+    '''
+    assert len(binary_mask.shape) == 1 #remove this function from here
+    if len(binary_mask.squeeze().shape) ==3:
+            binary_mask = create_dynamic_mask(binary_mask, data.shape[0])
+        
+    points_in_mask = np.where(binary_mask !=0)
+    return data[:, points_in_mask[1], points_in_mask[2], points_in_mask[3]].reshape(data.shape[0], -1)
+
+def get_fluid_region_points_frame(data_frame, binary_mask):
+    '''
+    returns flattened array with all the fluid boundary points in 3D data frame
+    '''
+    assert len(binary_mask.shape) == 3 # mask should be 3D
+    assert len(data_frame.shape) == 3 # data should be 3D
+        
+    return data_frame[np.where(binary_mask != 0 )].flatten()
+
+
+
 
 def compare_mask_and_velocitymask(u_hi, v_hi, w_hi, binary_mask):
     '''
@@ -413,6 +419,9 @@ def calculate_k_R2( pred, gt, binary_mask):
     # calculate linear regression parameters with scipy
     slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(hr_vals, sr_vals)
     return slope,  r_value**2
+
+#---------------PLOTTING----------
+
 
 def plot_correlation_nobounds(gt, prediction, frame_idx,color_b = KI_colors['Plum'],show_text = False, save_as = None):
     '''
@@ -534,9 +543,6 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_b = KI_colors['Plu
         plt.tight_layout()
         if save_as is not None: plt.savefig(f"{save_as}_all_notext_LRXYZ_subplots.pdf")
     
-
-
-
 def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KI_colors['Plum'], save_as = None):
     '''
     Plot correlation plot between ground truth and prediction at a given frame
@@ -669,11 +675,6 @@ def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KI_colors['Plum
         plt.tight_layout()
         if save_as is not None: plt.savefig(f"{save_as}_LRXYZ_subplots.pdf")
     
-
-    
-
-
-
 def get_2Dslice(data, frame, axis, slice_idx):
     '''
     Returns 2D slice from 4D data with given time frame, axis and index
@@ -705,69 +706,6 @@ def get_indices(frames, axis, slice_idx):
         return np.index_exp[frames, :, :, slice_idx]
     else: 
         print("Invalid axis! Axis must be 0, 1 or 2")
-
-#TODO:merge with other function? 
-def comparison_plot_slices_over_time(gt_cube,lr_cube,  mask_cube, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v, save_as = "Qualitative_Frame_comparison.png", figsize=(10,10)):
-    """ Qualitative comparison of different network models over timeframe for one velocity direction"""
-
-    def row_based_idx(num_rows, num_cols, idx):
-        return np.arange(1, num_rows*num_cols + 1).reshape((num_rows, num_cols)).transpose().flatten()[idx-1]
-    
-    T = 2 + len(comparison_lst)
-    N = len(timepoints)
-
-    fig, axes = plt.subplots(nrows=T, ncols=N, constrained_layout=True, figsize=figsize)
-
-    i = 1
-    idxs = get_indices(timepoints, axis, idx)
-    gt_cube = gt_cube[idxs]
-    mask_cube = mask_cube[idxs]
-    
-    # find same range to plot velocity images to
-    min_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.01)
-    max_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.99)
-
-        
-    for j,t in enumerate(timepoints):
-        gt_slice = gt_cube[j]
-
-        # low resolution
-        lr_slice = np.zeros_like(gt_slice)
-            
-        plt.subplot(T, N, row_based_idx(T, N, i))
-        if t%2 == 0:
-            lr_slice = lr_cube[get_indices(t//2, axis=axis, slice_idx=idx )]
-            plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
-            if i == 1: plt.ylabel("LR")
-            plt.xticks([])
-            plt.yticks([])
-        plt.title('frame '+ str(t))
-        plt.xticks([])
-        plt.yticks([])
-        i +=1
-
-        # ground truth
-        plt.subplot(T, N, row_based_idx(T, N, i))
-        plt.imshow(gt_slice, vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
-        if i == 2: plt.ylabel("HR")
-        plt.xticks([])
-        plt.yticks([])
-        i +=1	
-
-        # plot model predictions
-        for comp, name in zip(comparison_lst, comparison_name):
-            
-            plt.subplot(T, N, row_based_idx(T, N, i))
-            im = plt.imshow(comp[idxs][j], vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
-            if i-1 == (i-1)%T: plt.ylabel(name)
-            plt.xticks([])
-            plt.yticks([])
-            i +=1
-        
-    fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 50, label = 'velocity (m/s)')
-    plt.savefig(save_as,bbox_inches='tight' )
-
-
 
 def crop_center(img,cropx,cropy):
     '''
@@ -801,142 +739,6 @@ def get_boundaries(binary_mask):
         
     assert(np.linalg.norm(binary_mask - (boundary_mask + core_mask))== 0 ) # check that there is no overlap between core and boundary mask
     return boundary_mask, core_mask
-
-
-def plot_spatial_comparison(low_res, ground_truth, prediction, frame_idx = 9, axis=1, slice_idx = 50):
-
-    if slice_idx% 2 != 0 : print("Slice index should be even!")
-
-    patch = [40, 40]
-
-    vel_colnames = ['u', 'v', 'w', 'div_x']#, 'divergence_y', 'divergence_z']
-    vel_plotnames = ['Vx', r'Vy', r'Vz']
-    n = 1
-
-    #calculate divergence
-    ground_truth['div_x'], ground_truth['div_y'], ground_truth['div_z'] = np.asarray(calculate_divergence(ground_truth['u'], ground_truth['v'], ground_truth['w']))
-    low_res['div_x'], low_res['div_y'], low_res['div_z'] = np.asarray(calculate_divergence(low_res['u'], low_res['v'], low_res['w']))
-    prediction['div_x'], prediction['div_y'], prediction['div_z'] = np.asarray(calculate_divergence(prediction['u'], prediction['v'], prediction['w']))
-
-
-    for i, vel in enumerate(vel_colnames):
-        slice_lr = get_2Dslice(low_res[vel], frame_idx, axis, slice_idx//2)
-        slice_gt = get_2Dslice(ground_truth[vel], frame_idx, axis, slice_idx)
-        slice_sr = get_2Dslice(prediction[vel], frame_idx, axis, slice_idx)
-
-        slice_lr = crop_center(slice_lr, patch[0]//2, patch[1]//2)
-        slice_gt = crop_center(slice_gt, patch[0], patch[1])
-        slice_sr = crop_center(slice_sr, patch[0], patch[1])
-
-        max_v = np.max(np.stack((np.resize(slice_lr, slice_gt.shape), slice_gt, slice_sr)))
-        min_v = np.min(np.stack((np.resize(slice_lr, slice_gt.shape), slice_gt, slice_sr)))
-        
-        plt.subplot(len(vel_colnames), 4, n)
-        plt.imshow(slice_lr, vmin = min_v, vmax = max_v, cmap='jet')
-        if i == 0: plt.title("LR")
-        plt.xticks([])
-        plt.yticks([])
-        plt.ylabel(vel)
-
-        plt.subplot(len(vel_colnames), 4, n+1)
-        plt.imshow(slice_gt, vmin = min_v, vmax = max_v, cmap='jet')
-        if i == 0: plt.title("HR")
-        plt.xticks([])
-        plt.yticks([])
-
-        plt.subplot(len(vel_colnames), 4, n+2)
-        plt.imshow(slice_sr, vmin = min_v, vmax = max_v, cmap='jet')
-        if i == 0: plt.title("4DFlowNet")
-        plt.xticks([])
-        plt.yticks([])
-
-        #TODO real linear interpolation
-        plt.subplot(len(vel_colnames), 4, n+3)
-        plt.imshow(slice_lr, vmin = min_v, vmax = max_v, cmap='jet', interpolation='bilinear')
-        if i == 0: plt.title("bilinear")
-        plt.xticks([])
-        plt.yticks([])
-        
-        # plt.subplot(len(vel_colnames), 5, n+4)
-        # plt.imshow(slice_lr, vmin = min_v, vmax = max_v, cmap='jet', interpolation='bicubic')
-        # if i == 0: plt.title("bicubic")
-        # plt.xticks([])
-        # plt.yticks([])
-
-        plt.colorbar()
-        n+=4
-
-    #fig.subplots_adjust(wspace=0, hspace=0)
-    plt.savefig("4DFlowNet/results/plots/Comparison_prediction.png")
-
-
-def plot_comparison_temporal(low_res, ground_truth, prediction, frame_idx = 9, axis=1, slice_idx = 50, save_as = "visualize_interporalion_comparison.png"):
-    #TODO check for downsampling rate and create frame idx from there for lowres
-
-    if frame_idx% 2 != 0 : print("Slice index should be even!")
-
-    patch = [40, 40]
-
-    vel_colnames = ['u', 'v', 'w', 'div_x']#, 'divergence_y', 'divergence_z']
-    vel_plotnames = ['Vx', r'Vy', r'Vz']
-    n = 1
-
-    #calculate divergence
-    ground_truth['div_x'], ground_truth['div_y'], ground_truth['div_z'] = np.asarray(calculate_divergence(ground_truth['u'], ground_truth['v'], ground_truth['w']))
-    low_res['div_x'], low_res['div_y'], low_res['div_z'] = np.asarray(calculate_divergence(low_res['u'], low_res['v'], low_res['w']))
-    prediction['div_x'], prediction['div_y'], prediction['div_z'] = np.asarray(calculate_divergence(prediction['u'], prediction['v'], prediction['w']))
-
-
-    for i, vel in enumerate(vel_colnames):
-        #TODO change this with downsampling rate
-        slice_lr = get_2Dslice(low_res[vel], frame_idx//2, axis, slice_idx)
-        slice_gt = get_2Dslice(ground_truth[vel], frame_idx, axis, slice_idx)
-        slice_sr = get_2Dslice(prediction[vel], frame_idx, axis, slice_idx)
-
-        slice_lr = crop_center(slice_lr, patch[0], patch[1])
-        slice_gt = crop_center(slice_gt, patch[0], patch[1])
-        slice_sr = crop_center(slice_sr, patch[0], patch[1])
-
-        max_v = np.max(np.stack((np.resize(slice_lr, slice_gt.shape), slice_gt, slice_sr)))
-        min_v = np.min(np.stack((np.resize(slice_lr, slice_gt.shape), slice_gt, slice_sr)))
-        
-        plt.subplot(len(vel_colnames), 4, n)
-        plt.imshow(slice_lr, vmin = min_v, vmax = max_v, cmap='jet')
-        if i == 0: plt.title("LR")
-        plt.xticks([])
-        plt.yticks([])
-        plt.ylabel(vel)
-
-        plt.subplot(len(vel_colnames), 4, n+1)
-        plt.imshow(slice_gt, vmin = min_v, vmax = max_v, cmap='jet')
-        if i == 0: plt.title("HR")
-        plt.xticks([])
-        plt.yticks([])
-
-        plt.subplot(len(vel_colnames), 4, n+2)
-        plt.imshow(slice_sr, vmin = min_v, vmax = max_v, cmap='jet')
-        if i == 0: plt.title("4DFlowNet")
-        plt.xticks([])
-        plt.yticks([])
-
-        #TODO real linear interpolation
-        plt.subplot(len(vel_colnames), 4, n+3)
-        plt.imshow(slice_lr, vmin = min_v, vmax = max_v, cmap='jet', interpolation='bilinear')
-        if i == 0: plt.title("bilinear")
-        plt.xticks([])
-        plt.yticks([])
-        
-        # plt.subplot(len(vel_colnames), 5, n+4)
-        # plt.imshow(slice_lr, vmin = min_v, vmax = max_v, cmap='jet', interpolation='bicubic')
-        # if i == 0: plt.title("bicubic")
-        # plt.xticks([])
-        # plt.yticks([])
-
-        plt.colorbar()
-        n+=4
-
-    #fig.subplots_adjust(wspace=0, hspace=0)
-    plt.savefig(save_as)
 
 def show_temporal_development_line(gt, lr, pred, mask, axis, indices, save_as = "Temporal_development.png"):
     mask[np.where(mask !=0)] = 1
@@ -1084,9 +886,136 @@ def make_3D_quiver_plot(data,mask,  frame, set_to_zero=0.9):
         # plt.zlabel('z')
         # plt.show()
 
+def plot_spatial_comparison(low_res, ground_truth, prediction, frame_idx = 9, axis=1, slice_idx = 50):
+
+    if slice_idx% 2 != 0 : print("Slice index should be even!")
+
+    patch = [40, 40]
+
+    vel_colnames = ['u', 'v', 'w', 'div_x']#, 'divergence_y', 'divergence_z']
+    vel_plotnames = ['Vx', r'Vy', r'Vz']
+    n = 1
+
+    #calculate divergence
+    ground_truth['div_x'], ground_truth['div_y'], ground_truth['div_z'] = np.asarray(calculate_divergence(ground_truth['u'], ground_truth['v'], ground_truth['w']))
+    low_res['div_x'], low_res['div_y'], low_res['div_z'] = np.asarray(calculate_divergence(low_res['u'], low_res['v'], low_res['w']))
+    prediction['div_x'], prediction['div_y'], prediction['div_z'] = np.asarray(calculate_divergence(prediction['u'], prediction['v'], prediction['w']))
 
 
-def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, comparison_lst, comparison_name, timepoints, min_v, max_v, figsize = (10, 10), save_as = "Qualitative_frame_seq.png"):
+    for i, vel in enumerate(vel_colnames):
+        slice_lr = get_2Dslice(low_res[vel], frame_idx, axis, slice_idx//2)
+        slice_gt = get_2Dslice(ground_truth[vel], frame_idx, axis, slice_idx)
+        slice_sr = get_2Dslice(prediction[vel], frame_idx, axis, slice_idx)
+
+        slice_lr = crop_center(slice_lr, patch[0]//2, patch[1]//2)
+        slice_gt = crop_center(slice_gt, patch[0], patch[1])
+        slice_sr = crop_center(slice_sr, patch[0], patch[1])
+
+        max_v = np.max(np.stack((np.resize(slice_lr, slice_gt.shape), slice_gt, slice_sr)))
+        min_v = np.min(np.stack((np.resize(slice_lr, slice_gt.shape), slice_gt, slice_sr)))
+        
+        plt.subplot(len(vel_colnames), 4, n)
+        plt.imshow(slice_lr, vmin = min_v, vmax = max_v, cmap='jet')
+        if i == 0: plt.title("LR")
+        plt.xticks([])
+        plt.yticks([])
+        plt.ylabel(vel)
+
+        plt.subplot(len(vel_colnames), 4, n+1)
+        plt.imshow(slice_gt, vmin = min_v, vmax = max_v, cmap='jet')
+        if i == 0: plt.title("HR")
+        plt.xticks([])
+        plt.yticks([])
+
+        plt.subplot(len(vel_colnames), 4, n+2)
+        plt.imshow(slice_sr, vmin = min_v, vmax = max_v, cmap='jet')
+        if i == 0: plt.title("4DFlowNet")
+        plt.xticks([])
+        plt.yticks([])
+
+        #TODO real linear interpolation
+        plt.subplot(len(vel_colnames), 4, n+3)
+        plt.imshow(slice_lr, vmin = min_v, vmax = max_v, cmap='jet', interpolation='bilinear')
+        if i == 0: plt.title("bilinear")
+        plt.xticks([])
+        plt.yticks([])
+        
+        # plt.subplot(len(vel_colnames), 5, n+4)
+        # plt.imshow(slice_lr, vmin = min_v, vmax = max_v, cmap='jet', interpolation='bicubic')
+        # if i == 0: plt.title("bicubic")
+        # plt.xticks([])
+        # plt.yticks([])
+
+        plt.colorbar()
+        n+=4
+
+    #fig.subplots_adjust(wspace=0, hspace=0)
+    plt.savefig("4DFlowNet/results/plots/Comparison_prediction.png")
+
+
+#TODO:merge with other function? 
+def comparison_plot_slices_over_time(gt_cube,lr_cube,  mask_cube, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v, save_as = "Qualitative_Frame_comparison.png", figsize=(10,10)):
+    """ Qualitative comparison of different network models over timeframe for one velocity direction"""
+
+    def row_based_idx(num_rows, num_cols, idx):
+        return np.arange(1, num_rows*num_cols + 1).reshape((num_rows, num_cols)).transpose().flatten()[idx-1]
+    
+    T = 2 + len(comparison_lst)
+    N = len(timepoints)
+
+    fig, axes = plt.subplots(nrows=T, ncols=N, constrained_layout=True, figsize=figsize)
+
+    i = 1
+    idxs = get_indices(timepoints, axis, idx)
+    gt_cube = gt_cube[idxs]
+    mask_cube = mask_cube[idxs]
+    
+    # find same range to plot velocity images to
+    min_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.01)
+    max_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.99)
+
+        
+    for j,t in enumerate(timepoints):
+        gt_slice = gt_cube[j]
+
+        # low resolution
+        lr_slice = np.zeros_like(gt_slice)
+            
+        plt.subplot(T, N, row_based_idx(T, N, i))
+        if t%2 == 0:
+            lr_slice = lr_cube[get_indices(t//2, axis=axis, slice_idx=idx )]
+            plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
+            if i == 1: plt.ylabel("LR")
+            plt.xticks([])
+            plt.yticks([])
+        plt.title('frame '+ str(t))
+        plt.xticks([])
+        plt.yticks([])
+        i +=1
+
+        # ground truth
+        plt.subplot(T, N, row_based_idx(T, N, i))
+        plt.imshow(gt_slice, vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
+        if i == 2: plt.ylabel("HR")
+        plt.xticks([])
+        plt.yticks([])
+        i +=1	
+
+        # plot model predictions
+        for comp, name in zip(comparison_lst, comparison_name):
+            
+            plt.subplot(T, N, row_based_idx(T, N, i))
+            im = plt.imshow(comp[idxs][j], vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
+            if i-1 == (i-1)%T: plt.ylabel(name)
+            plt.xticks([])
+            plt.yticks([])
+            i +=1
+        
+    fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 50, label = 'velocity (m/s)')
+    plt.savefig(save_as,bbox_inches='tight' )
+
+
+def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, comparison_lst, comparison_name, timepoints, min_v, max_v, include_error = False,  figsize = (10, 10), save_as = "Qualitative_frame_seq.png"):
     def row_based_idx(num_rows, num_cols, idx):
         return np.arange(1, num_rows*num_cols + 1).reshape((num_rows, num_cols)).transpose().flatten()[idx-1]
 
@@ -1094,12 +1023,14 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
 
     ups_factor = 2
     cmap = 'viridis'
+    fontsize = 16
 
-    T = 4 + len(comparison_lst)
+    T = 3 + len(comparison_lst)
     N = len(timepoints)
+    if include_error: T += 1
 
-    fig = plt.figure(figsize=figsize)
-    fig, axes = plt.subplots(nrows=T, ncols=N, constrained_layout=True)
+    # fig = plt.figure(figsize=figsize)
+    fig, axes = plt.subplots(nrows=T, ncols=N, constrained_layout=True, figsize=figsize)
 
     min_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.01)
     max_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.99)
@@ -1114,25 +1045,25 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
         if t%ups_factor == 0:
             lr_slice = lr_cube[j//2]
             plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap=cmap, aspect='auto')
-            if img_cnt == 1: plt.ylabel("LR")
+            if img_cnt == 1: plt.ylabel("LR", fontsize = fontsize)
             plt.xticks([])
             plt.yticks([])
  
-        plt.title('frame '+ str(t))
+        # plt.title('frame '+ str(t))
         plt.xticks([])
         plt.yticks([])
         
         img_cnt +=1
         plt.subplot(T, N, row_based_idx(T, N, img_cnt))
         plt.imshow(gt_cube[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap, aspect='auto')
-        if img_cnt == 2: plt.ylabel("HR")
+        if img_cnt == 2: plt.ylabel("HR", fontsize = fontsize)
         plt.xticks([])
         plt.yticks([])
 
         img_cnt +=1
         plt.subplot(T, N, row_based_idx(T, N, img_cnt))
         im = plt.imshow(pred_cube[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap,aspect='auto')
-        if img_cnt == 3: plt.ylabel("4DFlowNet")
+        if img_cnt == 3: plt.ylabel("SR", fontsize = fontsize)
         plt.xticks([])
         plt.yticks([])
 
@@ -1141,28 +1072,209 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
             img_cnt +=1
             plt.subplot(T, N, row_based_idx(T, N, img_cnt))
             im = plt.imshow(comp[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap, aspect='auto')
-            if img_cnt-1 == (img_cnt-1)%T: plt.ylabel(name)
+            if img_cnt-1 == (img_cnt-1)%T: plt.ylabel(name, fontsize = fontsize)
             plt.xticks([])
             plt.yticks([])
         
 
         img_cnt +=1
-        plt.subplot(T, N, row_based_idx(T, N, img_cnt))
-        err_img = plt.imshow(abserror_cube[j, :, :],vmin=min_rel_error, vmax=max_rel_error, cmap=cmap,aspect='auto')
-        if img_cnt-1 == (img_cnt-1)%T: plt.ylabel("abs. error")
-        plt.xticks([])
-        plt.yticks([])
-        if t == timepoints[-1]:
-            plt.colorbar(err_img, ax = axes[-1], aspect = 10, label = 'abs. error (m/s)')
+        if include_error:
+            plt.subplot(T, N, row_based_idx(T, N, img_cnt))
+            err_img = plt.imshow(abserror_cube[j, :, :],vmin=min_rel_error, vmax=max_rel_error, cmap=cmap,aspect='auto')
+            if img_cnt-1 == (img_cnt-1)%T: plt.ylabel("abs. error", fontsize = fontsize)
+            plt.xticks([])
+            plt.yticks([])
+            if t == timepoints[-1]:
+                plt.colorbar(err_img, ax = axes[-1], aspect = 10, label = 'abs. error (m/s)')
 
-        
-        img_cnt +=1
-
-    fig.colorbar(im, ax=axes.ravel()[:-N].tolist(), aspect = 35, label = 'velocity (m/s)')
+            img_cnt +=1
+    if include_error:
+        cbar = plt.colorbar(im, ax=axes.ravel()[:-N].tolist(), aspect = 35, label = 'velocity (m/s)')
+    else:
+        cbar = plt.colorbar(im, ax=axes.ravel().tolist(), aspect = 35, label = 'velocity (m/s)')
+    cbar.set_label('velocity (m/s)', fontsize=fontsize)
+    cbar.locator = ticker.MaxNLocator(nbins=4)  # Set the maximum number of ticks
+    cbar.update_ticks()
+    cbar.ax.tick_params(labelsize=fontsize)
     plt.savefig(save_as,bbox_inches='tight' )
 
+def plot_slices_over_time(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v,exclude_rel_error = True, save_as = "Frame_comparison.png", figsize = (30,20)):
+    def row_based_idx(num_rows, num_cols, idx):
+        return np.arange(1, num_rows*num_cols + 1).reshape((num_rows, num_cols)).transpose().flatten()[idx-1]
+
+    
+    T = 3 + len(comparison_lst)  #len(timepoints)
+    N = len(timepoints)  #4 + len(comparison_lst)
+    print(T, N)
+    if exclude_rel_error: T -=1
+    print(T, N)
+
+    # fig = plt.figure(figsize=(10,10))
+    fig, axes = plt.subplots(nrows=T, ncols=N, constrained_layout=True, figsize=figsize)
+
+    i = 1
+    idxs = get_indices(timepoints, axis, idx)
+    gt_cube = gt_cube[idxs]
+    mask_cube = mask_cube[idxs]
+    
+    # pred_cube = pred_cube[idxs]
+    #lr = lr[idxs]
+
+    min_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.01)
+    max_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.99)
+    if not exclude_rel_error:
+        rel_error_slices =[get_2Dslice(rel_error_cube, t, axis, idx) for t in timepoints]
+        min_rel_error = np.min(np.array(rel_error_slices))
+        max_rel_error = np.max(np.array(rel_error_slices))
+    for j,t in enumerate(timepoints):
+        
+        gt_slice = gt_cube[j]
+        # pred_slice = pred_cube[j]
+
+        lr_slice = np.zeros_like(gt_slice)
+        if t%2 == 0: lr_slice = get_2Dslice(lr_cube, t//2, axis=axis, slice_idx=idx )
+        plt.subplot(T, N, row_based_idx(T, N, i))
+
+        if t%2 == 0:
+            plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
+            if i == 1: plt.ylabel("LR")
+            plt.xticks([])
+            plt.yticks([])
+            
+        plt.title('frame '+ str(t))
+        plt.xticks([])
+        plt.yticks([])
+        # plt.axis('off')
+        
+
+        i +=1
+        plt.subplot(T, N, row_based_idx(T, N, i))
+        plt.imshow(gt_slice, vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
+        if i == 2: plt.ylabel("HR")
+        plt.xticks([])
+        plt.yticks([])
+
+        # i +=1
+        # plt.subplot(T, N, row_based_idx(T, N, i))
+        # plt.imshow(pred_slice, vmin = min_v, vmax = max_v, cmap='viridis',aspect='auto')
+        # if i == 3: plt.ylabel("4DFlowNet")
+        # plt.xticks([])
+        # plt.yticks([])
 
 
+        for comp, name in zip(comparison_lst, comparison_name):
+            i +=1
+            plt.subplot(T, N, row_based_idx(T, N, i))
+            im = plt.imshow(get_2Dslice(comp,t, axis=axis, slice_idx=idx), vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
+            if i-1 == (i-1)%T: plt.ylabel(name)
+            plt.xticks([])
+            plt.yticks([])
+
+        if not exclude_rel_error:
+            i +=1
+            plt.subplot(T, N, row_based_idx(T, N, i))
+            re_img = plt.imshow(get_2Dslice(rel_error_cube, t, axis, idx),vmin=min_rel_error, vmax=max_rel_error, cmap='viridis',aspect='auto')
+            if i-1 == (i-1)%T: plt.ylabel("abs. error")
+            plt.xticks([])
+            plt.yticks([])
+            if t == timepoints[-1]:
+                plt.colorbar(re_img, ax = axes[-1], aspect = 10, label = 'abs. error ')
+
+        
+        i +=1
+
+    fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 50, label = 'velocity (m/s)')
+    plt.savefig(save_as,bbox_inches='tight' )
+    # plt.tight_layout()
+
+def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v,exclude_rel_error = True, save_as = "Frame_comparison.png", figsize = (30,20)):
+    def row_based_idx(num_rows, num_cols, idx):
+        return np.arange(1, num_rows*num_cols + 1).reshape((num_rows, num_cols)).transpose().flatten()[idx-1]
+
+    
+    T = 3 + len(comparison_lst)#len(timepoints)
+    N = len(timepoints)#4 + len(comparison_lst)
+    print(T, N)
+    if exclude_rel_error: T -=1
+    print(T, N)
+
+    # fig = plt.figure(figsize=(10,10))
+    fig, axes = plt.subplots(nrows=T, ncols=N, constrained_layout=True, figsize=figsize)
+
+    i = 1
+    idxs = get_indices(timepoints, axis, idx)
+    gt_cube = gt_cube[idxs]
+    mask_cube = mask_cube[idxs]
+    
+    # pred_cube = pred_cube[idxs]
+    #lr = lr[idxs]
+
+    # min_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.01)
+    # max_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.99)
+    if not exclude_rel_error:
+        rel_error_slices =[get_2Dslice(rel_error_cube, t, axis, idx) for t in timepoints]
+        min_rel_error = np.min(np.array(rel_error_slices))
+        max_rel_error = np.max(np.array(rel_error_slices))
+    for j,t in enumerate(timepoints):
+        
+        gt_slice = gt_cube[j]
+        # pred_slice = pred_cube[j]
+
+        lr_slice = np.zeros_like(gt_slice)
+        if t%2 == 0: lr_slice = get_2Dslice(lr_cube, t//2, axis=axis, slice_idx=idx )
+        plt.subplot(T, N, row_based_idx(T, N, i))
+
+        if t%2 == 0:
+            plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
+            if i == 1: plt.ylabel("LR")
+            plt.xticks([])
+            plt.yticks([])
+            
+        plt.title('frame '+ str(t))
+        plt.xticks([])
+        plt.yticks([])
+        # plt.axis('off')
+        
+
+        i +=1
+        plt.subplot(T, N, row_based_idx(T, N, i))
+        plt.imshow(gt_slice, vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
+        if i == 2: plt.ylabel("HR")
+        plt.xticks([])
+        plt.yticks([])
+
+        # i +=1
+        # plt.subplot(T, N, row_based_idx(T, N, i))
+        # plt.imshow(pred_slice, vmin = min_v, vmax = max_v, cmap='viridis',aspect='auto')
+        # if i == 3: plt.ylabel("4DFlowNet")
+        # plt.xticks([])
+        # plt.yticks([])
+
+
+        for comp, name in zip(comparison_lst, comparison_name):
+            i +=1
+            plt.subplot(T, N, row_based_idx(T, N, i))
+            im = plt.imshow(get_2Dslice(comp,t, axis=axis, slice_idx=idx), vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
+            if i-1 == (i-1)%T: plt.ylabel(name)
+            plt.xticks([])
+            plt.yticks([])
+
+        if not exclude_rel_error:
+            i +=1
+            plt.subplot(T, N, row_based_idx(T, N, i))
+            re_img = plt.imshow(get_2Dslice(rel_error_cube, t, axis, idx),vmin=min_rel_error, vmax=max_rel_error, cmap='viridis',aspect='auto')
+            if i-1 == (i-1)%T: plt.ylabel("abs. error")
+            plt.xticks([])
+            plt.yticks([])
+            if t == timepoints[-1]:
+                plt.colorbar(re_img, ax = axes[-1], aspect = 10, label = 'abs. error ')
+
+        
+        i +=1
+    # plt.tight_layout()
+    # plt.subplots_adjust(wspace=0, hspace=0)
+    fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 40, label = 'velocity (m/s)')
+    plt.savefig(save_as,bbox_inches='tight' )
 
 
 def show_timeframes(gt,lr,  pred,mask, rel_error, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v,save_as = "Frame_comparison.png"):
@@ -1413,258 +1525,6 @@ def create_temporal_comparison_gif(lr, hr, pred, vel, save_as):
     generate_gif_volume(combined_image[:,idx, :, : ], axis = 0, save_as = save_as)
 
 
-def plot_slices_over_time(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v,exclude_rel_error = True, save_as = "Frame_comparison.png", figsize = (30,20)):
-    def row_based_idx(num_rows, num_cols, idx):
-        return np.arange(1, num_rows*num_cols + 1).reshape((num_rows, num_cols)).transpose().flatten()[idx-1]
-
-    
-    T = 3 + len(comparison_lst)  #len(timepoints)
-    N = len(timepoints)  #4 + len(comparison_lst)
-    print(T, N)
-    if exclude_rel_error: T -=1
-    print(T, N)
-
-    # fig = plt.figure(figsize=(10,10))
-    fig, axes = plt.subplots(nrows=T, ncols=N, constrained_layout=True, figsize=figsize)
-
-    i = 1
-    idxs = get_indices(timepoints, axis, idx)
-    gt_cube = gt_cube[idxs]
-    mask_cube = mask_cube[idxs]
-    
-    # pred_cube = pred_cube[idxs]
-    #lr = lr[idxs]
-
-    min_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.01)
-    max_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.99)
-    if not exclude_rel_error:
-        rel_error_slices =[get_2Dslice(rel_error_cube, t, axis, idx) for t in timepoints]
-        min_rel_error = np.min(np.array(rel_error_slices))
-        max_rel_error = np.max(np.array(rel_error_slices))
-    for j,t in enumerate(timepoints):
-        
-        gt_slice = gt_cube[j]
-        # pred_slice = pred_cube[j]
-
-        lr_slice = np.zeros_like(gt_slice)
-        if t%2 == 0: lr_slice = get_2Dslice(lr_cube, t//2, axis=axis, slice_idx=idx )
-        plt.subplot(T, N, row_based_idx(T, N, i))
-
-        if t%2 == 0:
-            plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
-            if i == 1: plt.ylabel("LR")
-            plt.xticks([])
-            plt.yticks([])
-            
-        plt.title('frame '+ str(t))
-        plt.xticks([])
-        plt.yticks([])
-        # plt.axis('off')
-        
-
-        i +=1
-        plt.subplot(T, N, row_based_idx(T, N, i))
-        plt.imshow(gt_slice, vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
-        if i == 2: plt.ylabel("HR")
-        plt.xticks([])
-        plt.yticks([])
-
-        # i +=1
-        # plt.subplot(T, N, row_based_idx(T, N, i))
-        # plt.imshow(pred_slice, vmin = min_v, vmax = max_v, cmap='viridis',aspect='auto')
-        # if i == 3: plt.ylabel("4DFlowNet")
-        # plt.xticks([])
-        # plt.yticks([])
-
-
-        for comp, name in zip(comparison_lst, comparison_name):
-            i +=1
-            plt.subplot(T, N, row_based_idx(T, N, i))
-            im = plt.imshow(get_2Dslice(comp,t, axis=axis, slice_idx=idx), vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
-            if i-1 == (i-1)%T: plt.ylabel(name)
-            plt.xticks([])
-            plt.yticks([])
-
-        if not exclude_rel_error:
-            i +=1
-            plt.subplot(T, N, row_based_idx(T, N, i))
-            re_img = plt.imshow(get_2Dslice(rel_error_cube, t, axis, idx),vmin=min_rel_error, vmax=max_rel_error, cmap='viridis',aspect='auto')
-            if i-1 == (i-1)%T: plt.ylabel("abs. error")
-            plt.xticks([])
-            plt.yticks([])
-            if t == timepoints[-1]:
-                plt.colorbar(re_img, ax = axes[-1], aspect = 10, label = 'abs. error ')
-
-        
-        i +=1
-
-    fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 50, label = 'velocity (m/s)')
-    plt.savefig(save_as,bbox_inches='tight' )
-    # plt.tight_layout()
-
-def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v,exclude_rel_error = True, save_as = "Frame_comparison.png", figsize = (30,20)):
-    def row_based_idx(num_rows, num_cols, idx):
-        return np.arange(1, num_rows*num_cols + 1).reshape((num_rows, num_cols)).transpose().flatten()[idx-1]
-
-    
-    T = 3 + len(comparison_lst)#len(timepoints)
-    N = len(timepoints)#4 + len(comparison_lst)
-    print(T, N)
-    if exclude_rel_error: T -=1
-    print(T, N)
-
-    # fig = plt.figure(figsize=(10,10))
-    fig, axes = plt.subplots(nrows=T, ncols=N, constrained_layout=True, figsize=figsize)
-
-    i = 1
-    idxs = get_indices(timepoints, axis, idx)
-    gt_cube = gt_cube[idxs]
-    mask_cube = mask_cube[idxs]
-    
-    # pred_cube = pred_cube[idxs]
-    #lr = lr[idxs]
-
-    # min_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.01)
-    # max_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.99)
-    if not exclude_rel_error:
-        rel_error_slices =[get_2Dslice(rel_error_cube, t, axis, idx) for t in timepoints]
-        min_rel_error = np.min(np.array(rel_error_slices))
-        max_rel_error = np.max(np.array(rel_error_slices))
-    for j,t in enumerate(timepoints):
-        
-        gt_slice = gt_cube[j]
-        # pred_slice = pred_cube[j]
-
-        lr_slice = np.zeros_like(gt_slice)
-        if t%2 == 0: lr_slice = get_2Dslice(lr_cube, t//2, axis=axis, slice_idx=idx )
-        plt.subplot(T, N, row_based_idx(T, N, i))
-
-        if t%2 == 0:
-            plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
-            if i == 1: plt.ylabel("LR")
-            plt.xticks([])
-            plt.yticks([])
-            
-        plt.title('frame '+ str(t))
-        plt.xticks([])
-        plt.yticks([])
-        # plt.axis('off')
-        
-
-        i +=1
-        plt.subplot(T, N, row_based_idx(T, N, i))
-        plt.imshow(gt_slice, vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
-        if i == 2: plt.ylabel("HR")
-        plt.xticks([])
-        plt.yticks([])
-
-        # i +=1
-        # plt.subplot(T, N, row_based_idx(T, N, i))
-        # plt.imshow(pred_slice, vmin = min_v, vmax = max_v, cmap='viridis',aspect='auto')
-        # if i == 3: plt.ylabel("4DFlowNet")
-        # plt.xticks([])
-        # plt.yticks([])
-
-
-        for comp, name in zip(comparison_lst, comparison_name):
-            i +=1
-            plt.subplot(T, N, row_based_idx(T, N, i))
-            im = plt.imshow(get_2Dslice(comp,t, axis=axis, slice_idx=idx), vmin = min_v, vmax = max_v, cmap='viridis', aspect='auto')
-            if i-1 == (i-1)%T: plt.ylabel(name)
-            plt.xticks([])
-            plt.yticks([])
-
-        if not exclude_rel_error:
-            i +=1
-            plt.subplot(T, N, row_based_idx(T, N, i))
-            re_img = plt.imshow(get_2Dslice(rel_error_cube, t, axis, idx),vmin=min_rel_error, vmax=max_rel_error, cmap='viridis',aspect='auto')
-            if i-1 == (i-1)%T: plt.ylabel("abs. error")
-            plt.xticks([])
-            plt.yticks([])
-            if t == timepoints[-1]:
-                plt.colorbar(re_img, ax = axes[-1], aspect = 10, label = 'abs. error ')
-
-        
-        i +=1
-    # plt.tight_layout()
-    # plt.subplots_adjust(wspace=0, hspace=0)
-    fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 40, label = 'velocity (m/s)')
-    plt.savefig(save_as,bbox_inches='tight' )
-
-    
-# def plot_k_r2_vals(frames, k,k_bounds, r2,  r2_bounds, peak_flow_frame, name_evaluation, eval_dir):
-#     '''Plots the k and the r^2 values for each velocity component over time in one and separate plots '''
-
-#     vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
-#     vel_colnames = ['u', 'v', 'w']
-#     min_val = np.minimum(0.05, np.minimum(np.min(k_bounds), np.min(r2_bounds)))
-#     max_val = np.maximum(np.max(k), np.max(r2))
-#     plt.figure(figsize=(15, 5))
-    
-#     # make subplots
-#     # make plot for regression slope 
-#     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
-#         plt.subplot(2, 3, i+1)
-#         plt.plot(range(frames), k[i*frames:i*frames+frames] , label = 'k core', color = 'black')
-#         plt.plot(range(frames), k_bounds[i*frames:i*frames+frames] ,'--',  label = 'k boundary', color = KI_colors['Plum'])
-#         plt.plot(np.ones(frames), 'k:')
-#         plt.ylim([min_val, np.maximum(max_val, 1.05)])
-#         plt.title(title)
-#         plt.xlabel('frames')
-#         plt.ylabel('k')
-#         plt.scatter(np.ones(2)*peak_flow_frame, [k[i*frames+peak_flow_frame],k_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['grey80'])
-#         plt.legend()
-#         print(f'Average k vals core {np.average(k[i*frames:i*frames+frames])}')
-#         print(f'Average k vals boundary {np.average(k_bounds[i*frames:i*frames+frames])}')
-#         print(f'Min k vals core {np.min(k[i*frames:i*frames+frames])}')
-#         print(f'Min k vals boundary {np.min(k_bounds[i*frames:i*frames+frames])}')
-#         print(f'Max k vals core {np.max(k[i*frames:i*frames+frames])}')
-#         print(f'Max k vals boundary {np.max(k_bounds[i*frames:i*frames+frames])}')
-
-#     # make plot for r^2
-#     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
-#         plt.subplot(2, 3, i+4)
-#         plt.plot(range(frames), r2[i*frames:i*frames+frames] ,label = r'$R^2$ core', color = 'black')
-#         plt.plot(range(frames), r2_bounds[i*frames:i*frames+frames] ,'--', label = r'$R^2$ boundary', color = KI_colors['Plum'])
-#         plt.plot(np.ones(frames), 'k:')
-#         plt.ylim([min_val, np.maximum(max_val, 1.05)])
-#         plt.title(title)
-#         plt.xlabel('frame')
-#         plt.ylabel(r'$R^2$')
-#         plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['blue80'])
-#         plt.legend()
-
-#     plt.tight_layout()
-#     plt.savefig(f'{eval_dir}/{name_evaluation}_k_vals.svg')
-
-#     # save each plot separately
-#     plt.figure(figsize=(5, 5))
-#     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
-#         plt.clf()
-#         plt.plot(range(frames), k[i*frames:i*frames+frames] , label = 'k core', color = 'black')
-#         plt.plot(range(frames), k_bounds[i*frames:i*frames+frames] ,'--',  label = 'k boundary', color = KI_colors['Plum'])
-#         plt.plot(np.ones(frames), 'k:')
-#         plt.ylim([min_val, np.maximum(max_val, 1.05)])
-#         plt.title(title)
-#         plt.xlabel('frame')
-#         plt.ylabel('k')
-#         plt.scatter(np.ones(2)*peak_flow_frame, [k[i*frames+peak_flow_frame],k_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['blue80'])
-#         plt.legend()
-#         plt.savefig(f'{eval_dir}/{name_evaluation}_k_vals_{vel}_.svg', bbox_inches='tight')
-#     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
-#         plt.clf()
-#         plt.plot(range(frames), r2[i*frames:i*frames+frames] ,label = r'$R^2$ core', color = 'black')
-#         plt.plot(range(frames), r2_bounds[i*frames:i*frames+frames] ,'--', label = r'$R^2$ boundary', color = KI_colors['Plum'])
-#         plt.plot(np.ones(frames), 'k:')
-#         plt.ylim([min_val, np.maximum(max_val, 1.05)])
-#         plt.title(title)
-#         plt.xlabel('frame')
-#         plt.ylabel(r'$R^2$')
-#         plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KTH_colors['blue80'])
-#         plt.legend()
-#         plt.savefig(f'{eval_dir}/{name_evaluation}_R2_vals_{vel}__.svg', bbox_inches='tight')
-
-
 def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum'] , save_as= 'K_R2_values'):
     vel_colnames = ['u', 'v', 'w']
     vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
@@ -1722,7 +1582,7 @@ def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum']
         plt.legend()
 
     plt.tight_layout()
-    plt.savefig(f'{save_as}.svg')
+    plt.savefig(f'{save_as}_VXYZ.svg')
 
     #save each plot separately
     plt.figure(figsize=(5, 5))
@@ -1739,7 +1599,7 @@ def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum']
         plt.locator_params(axis='x', nbins=3)
         plt.scatter(np.ones(2)*peak_flow_frame, [k[i*frames+peak_flow_frame],k_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KI_colors['Grey'])
         plt.legend()
-        plt.savefig(f'{save_as}.svg', bbox_inches='tight')
+        plt.savefig(f'{save_as}_k_{vel}.svg', bbox_inches='tight')
     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
         plt.clf()
         plt.plot(range(frames), r2[i*frames:i*frames+frames] ,label = r'$R^2$ core', color = 'black')
@@ -1753,8 +1613,205 @@ def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum']
         plt.locator_params(axis='x', nbins=3)
         plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KI_colors['Grey'])
         plt.legend()
-        plt.savefig(f'{save_as}_.svg', bbox_inches='tight')
+        plt.savefig(f'{save_as}_R2_{vel}.svg', bbox_inches='tight')
 
+
+def plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbounds = False,  save_as= 'K_R2_values_all'):
+    print('Plot k and r2 values with peak flow frame', peak_flow_frame, ' ..')
+
+    vel_colnames = ['u', 'v', 'w']
+    vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
+    fontsize = 16
+    frames = k.shape[1]
+
+    t_range = range(frames)
+    if exclude_tbounds:
+        t_range = t_range[1:-1]
+        k = k[:, 1:-1]
+        r2 = r2[:, 1:-1]
+        idx_peak_flow_frame = peak_flow_frame -1
+    else:
+        idx_peak_flow_frame = peak_flow_frame
+
+    min_val = np.minimum(0.45, np.minimum(np.min(k), np.min(r2)))
+    max_val = np.maximum(np.max(k), np.max(r2))
+    max_val = np.maximum(max_val, 1.05)
+
+    # Create subplots
+    plt.subplots_adjust(wspace=0.3)
+    fig, axs = plt.subplots(1, 3, figsize=figsize, sharey=True)
+
+    for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
+        # Plot k values on the primary y-axis
+        
+        axs[i].set_ylim([min_val, max_val])
+        axs[i].set_title(title, fontsize = fontsize)
+        axs[i].set_xlabel('frame', fontsize=fontsize)
+        axs[i].set_ylabel(r'k/$R^2$', fontsize=fontsize)
+        axs[i].locator_params(axis='y', nbins=3)
+        axs[i].locator_params(axis='x', nbins=3)
+        axs[i].tick_params(axis='y', labelsize = fontsize)
+        axs[i].tick_params(axis='x', labelsize = fontsize)
+        
+        # k-values
+        axs[i].plot(t_range, k[i, :], label='k', color='black')
+        axs[i].scatter(np.ones(1)*peak_flow_frame, [k[i, idx_peak_flow_frame]], color=KI_colors['Grey'])
+        # R2 values 
+        axs[i].plot(t_range, r2[i, :], '--', label=r'$R^2$', color=KI_colors['Plum'])
+        axs[i].scatter(np.ones(1)*peak_flow_frame, [r2[i, idx_peak_flow_frame]], label='peak flow frame', color=KI_colors['Grey'])
+        axs[i].plot(np.ones(frames), 'k:', label= 'ones')
+        axs[i].legend(loc='lower right')
+
+    plt.tight_layout()
+    plt.savefig(f'{save_as}_VXYZ.svg')
+
+    for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
+
+        # Create subplots
+        fig, ax = plt.subplots(figsize=(5, 5))
+
+        ax.set_ylim([min_val, max_val])
+        ax.set_title(title, fontsize = fontsize)
+        ax.set_xlabel('frame', fontsize=fontsize)
+        ax.set_ylabel(r'k/$R^2$', fontsize=fontsize)
+        ax.locator_params(axis='y', nbins=3)
+        ax.locator_params(axis='x', nbins=3)
+        ax.tick_params(axis='y', labelsize = fontsize)
+        ax.tick_params(axis='x', labelsize = fontsize)
+        
+        # k-values
+        ax.plot(t_range, k[i, :], label='k', color='black')
+        ax.scatter(np.ones(1)*peak_flow_frame, [k[i, peak_flow_frame]], color=KI_colors['Grey'])
+        # R2 values 
+        ax.plot(t_range, r2[i, :], '--', label=r'$R^2$', color=KI_colors['Plum'])
+        ax.scatter(np.ones(1)*peak_flow_frame, [r2[i, peak_flow_frame]], label='peak flow frame', color=KI_colors['Grey'])
+        ax.plot(np.ones(frames), 'k:', label= 'ones')
+        ax.legend(loc='lower right')
+        plt.savefig(f'{save_as}_{vel}.svg')
+
+        # Close the plot to avoid memory leaks
+        plt.close()
+
+def plot_corr_k_r2_vals(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbounds = False,  save_as= 'K_R2_values_all'):
+    print('Plot k and r2 values with peak flow frame', peak_flow_frame, ' ..')
+
+    vel_colnames = ['u', 'v', 'w']
+    vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
+    fontsize = 16
+    frames = k.shape[1]
+
+    t_range = range(frames)
+    if exclude_tbounds:
+        t_range = t_range[1:-1]
+        k = k[:, 1:-1]
+        r2 = r2[:, 1:-1]
+        idx_peak_flow_frame = peak_flow_frame -1
+    else:
+        idx_peak_flow_frame = peak_flow_frame
+
+    min_val = np.minimum(0.45, np.minimum(np.min(k), np.min(r2)))
+    max_val = np.maximum(np.max(k), np.max(r2))
+    max_val = np.maximum(max_val, 1.05)
+
+    # Create subplots
+    plt.subplots_adjust(wspace=0.3)
+    fig, axs = plt.subplots(2, 3, figsize=figsize, sharey=True)
+
+    for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
+        # Plot k values on the primary y-axis
+        
+        axs[i].set_ylim([min_val, max_val])
+        axs[i].set_title(title, fontsize = fontsize)
+        axs[i].set_xlabel('frame', fontsize=fontsize)
+        axs[i].set_ylabel(r'k/$R^2$', fontsize=fontsize)
+        axs[i].locator_params(axis='y', nbins=3)
+        axs[i].locator_params(axis='x', nbins=3)
+        axs[i].tick_params(axis='y', labelsize = fontsize)
+        axs[i].tick_params(axis='x', labelsize = fontsize)
+        
+        # k-values
+        axs[i].plot(t_range, k[i, :], label='k', color='black')
+        axs[i].scatter(np.ones(1)*peak_flow_frame, [k[i, idx_peak_flow_frame]], color=KI_colors['Grey'])
+        # R2 values 
+        axs[i].plot(t_range, r2[i, :], '--', label=r'$R^2$', color=KI_colors['Plum'])
+        axs[i].scatter(np.ones(1)*peak_flow_frame, [r2[i, idx_peak_flow_frame]], label='peak flow frame', color=KI_colors['Grey'])
+        axs[i].plot(np.ones(frames), 'k:', label= 'ones')
+        axs[i].legend(loc='lower right')
+
+    plt.tight_layout()
+    plt.savefig(f'{save_as}_VXYZ.svg')
+
+
+def calculate_and_plot_k_r2_vals_nobounds(gt, pred, mask, peak_flow_frame, figsize = (8,8),exclude_tbounds = False,  save_as= 'K_R2_values_all'):
+
+    vel_colnames = ['u', 'v', 'w']
+    frames = gt['u'].shape[0]
+    #calculate k values in core and boundary region
+    k, r2 = np.zeros((3, frames)), np.zeros((3, frames))
+    for i, vel in enumerate(vel_colnames):
+        for t in range(frames):
+            k[i, t], r2[i, t]  = calculate_k_R2( pred[vel][t], gt[vel][t], mask[t])
+
+    plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = figsize,exclude_tbounds = exclude_tbounds,  save_as= save_as)
+
+    return k, r2
+
+#TODO extend to time 
+def generate_gif_volume(img3D, axis = 0, save_as = "animation"):
+    # check that input is 3 dimensional suc that normalization is correct
+    img3D = img3D.squeeze()
+    assert len(img3D.shape) == 3
+
+
+    img3D = check_and_normalize(img3D)
+
+    if axis == 0:
+            frames = [Image.fromarray(img3D[i, :, :]*255) for i in range(img3D.shape[0])]
+    elif axis ==1:
+            frames = [Image.fromarray(img3D[:, i, :]*255) for i in range(img3D.shape[1])]
+    elif axis == 2:
+            frames = [Image.fromarray(img3D[:, :, i]*255) for i in range(img3D.shape[2])]
+    else: 
+        print("Invalid axis input.")
+    
+    frame_one = frames[0]
+    frame_one.save(save_as+".gif", format="GIF", append_images=frames,save_all=True, duration=500, loop=0) #/home/pcallmer/Temporal4DFlowNet/results/plots
+    
+
+def compare_peak_flow_pixel(gt,lr, model_names, set_names, labels, colors,name_comparison,patch_size, show_avg, show_pixel, use_dynamical_mask = False):
+
+    plt.figure(figsize=(7, 5))
+    def show_peak_flow_pixel(x, pred_data, label, color, line_style = '-'):
+        '''Plot peak flow vosel in time and also averages cube around it '''
+    
+        if show_pixel: # show only flow of peak flow voxel 
+            plt.plot(x, pred_data['speed'][:, idx_max[1], idx_max[2], idx_max[3]]*100,line_style, label = f'{label} pixel', color = color)
+
+        if show_avg: # show average flow of  region around peak flow voxel. Regsion is depending on patch size
+            plt.plot(x, np.average(pred_data['speed']  [:, idx_max[1]-patch_size:idx_max[1]+patch_size+1, idx_max[2]-patch_size:idx_max[2]+patch_size+1, idx_max[3]-patch_size:idx_max[3]+patch_size+1], axis = (1, 2, 3))*100,line_style,label = f'{label} avg', color = color)
+    
+    # get voxel with maximum flow
+    idx_max = np.unravel_index(np.argmax(gt['speed']), shape = gt['speed'].shape)
+    x = np.arange(gt['speed'].shape[0])
+
+    show_peak_flow_pixel(x, gt, label = 'gt', color='black')
+    show_peak_flow_pixel(x[::2 ], lr, label= 'low res',color='yellowgreen',line_style='-o')
+
+
+    for m_name, s_name, label, color in zip(model_names, set_names, labels, colors):
+        pred = load_velocity_data(f'{result_dir}/Temporal4DFlowNet_{m_name}/{s_name}set_result_model{data_model}_2mm_step{step}_{m_name[-4::]}_temporal.h5', {}, ['u_combined', 'v_combined', 'w_combined'], load_mask = False)
+        show_peak_flow_pixel(x, pred, label, color, line_style='--')
+
+    if show_avg:
+        plt.title(f"Speed at pixel {idx_max[1::]} with average of number of voxels: {(2*patch_size+1)**3}")
+    else:
+         plt.title(f"Speed at pixel {idx_max[1::]}")
+    plt.ylabel('Speed (cm/s)')
+    plt.xlabel('Frame')
+    plt.legend()
+
+    plt.savefig(f'{eval_dir}/{name_comparison}_peak_flow_voxel_speed.png')
+    plt.show()
 
 
 # ------------------- INTERPOLATION FUNCTIONS---------------------------
@@ -1884,66 +1941,4 @@ def spatial3D_NN_interpolation(lr, hr_shape, method = 'nearest'):
 
     return interpolate
 
-def check_and_normalize(img):
-        if img.dtype == np.uint8:
-                return np.asarray(img, dtype=float)/255
 
-        return (img - np.min(img))/(np.max(img) - np.min(img))
-
-
-#TODO extend to time 
-def generate_gif_volume(img3D, axis = 0, save_as = "animation"):
-    # check that input is 3 dimensional suc that normalization is correct
-    img3D = img3D.squeeze()
-    assert len(img3D.shape) == 3
-
-
-    img3D = check_and_normalize(img3D)
-
-    if axis == 0:
-            frames = [Image.fromarray(img3D[i, :, :]*255) for i in range(img3D.shape[0])]
-    elif axis ==1:
-            frames = [Image.fromarray(img3D[:, i, :]*255) for i in range(img3D.shape[1])]
-    elif axis == 2:
-            frames = [Image.fromarray(img3D[:, :, i]*255) for i in range(img3D.shape[2])]
-    else: 
-        print("Invalid axis input.")
-    
-    frame_one = frames[0]
-    frame_one.save(save_as+".gif", format="GIF", append_images=frames,save_all=True, duration=500, loop=0) #/home/pcallmer/Temporal4DFlowNet/results/plots
-    
-
-def compare_peak_flow_pixel(gt,lr, model_names, set_names, labels, colors,name_comparison,patch_size, show_avg, show_pixel, use_dynamical_mask = False):
-
-    plt.figure(figsize=(7, 5))
-    def show_peak_flow_pixel(x, pred_data, label, color, line_style = '-'):
-        '''Plot peak flow vosel in time and also averages cube around it '''
-    
-        if show_pixel: # show only flow of peak flow voxel 
-            plt.plot(x, pred_data['speed'][:, idx_max[1], idx_max[2], idx_max[3]]*100,line_style, label = f'{label} pixel', color = color)
-
-        if show_avg: # show average flow of  region around peak flow voxel. Regsion is depending on patch size
-            plt.plot(x, np.average(pred_data['speed']  [:, idx_max[1]-patch_size:idx_max[1]+patch_size+1, idx_max[2]-patch_size:idx_max[2]+patch_size+1, idx_max[3]-patch_size:idx_max[3]+patch_size+1], axis = (1, 2, 3))*100,line_style,label = f'{label} avg', color = color)
-    
-    # get voxel with maximum flow
-    idx_max = np.unravel_index(np.argmax(gt['speed']), shape = gt['speed'].shape)
-    x = np.arange(gt['speed'].shape[0])
-
-    show_peak_flow_pixel(x, gt, label = 'gt', color='black')
-    show_peak_flow_pixel(x[::2 ], lr, label= 'low res',color='yellowgreen',line_style='-o')
-
-
-    for m_name, s_name, label, color in zip(model_names, set_names, labels, colors):
-        pred = load_velocity_data(f'{result_dir}/Temporal4DFlowNet_{m_name}/{s_name}set_result_model{data_model}_2mm_step{step}_{m_name[-4::]}_temporal.h5', {}, ['u_combined', 'v_combined', 'w_combined'], load_mask = False)
-        show_peak_flow_pixel(x, pred, label, color, line_style='--')
-
-    if show_avg:
-        plt.title(f"Speed at pixel {idx_max[1::]} with average of number of voxels: {(2*patch_size+1)**3}")
-    else:
-         plt.title(f"Speed at pixel {idx_max[1::]}")
-    plt.ylabel('Speed (cm/s)')
-    plt.xlabel('Frame')
-    plt.legend()
-
-    plt.savefig(f'{eval_dir}/{name_comparison}_peak_flow_voxel_speed.png')
-    plt.show()
