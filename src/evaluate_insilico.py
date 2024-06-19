@@ -9,10 +9,13 @@ from Network.PatchGenerator import PatchGenerator
 from utils import prediction_utils
 from utils.evaluate_utils import *
 
+from utils.vtkwriter_per_dir import uvw_mask_to_vtk
+
+
 plt.rcParams['figure.figsize'] = [10, 8]
 
 
-def load_data(gt_filepath, lr_filepath, pred_filepath,  vel_colnames = ['u', 'v', 'w'],res_colnames = ['u_combined', 'v_combined', 'w_combined'], threshold = 0.5, offset = 0, factor = 2):
+def load_vel_data(gt_filepath, lr_filepath, pred_filepath,  vel_colnames = ['u', 'v', 'w'],res_colnames = ['u_combined', 'v_combined', 'w_combined'], threshold = 0.5, offset = 0, factor = 2):
     
 
     gt = {}
@@ -56,6 +59,7 @@ def load_data(gt_filepath, lr_filepath, pred_filepath,  vel_colnames = ['u', 'v'
                     else:
                         lr[vel] = np.asarray(h5_lr[vel]).squeeze()  
 
+                    print('Shapes', gt[vel].shape, pred[vel].shape, lr[vel].shape, gt['mask'].shape)
                     # take away background outside mask
                     pred[f'{vel}_fluid'] =np.multiply(pred[vel], gt["mask"])
                     lr[f'{vel}_fluid'] =  np.multiply(lr[vel], lr['mask'])
@@ -139,19 +143,21 @@ def load_interpolation(data_model, step, lr, gt):
 if __name__ == "__main__":
 
     # Define directories and filenames
-    model_name = '20240605-1504' 
-    set_name = 'Validation'               
-    data_model= '1'
+    model_name = '20240617-0933' 
+    set_name = 'Test'               
+    data_model= '4'
     step = 2
     load_interpolation_files = False
     ups_factor = 2
 
     #choose which plots to show
-    show_img_plot = False
-    show_RE_plot = False
-    show_corr_plot = False
+    show_img_plot = True
+    show_RE_plot = True
+    show_corr_plot = True
+    show_planeMV_plot = True
     tabular_eval = True
     show_animation = False #TODO: implement
+    save_as_vti = False
 
 
     # directories
@@ -162,24 +168,24 @@ if __name__ == "__main__":
     vel_colnames=['u', 'v', 'w']
 
     # filenames
-    gt_filename = f'M{data_model}_2mm_step{step}_cs_invivoP01_hr.h5'
-    lr_filename = f'M{data_model}_2mm_step{step}_cs_invivoP01_lr.h5'
-    # gt_filename = f'M{data_model}_2mm_step2_flowermagn_boxavg_HRfct.h5'
-    # lr_filename = f'M{data_model}_2mm_step2_flowermagn_boxavg_LRfct_noise.h5'
+    gt_filename = f'M{data_model}_2mm_step{step}_cs_invivoP02_hr.h5'
+    lr_filename = f'M{data_model}_2mm_step{step}_cs_invivoP02_lr_lessnoise.h5'
 
-    pred_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal2.h5'
+    pred_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'
     
     # Setting up
-    gt_filepath  = '{}/{}'.format(data_dir, gt_filename)
+    gt_filepath   = '{}/{}'.format(data_dir, gt_filename)
     pred_filepath = '{}/{}'.format(pred_dir, pred_filename)
-    lr_filepath  = '{}/{}'.format(data_dir, lr_filename)
+    lr_filepath   = '{}/{}'.format(data_dir, lr_filename)
 
     if not os.path.isdir(eval_dir):
         os.makedirs(eval_dir)
 
     # ----------Load data and interpolation files and calculate visualization params----------------
 
-    gt, lr, pred = load_data(gt_filepath, lr_filepath, pred_filepath, vel_colnames = vel_colnames)
+    gt, lr, pred = load_vel_data(gt_filepath, lr_filepath, pred_filepath, vel_colnames = vel_colnames)
+
+    print('shapes:', )
 
     N_frames = gt['u'].shape[0]
 
@@ -195,7 +201,7 @@ if __name__ == "__main__":
             interpolate_sinc[f'{vel}_fluid'] = np.multiply(interpolate_sinc[vel], gt['mask'])
 
     # check that dimension fits
-    assert(gt["u"].shape == pred["u"].shape)  ,str(pred["u"].shape) + str(gt["u"].shape) # dimensions need to be the same
+    assert(gt["u"].shape == pred["u"].shape)  ,str(pred["u"].shape) + str(gt["u"].shape) # dimensions of HR and SR need to be the same
     assert(gt["u"].shape[1::] == lr["u"].shape[1::])    ,str(lr["u"].shape) + str(gt["u"].shape) # spatial dimensions need to be the same
     
     # calculate velocity values in 1% and 99% quantile for plotting 
@@ -210,7 +216,11 @@ if __name__ == "__main__":
     bool_mask = gt['mask'].astype(bool)
     reverse_mask = np.ones_like(gt['mask']) - gt['mask']
 
-    rel_error = calculate_relative_error_normalized(pred['u'], pred['v'], pred['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
+    # Caluclation for further plotting
+
+    # Relative error calculation
+    if show_RE_plot or tabular_eval:
+        rel_error = calculate_relative_error_normalized(pred['u'], pred['v'], pred['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
 
     # -------------Qualitative evaluation----------------
 
@@ -220,7 +230,7 @@ if __name__ == "__main__":
     if show_img_plot:
         print("Plot example time frames..")
         
-        frames = [32, 33, 34, 35, 36, 37]
+        frames = [32, 33, 34, 35]
         idx_cube = np.index_exp[frames[0]:frames[-1]+1, 20, 0:40, 20:60]
         idx_cube_lr = np.index_exp[frames[0]//2:frames[-1]//2+1, 20, 0:40, 20:60]
 
@@ -232,13 +242,13 @@ if __name__ == "__main__":
             # input_lst_ = [interpolate_sinc[idx_cube]]
             input_name = ['sinc']
 
-            plot_qual_comparsion(gt['u'][idx_cube],lr['u'][idx_cube_lr],  pred['u'][idx_cube],gt['mask'][idx_cube], np.abs(gt['u'][idx_cube]- pred['u'][idx_cube]), [interpolate_sinc['u'][idx_cube]], ['sinc'], frames,min_v = min_v['u'], max_v = max_v['u'],figsize = (4, 6), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_u_test.png")
-            plot_qual_comparsion(gt['v'][idx_cube],lr['v'][idx_cube_lr],  pred['v'][idx_cube],gt['mask'][idx_cube], np.abs(gt['v'][idx_cube]- pred['v'][idx_cube]), [interpolate_sinc['v'][idx_cube]], ['sinc'], frames,min_v = min_v['v'], max_v = max_v['v'],figsize = (4, 6), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_v_test.png")
-            plot_qual_comparsion(gt['w'][idx_cube],lr['w'][idx_cube_lr],  pred['w'][idx_cube],gt['mask'][idx_cube], np.abs(gt['w'][idx_cube]- pred['w'][idx_cube]), [interpolate_sinc['w'][idx_cube]], ['sinc'], frames,min_v = min_v['w'], max_v = max_v['w'],figsize = (4, 6), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_w_test.png")
+            plot_qual_comparsion(gt['u'][idx_cube],lr['u'][idx_cube_lr],  pred['u'][idx_cube],gt['mask'][idx_cube], np.abs(gt['u'][idx_cube]- pred['u'][idx_cube]), [interpolate_sinc['u'][idx_cube]], ['sinc'], frames,min_v = min_v['u'], max_v = max_v['u'],figsize = (8, 5), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_u_test.png")
+            plot_qual_comparsion(gt['v'][idx_cube],lr['v'][idx_cube_lr],  pred['v'][idx_cube],gt['mask'][idx_cube], np.abs(gt['v'][idx_cube]- pred['v'][idx_cube]), [interpolate_sinc['v'][idx_cube]], ['sinc'], frames,min_v = min_v['v'], max_v = max_v['v'],figsize = (3, 6), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_v_test.png")
+            plot_qual_comparsion(gt['w'][idx_cube],lr['w'][idx_cube_lr],  pred['w'][idx_cube],gt['mask'][idx_cube], np.abs(gt['w'][idx_cube]- pred['w'][idx_cube]), [interpolate_sinc['w'][idx_cube]], ['sinc'], frames,min_v = min_v['w'], max_v = max_v['w'],figsize = (3, 6), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_w_test.png")
         else:
-            plot_qual_comparsion(gt['u'][idx_cube],lr['u'][idx_cube_lr],  pred['u'][idx_cube],gt['mask'][idx_cube], np.abs(gt['u'][idx_cube]- pred['u'][idx_cube]), [], [], frames,min_v = min_v['u'], max_v = max_v['u'],figsize = (7,7), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_u_test.png")
-            plot_qual_comparsion(gt['v'][idx_cube],lr['v'][idx_cube_lr],  pred['v'][idx_cube],gt['mask'][idx_cube], np.abs(gt['v'][idx_cube]- pred['v'][idx_cube]), [], [], frames,min_v = min_v['v'], max_v = max_v['v'],figsize = (7,7), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_v_test.png")
-            plot_qual_comparsion(gt['w'][idx_cube],lr['w'][idx_cube_lr],  pred['w'][idx_cube],gt['mask'][idx_cube], np.abs(gt['w'][idx_cube]- pred['w'][idx_cube]), [], [], frames,min_v = min_v['w'], max_v = max_v['w'],figsize = (7,7), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_w_test.png")
+            plot_qual_comparsion(gt['u'][idx_cube],lr['u'][idx_cube_lr],  pred['u'][idx_cube],gt['mask'][idx_cube], np.abs(gt['u'][idx_cube]- pred['u'][idx_cube]), [], [], frames,min_v = min_v['u'], max_v = max_v['u'],figsize = (8,5), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_u_test.png")
+            plot_qual_comparsion(gt['v'][idx_cube],lr['v'][idx_cube_lr],  pred['v'][idx_cube],gt['mask'][idx_cube], np.abs(gt['v'][idx_cube]- pred['v'][idx_cube]), [], [], frames,min_v = min_v['v'], max_v = max_v['v'],figsize = (8,5), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_v_test.png")
+            plot_qual_comparsion(gt['w'][idx_cube],lr['w'][idx_cube_lr],  pred['w'][idx_cube],gt['mask'][idx_cube], np.abs(gt['w'][idx_cube]- pred['w'][idx_cube]), [], [], frames,min_v = min_v['w'], max_v = max_v['w'],figsize = (8,5), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_w_test.png")
 
         plt.show()
 
@@ -315,7 +325,6 @@ if __name__ == "__main__":
         plt.tight_layout()
         plt.savefig(f'{eval_dir}/{set_name}_M{data_model}_RE_RMSE_MEANSPEED_pred2.svg',bbox_inches='tight')
         plt.show()
-        plt.clf()
 
     # 3. Plot the correlation between the prediction and the ground truth in peak flow frame
 
@@ -323,23 +332,157 @@ if __name__ == "__main__":
         print("Plot linear regression plot between prediction and ground truth in peak flow frame..")
 
         T_peak_flow = np.unravel_index(np.argmax(gt["u"]), shape =gt["u"].shape)[0]
-        print("Peak flow frame for model", model_name, T_peak_flow)
+        print("Peak flow frame for model", set_name, T_peak_flow)
         if T_peak_flow%ups_factor == 0: 
             T_peak_flow +=1
             print('Increase peak flow frame to next frame', T_peak_flow)
 
-        plot_correlation(gt, pred, boundary_mask, frame_idx = T_peak_flow, save_as=f'{eval_dir}/{set_name}_M{data_model}_correlation_pred_frame{T_peak_flow}')
-        plt.show()
-        plt.clf()
+        # # 4. Plot slope and R2 values for core, boundary and all voxels over time
+        k, r2 = calculate_and_plot_k_r2_vals_nobounds(gt, pred,gt['mask'], T_peak_flow,figsize=(15, 5), save_as = f'{eval_dir}/{set_name}_M{model_name}_corr_k_r2_vals_nobounds_frame{T_peak_flow}_pred')
 
-        plot_correlation_nobounds(gt, pred,frame_idx=T_peak_flow,show_text = True,  save_as=f'{eval_dir}/{set_name}_M{model_name}_correlation_pred_nobounds_frame{T_peak_flow}')
+        fig2, axs1 = plot_k_r2_vals_nobounds(k, r2, T_peak_flow, figsize = (15, 5),exclude_tbounds = True,  save_as= f'{eval_dir}/{set_name}_M{model_name}_corr_k_r2_vals_nobounds_frame{T_peak_flow}_pred')
+        fig1 = plot_correlation_nobounds(gt, pred, T_peak_flow, show_text = True, save_as = f'{eval_dir}/{set_name}_M{model_name}_correlation_pred_nobounds_frame{T_peak_flow}')
+        
+        # Merge the two figures into a single figure
+        fig = plt.figure(figsize=(15, 10))
+        ax1 = fig.add_subplot(211)
+        ax2 = fig.add_subplot(212)
+        ax1.axis('off')  # Turn off the axes for the first subplot
+        ax2.axis('off')  # Turn off the axes for the second subplot
+        fig.subplots_adjust(wspace=0)  # Adjust the spacing between subplots
+        fig1.subplots_adjust(wspace=0)  # Adjust the spacing between subplots in the first figure
+        fig2.subplots_adjust(wspace=0)  # Adjust the spacing between subplots in the second figure
+        ax1.imshow(fig1.canvas.renderer._renderer)
+        ax2.imshow(fig2.canvas.renderer._renderer)
+        plt.tight_layout()
+        plt.savefig(f'{eval_dir}/{set_name}_M{model_name}_correlation_frame{T_peak_flow}_K_R2.png')
+        
         plt.show()
-        plt.clf()
 
-        # 4. Plot slope and R2 values for core, boundary and all voxels over time
+    # 4. Plot MV plot through Mitral valve
 
-        plot_k_r2_vals(gt, pred, boundary_mask, T_peak_flow,color_b = KI_colors['Plum'] , save_as= f'{eval_dir}/{set_name}_M{model_name}_k_r2_vals_frame{T_peak_flow}_pred')
+    if show_planeMV_plot:
+        print("Plot MV plane plot..")
+
+        # define plane 
+        t = 0
+        plane_points = [51/2, 56/2, 72/2]
+        plane_normal = [0.18, 0.47, -0.86]
+        order_normal = [2, 1, 0]
+        plane_normal /= np.linalg.norm(plane_normal)
+
+        # calculate the plane
+        d = -np.dot(plane_points, plane_normal)
+        xx, yy = np.meshgrid(np.arange(0, gt['u'].shape[1]), np.arange(0, gt['u'].shape[2]))
+        zz = (-plane_normal[0] * xx - plane_normal[1] * yy - d) * 1. / plane_normal[2]
+
+        zz[np.where(zz < 0)] = 0
+        zz[np.where(zz >= gt['u'].shape[3])] = gt['u'].shape[3] - 1
+        print(xx.max(), yy.max(), zz.max())
+        print(xx.min(), yy.min(), zz.min())
+
+        # Get point coordiantes in plane
+        points_in_plane = np.zeros_like(gt['mask'][t])
+        points_in_plane[xx.flatten().astype(int), yy.flatten().astype(int), zz.flatten().astype(int)] = 1
+
+        #3D model: is just 1 in region, where plane AND fluid region is
+        points_plane_core = points_in_plane.copy()
+        points_plane_core[np.where(gt['mask'][t]==0)] = 0
+
+        #Always adjust to different models
+        points_MV = points_plane_core.copy()
+        points_MV[:, :, :15] = 0
+        points_MV[:, :21, :] = 0
+        points_MV[:, 36:, :] = 0
+        points_MV[38:, :, :] = 0
+
+        #2. Get points in plane and cut out right region
+
+        #get indices
+        idx_intersec_plane_fluid = np.where(points_plane_core>0)
+        idx_plane                = np.where(points_in_plane>0)
+        idx_MV                   = np.where(points_MV>0) 
+
+        img_mask = gt['mask'][t][idx_plane].reshape(xx.shape[1], -1)
+        img_MV_mask = points_MV[idx_plane].reshape(xx.shape[1], -1)
+        # plt.imshow(gt['mask'][t][idx_plane].reshape(xx.shape[1], -1))
+        # plt.imshow(img_MV_mask+img_mask)
+        # plt.show()
+
+        lr_vel   = velocity_through_plane(idx_plane, lr, plane_normal, order_normal = order_normal).reshape(lr['u'].shape[0], xx.shape[1], -1)
+        hr_vel   = velocity_through_plane(idx_plane, gt, plane_normal, order_normal = order_normal).reshape(gt['u'].shape[0], xx.shape[1], -1)
+        pred_vel = velocity_through_plane(idx_plane, pred, plane_normal, order_normal = order_normal).reshape(pred['u'].shape[0], xx.shape[1], -1)
+
+        #-----plot MV 1; Qualitave plot----- 
+        idx_crop = np.index_exp[:, 10:37, 15:40]
+        idx_crop2 = np.index_exp[10:37, 15:40]
+
+        # ccrop to important region
+        lr_vel_crop = lr_vel[idx_crop]
+        hr_vel_crop = hr_vel[idx_crop ]
+        pred_vel_crop = pred_vel[idx_crop]
+        img_MV_mask_crop = img_MV_mask[idx_crop2]
+
+        timepoints = [6, 7, 8, 9]
+        # plot_qual_comparsion(hr_vel_crop[timepoints[0]:timepoints[-1]+1], lr_vel_crop[timepoints[0]:timepoints[-1]+1], pred_vel_crop[timepoints[0]:timepoints[-1]+1], img_MV_mask,None,  [], [], min_v=min_v['u'], max_v=max_v['u'],  timepoints = timepoints,figsize=(8, 5),  save_as = f'{eval_dir}/{set_name}_M{data_model}_Velocity_through_plane_3D_img_meanV_prediction.png')
+
+        if False: 
+            fig = plt.figure(figsize=(10, 10))
+            ax = fig.add_subplot(1, 1, 1, projection='3d')
+            #-----plot MV 2; 3D plot with plane and intersection----- 
+            a = 30
+            x_bounds, y_bounds, z_bounds = np.where(boundary_mask[t, :, :,:]==1)
+            xp, yp, zp = idx_intersec_plane_fluid
+            xl, yl, zl = np.where(points_plane_core ==2) 
+            x_MV, y_MV, z_MV = np.where(points_MV ==1)
+            ax.plot_surface(xx, yy, zz, alpha = 0.33, color = KI_colors['Grey']) # plot plane
+            ax.scatter3D(x_bounds, y_bounds, z_bounds, s= 3, alpha = 0.1) #plot boundary points
+            ax.scatter3D(plane_points[0], plane_points[1], plane_points[2],'x', color = 'red') #show point in plane
+            ax.plot([plane_normal[0]*a, 0], [plane_normal[1]*a, 0], [plane_normal[2]*a, 0], color = 'black')
+            ax.scatter3D(plane_points[0], plane_points[1] , plane_points[2] , s = 3, color = 'black') # plot normal point
+            ax.scatter3D(x_MV, y_MV, z_MV, alpha = 0.2, s = 3, color = 'red') #plot MV points
+            plt.xlabel('x')
+            plt.ylabel('y')
+            ax.set_zlabel('z')
+            plt.show()
+
+        #-----plot MV 3; Plot Flow profile within mask----- 
+
+        print('shapes', hr_vel.shape, img_MV_mask.shape, lr_vel.shape, pred_vel.shape)
+        #plot flow profile
+        hr_flow_rate = calculate_flow_profile(hr_vel, img_MV_mask, [2, 2, 2])
+        lr_flow_rate = calculate_flow_profile(lr_vel, img_MV_mask, [2, 2, 2])
+        pred_flow_rate = calculate_flow_profile(pred_vel, img_MV_mask, [2, 2, 2])
+
+        plt.figure(figsize=(8, 5))
+        t_range_lr = np.arange(0, N_frames)[::2]
+        plt.plot(hr_flow_rate, label = 'HR', color = 'black')
+        plt.plot(t_range_lr, lr_flow_rate, label = 'LR', color = KI_colors['Orange'])
+        plt.plot(pred_flow_rate, label = 'SR', color = KI_colors['Plum'])
+        plt.xlabel('Frame', fontsize = 16)
+        plt.ylabel('Flow rate (ml/s)',  fontsize = 16)
+        plt.legend(fontsize = 16)
+        plt.xticks(fontsize = 16)
+        plt.yticks(fontsize = 16)
+        plt.tight_layout()
+        plt.savefig(f'{eval_dir}/{set_name}_M{data_model}_MV_Flow_rate_MV.svg',bbox_inches='tight')
         plt.show()
+
+
+
+
+    if save_as_vti:
+        print("Save as vti files..")
+        if not os.path.isdir(f'{eval_dir}/vti'):
+            os.makedirs(f'{eval_dir}/vti')
+        for t in range(N_frames):
+            output_filepath = f'{eval_dir}/vti/M{data_model}_HR_frame{t}_uvw.vti'
+            if os.path.isfile(output_filepath):
+                print(f'File {output_filepath} already exists')
+            else:
+                spacing = [2, 2, 2]
+                uvw_mask_to_vtk((gt['u'][t],gt['v'][t],gt['w'][t]),gt['mask'][t], spacing, output_filepath, include_mask = True)
+
 
     # ------------Tabular evaluations----------------
     
@@ -352,261 +495,78 @@ if __name__ == "__main__":
         r2 = defaultdict(list)
         df_raw = pd.DataFrame()
         df_summary = pd.DataFrame(index=vel_and_speed_colnames)
+        k  = np.zeros((len(vel_and_speed_colnames), N_frames))
+        r2 = np.zeros((len(vel_and_speed_colnames), N_frames))
+
         for vel in vel_and_speed_colnames:
             print(f'------------------Calculate error for {vel}---------------------')
             # rmse
             rmse_pred = calculate_rmse(pred[vel], gt[vel], gt["mask"], return_std=False)
             rmse_pred_nonfluid = calculate_rmse(pred[vel], gt[vel], reverse_mask)
 
-            plt.plot(rmse_pred, label = f'prediction {vel}')
-            if load_interpolation_files:
-                rmse_lin_interpolation   = calculate_rmse(interpolate_linear[vel], gt[vel], gt["mask"])
-                rmse_cubic_interpolation = calculate_rmse(interpolate_cubic[vel], gt[vel], gt["mask"])
-                rmse_lin_interpolation_nonfluid = calculate_rmse(interpolate_linear[vel], gt[vel], reverse_mask)
-                rmse_cubic_interpolation_nonfluid = calculate_rmse(interpolate_cubic[vel], gt[vel], reverse_mask)
-
-                plt.plot(rmse_cubic_interpolation, label = 'cubic interpolation')
-                plt.plot(rmse_lin_interpolation, label = 'linear interpolation')
-            
             # absolute error
-            abs_diff = np.mean(np.abs(pred[vel] - gt[vel]), where = bool_mask, axis = (1,2,3))
+            abs_err = np.mean(np.abs(pred[vel] - gt[vel]), where = bool_mask, axis = (1,2,3))
 
             # k and R2 values
-            for t in range(gt["u"].shape[0]):
-                k_core, r2_core     = calculate_k_R2( pred[vel][t], gt[vel][t], core_mask[t])
-                k_bounds, r2_bounds = calculate_k_R2( pred[vel][t], gt[vel][t], boundary_mask[t])
-                k_all, r2_all       = calculate_k_R2( pred[vel][t], gt[vel][t], gt['mask'][t])
-                k[f'k_core_{vel}'].append(k_core)
-                r2[f'r2_core_{vel}'].append(r2_core)
-                k[f'k_bounds_{vel}'].append(k_bounds)
-                r2[f'r2_bounds_{vel}'].append(r2_bounds)
-                k[f'k_all_{vel}'].append(k_all)
-                r2[f'r2_all_{vel}'].append(r2_all)
+            k_core, r2_core     = calculate_k_R2_timeseries(pred[vel], gt[vel], core_mask)
+            k_bounds, r2_bounds = calculate_k_R2_timeseries(pred[vel], gt[vel], boundary_mask)
+            k_all, r2_all       = calculate_k_R2_timeseries(pred[vel], gt[vel], gt['mask'])
 
             # Populate df_raw with the calculated metrics
-            df_raw[f'k_core_{vel}'] = k[f'k_core_{vel}']
-            df_raw[f'k_bounds_{vel}'] = k[f'k_bounds_{vel}']
-            df_raw[f'k_all_{vel}'] = k[f'k_all_{vel}']
-            df_raw[f'r2_core_{vel}'] = r2[f'r2_core_{vel}']
-            df_raw[f'r2_bounds_{vel}'] = r2[f'r2_bounds_{vel}']
-            df_raw[f'r2_all_{vel}'] = r2[f'r2_all_{vel}']
+            df_raw[f'k_core_{vel}'] = k_core
+            df_raw[f'k_bounds_{vel}'] = k_bounds
+            df_raw[f'k_all_{vel}'] = k_all
+            df_raw[f'r2_core_{vel}'] = r2_core
+            df_raw[f'r2_bounds_{vel}'] = r2_bounds
+            df_raw[f'r2_all_{vel}'] = r2_all
             df_raw[f'rmse_pred_{vel}'] = rmse_pred
             df_raw[f'rmse_pred_nonfluid_{vel}'] = rmse_pred_nonfluid
-            df_raw[f'abs_diff_{vel}'] = abs_diff
-            
+            df_raw[f'abs_err_{vel}'] = abs_err
+
             # Summary statistics for df_summary
-            df_summary.loc[vel, 'k_avg_core'] = np.mean(k[f'k_core_{vel}'])
-            df_summary.loc[vel, 'k_avg_bounds'] = np.mean(k[f'k_bounds_{vel}'])
-            df_summary.loc[vel, 'k_avg_all'] = np.mean(k[f'k_all_{vel}'])
-            df_summary.loc[vel, 'k_min_core'] = np.min(k[f'k_core_{vel}'])
-            df_summary.loc[vel, 'k_min_bounds'] = np.min(k[f'k_bounds_{vel}'])
-            df_summary.loc[vel, 'k_min_all'] = np.min(k[f'k_all_{vel}'])
-            df_summary.loc[vel, 'k_max_core'] = np.max(k[f'k_core_{vel}'])
-            df_summary.loc[vel, 'k_max_bounds'] = np.max(k[f'k_bounds_{vel}'])
-            df_summary.loc[vel, 'k_max_all'] = np.max(k[f'k_all_{vel}'])
-            df_summary.loc[vel, 'r2_avg_core'] = np.mean(r2[f'r2_core_{vel}'])
-            df_summary.loc[vel, 'r2_avg_bounds'] = np.mean(r2[f'r2_bounds_{vel}'])
-            df_summary.loc[vel, 'r2_avg_all'] = np.mean(r2[f'r2_all_{vel}'])
-            df_summary.loc[vel, 'r2_min_core'] = np.min(r2[f'r2_core_{vel}'])
-            df_summary.loc[vel, 'r2_min_bounds'] = np.min(r2[f'r2_bounds_{vel}'])
-            df_summary.loc[vel, 'r2_min_all'] = np.min(r2[f'r2_all_{vel}'])
-            df_summary.loc[vel, 'r2_max_core'] = np.max(r2[f'r2_core_{vel}'])
-            df_summary.loc[vel, 'r2_max_bounds'] = np.max(r2[f'r2_bounds_{vel}'])
-            df_summary.loc[vel, 'r2_max_all'] = np.max(r2[f'r2_all_{vel}'])
+            metrics = {
+                'k_core': k_core,
+                'k_bounds': k_bounds,
+                'k_all': k_all,
+                'r2_core': r2_core,
+                'r2_bounds': r2_bounds,
+                'r2_all': r2_all
+            }
+
+            # Convert metrics dictionary to a DataFrame for easier aggregation
+            metrics_df = pd.DataFrame(metrics)
+
+            # Calculate summary statistics and assign to df_summary
+            for metric in metrics.keys():
+                df_summary.loc[vel, f'{metric}_avg'] = metrics_df[metric].mean()
+                df_summary.loc[vel, f'{metric}_min'] = metrics_df[metric].min()
+                df_summary.loc[vel, f'{metric}_max'] = metrics_df[metric].max()
+
             df_summary.loc[vel, 'rmse_avg'] = np.mean(rmse_pred)
             df_summary.loc[vel, 'rmse_avg_nonfluid'] = np.mean(rmse_pred_nonfluid)
-            df_summary.loc[vel, 'abs_diff_avg'] = np.mean(abs_diff)
+            df_summary.loc[vel, 'abs_err_avg'] = np.mean(abs_err)
+
 
         # Add relative error to df_raw and df_summary
         df_raw[f'RE'] = rel_error
         df_summary[f'RE_avg'] = np.mean(rel_error)
 
+        cos_similarity = cosine_similarity( gt['u'], gt['v'], gt['w'],pred['u'], pred['v'], pred['w'])
+        df_raw['cos_sim'] = np.mean(cos_similarity, axis = (1,2,3), where=bool_mask)
+        df_summary['cos_sim_avg'] = np.mean(df_raw['cos_sim'])
+
         # Save dataframes to CSV
         df_raw.to_csv(f'{eval_dir}/{set_name}_M{model_name}_k_r2_RE_ALL.csv', float_format="%.3f")
-        df_summary.to_csv(f'{eval_dir}/{set_name}_M{model_name}_k_r2_RE_summary.csv', float_format="%.3f")
+        df_summary.to_csv(f'{eval_dir}/{set_name}_M{model_name}_k_r2_RE_core_bound_summary.csv', float_format="%.3f")
+
+        df_summary_whole = pd.DataFrame(index=vel_and_speed_colnames)
+        columns = ['k_all_avg', 'r2_all_avg',  'rmse_avg', 'rmse_avg_nonfluid', 'abs_err_avg', 'cos_sim_avg', 'RE_avg']
+        df_summary_whole[columns] = df_summary[columns]
+        df_summary_whole.to_csv(f'{eval_dir}/{set_name}_M{model_name}_k_r2_RE_summary_whole.csv', float_format="%.3f")
+        print(df_summary_whole.columns)
 
         print(df_summary)
         print(df_summary.to_latex(index=False, float_format="%.2f"))
-        print(df_raw.to_latex(index=False, float_format="%.2f"))
+        # print(df_raw.to_latex(index=False, float_format="%.2f"))
 
-
-        plt.legend()
-        plt.show()
-    print('--------------------------------------')
-    # relative error
-    REL_error_pred = rel_error
-    if load_interpolation_files:
-        REL_error_lin_interpolation = rel_error_lin_interpolation
-        REL_error_cubic_interpolation = rel_error_cubic_interpolation
-
-    exit()
-
-
-    diastole_end = 25
-
-    boundary_mask, core_mask = get_boundaries(gt["mask"])
-    bounds_boolmask = boundary_mask.astype(bool)
-    core_boolmask = core_mask.astype(bool)
-    # print(f'avg bound velocities {np.mean(np.multiply(gt["u"], bounds), axis = (1, 2, 3))} {np.mean(np.multiply(gt["v"], bounds), axis = (1, 2, 3))} {np.mean(np.multiply(gt["w"], bounds), axis = (1, 2, 3))}')
-    # print(f'avg core velocities {np.mean(np.multiply(gt["u"], core_mask), axis = (1,2,3))} {np.mean(np.multiply(gt["v"], core_mask), axis = (1, 2, 3))} {np.mean(np.multiply(gt["w"], core_mask), axis = (1, 2, 3))}')
-
-    max_b = np.max(np.mean(gt['speed'], axis = (1, 2, 3), where =bounds_boolmask))
-    min_b = np.min(np.mean(gt['speed'], axis = (1, 2, 3), where =bounds_boolmask))
-    print(f'speed min and max boundary {min_b}  {max_b}')
-    max_c = np.max(np.mean(gt['speed'], axis = (1, 2, 3), where =core_boolmask))
-    min_c = np.min(np.mean(gt['speed'], axis = (1, 2, 3), where =core_boolmask))
-    print(f'speed min and max core {min_c}  {max_c}')
-    # print(f'speed min and max boundary {np.min(np.mean(gt['speed'], axis = (1, 2, 3), where =bounds_boolmask))}  {np.max(np.mean(gt['speed'], axis = (1, 2, 3), where =bounds_boolmask))}')
-    # print(f'speed min and max core {np.min(np.mean(gt['speed'], axis = (1, 2, 3), where =core_boolmask))}  {np.min(np.mean(gt['speed'], axis = (1, 2, 3), where =core_boolmask))}')
-    
-    # for t in range(0, gt["u"].shape[0]):
-    #     total_voxels = np.sum(gt["mask"][t])
-    #     print(f'{t} - BoundaryVoxels vs core  {np.sum(bounds[t])/total_voxels:.4f} core {np.sum(core_mask[t])/total_voxels:.4f}' )
-    
-    #calculate error for each velocity component
-    vel_and_speed_colnames = vel_colnames + ['speed']
-    k = defaultdict(list)
-    r2 = defaultdict(list)
-    for vel in vel_and_speed_colnames:
-        print(f'------------------Calculate error for {vel}---------------------')
-        # rmse
-        rmse_pred= calculate_rmse(pred[vel], gt[vel], gt["mask"], return_std=False)
-        if load_interpolation_files:
-            rmse_lin_interpolation = calculate_rmse(interpolate_linear[vel], gt[vel], gt["mask"])
-            rmse_cubic_interpolation = calculate_rmse(interpolate_cubic[vel], gt[vel], gt["mask"])
-        bool_mask = gt['mask'].astype(bool)
-        reverse_mask = np.ones(gt["mask"].shape) - gt["mask"]
-        
-        rmse_pred_nonfluid = calculate_rmse(pred[vel], gt[vel], reverse_mask)
-        if load_interpolation_files:
-            rmse_lin_interpolation_nonfluid = calculate_rmse(interpolate_linear[vel], gt[vel], reverse_mask)
-            rmse_cubic_interpolation_nonfluid = calculate_rmse(interpolate_cubic[vel], gt[vel], reverse_mask)
-
-        plt.plot(rmse_pred, label = 'prediction')
-        if load_interpolation_files:
-            plt.plot(rmse_cubic_interpolation, label = 'cubic interpolation')
-            plt.plot(rmse_lin_interpolation, label = 'linear interpolation')
-        
-
-        for t in range(gt["u"].shape[0]):
-            k_core, r2_core  = calculate_k_R2( pred[vel][t], gt[vel][t], core_mask[t])
-            k_bounds, r2_bounds  = calculate_k_R2( pred[vel][t], gt[vel][t], boundary_mask[t])
-            k_all, r2_all  = calculate_k_R2( pred[vel][t], gt[vel][t], gt['mask'][t])
-            k[f'k_core_{vel}'].append(k_core)
-            r2[f'r2_core_{vel}'].append(r2_core)
-            k[f'k_bounds_{vel}'].append(k_bounds)
-            r2[f'r2_bounds_{vel}'].append(r2_bounds)
-            k[f'k_all_{vel}'].append(k_all)
-            r2[f'r2_all_{vel}'].append(r2_all)
-
-        print(f'AVG k x core ', np.mean(k[f'k_core_{vel}']) , ' - bounds:', np.mean(k[f'k_bounds_{vel}']), ' - all: ', np.mean(k[f'k_all_{vel}']))
-        print(f'MIN k x core ', np.min(k[f'k_core_{vel}']) , '- bounds: ', np.min(k[f'k_bounds_{vel}']) , ' - all: ', np.min(k[f'k_all_{vel}']))
-        print(f'MAX k x core ', np.max(k[f'k_core_{vel}']) , '- bounds: ', np.max(k[f'k_bounds_{vel}']) , ' - all: ', np.max(k[f'k_all_{vel}']))
-        print(f'AVG r2 x core ', np.mean(r2[f'r2_core_{vel}']) , ' - bounds: ', np.mean(r2[f'r2_bounds_{vel}']), ' - all: ', np.mean(r2[f'r2_all_{vel}']))
-        print(f'MIN r2 x core ', np.min(r2[f'r2_core_{vel}']) , '- bounds: ', np.min(r2[f'r2_bounds_{vel}']) , ' - all: ', np.min(r2[f'r2_all_{vel}']))
-        print(f'MAX r2 x core ', np.max(r2[f'r2_core_{vel}']) , '- bounds: ', np.max(r2[f'r2_bounds_{vel}']) , ' - all: ', np.max(r2[f'r2_all_{vel}']))
-        
-        
-        print(f'AVG RMSE ALL fluid {np.mean(rmse_pred):.4f}')
-        print(f'AVG RMSE ALL nonfluid {np.mean(rmse_pred_nonfluid):.4f}')
-
-        # print(f'AVG RMSE prediction diastole: {np.mean(rmse_pred[:25]):.4f} - linear interpolation: {np.mean(rmse_lin_interpolation[:25]):.4f} - cubic interpolation: {np.mean(rmse_cubic_interpolation[:25]):.4f}')
-        # print(f'STD RMSE prediction diastole:  {np.std(rmse_pred[:25]):.4f} - linear interpolation: {np.std(rmse_lin_interpolation[:25]):.4f} - cubic interpolation: {np.std(rmse_cubic_interpolation[:25]):.4f}')
-        # print(f'AVG RMSE prediction systole: {np.mean(rmse_pred[25:]):.4f} - linear interpolation: {np.mean(rmse_lin_interpolation[25:]):.4f} - cubic interpolation: {np.mean(rmse_cubic_interpolation[25:]):.4f}')
-        # print(f'STD RMSE prediction systole:  {np.std(rmse_pred[25:]):.4f} - linear interpolation: {np.std(rmse_lin_interpolation[25:]):.4f} - cubic interpolation: {np.std(rmse_cubic_interpolation[25:]):.4f}')
-        # #abs difference
-        # abs_diff = np.abs(gt[f'{vel}_fluid'] - pred[f'{vel}_fluid'])
-        # if load_interpolation_files:
-        #     abs_diff_lin_interpolation = np.abs(gt[f'{vel}_fluid'] - interpolate_linear[f'{vel}_fluid'])
-        #     abs_diff_cubic_interpolation = np.abs(gt[f'{vel}_fluid'] - interpolate_cubic[f'{vel}_fluid'])
-
-        # print(f'Max abs difference diastole - prediction {np.max(abs_diff[:diastole_end]):.4f}')
-        # print(f'Max abs difference diastole - linear interpolation', np.max(abs_diff_lin_interpolation[:diastole_end]))
-        # print(f'Max abs difference diastole - cubic interpolation', np.max(abs_diff_cubic_interpolation[:diastole_end]))
-        # print(f'Max abs difference systole - prediction', np.max(abs_diff[diastole_end:]))	
-        # print(f'Max abs difference systole - linear interpolation', np.max(abs_diff_lin_interpolation[diastole_end:]))
-        # print(f'Max abs difference systole - cubic interpolation', np.max(abs_diff_cubic_interpolation[diastole_end:]))
-
-        # print(f'Max abs difference fluid - prediction {np.max(abs_diff):.4f}')
-        # print(f'Max abs difference fluid - linear interpolation', np.max(abs_diff_lin_interpolation))
-        # print(f'Max abs difference fluid - cubic interpolation', np.max(abs_diff_cubic_interpolation))
-
-        # # print(f'Max lin interpolate boundary frame 35', np.max(np.multiply(interpolate_linear[vel][35], bounds[35])))
-        # # print(f'Max cubic interpolate boundary frame 35', np.max(np.multiply(interpolate_linear[vel][35], bounds[35])))
-
-        # print(f'Correlation frame 35 prediction- {np.mean(abs_diff[35], where= bool_mask[35]):.4f} std: {np.std(abs_diff[35], where= bool_mask[35]):.4f}')
-        # print(f'Correlation frame 35 linear interpolation- {np.mean(abs_diff_lin_interpolation[35], where= bool_mask[35]):.4f} std: {np.std(abs_diff_lin_interpolation[35], where= bool_mask[35]):.4f}')
-        # print(f'Correlation frame 35 cubic interpolation- {np.mean(abs_diff_cubic_interpolation[35], where= bool_mask[35]):.4f} std: {np.std(abs_diff_cubic_interpolation[35], where= bool_mask[35]):.4f}')
-    
-    plt.legend()
-    plt.show()
-    print('--------------------------------------')
-    # relative error
-    REL_error_pred = rel_error
-    if load_interpolation_files:
-        REL_error_lin_interpolation = rel_error_lin_interpolation
-        REL_error_cubic_interpolation = rel_error_cubic_interpolation
-    # print(f'RMSE {vel} last frame - pred - {rmse_pred[-1]:.4f} - linear interpolation: {rmse_lin_interpolation[-1]:.4f} - cubic interpolation: {rmse_cubic_interpolation[-1]:.4f}')
-    # print(f'RMSE {vel} peak frame 35 - pred - {rmse_pred[35]:.4f} - linear interpolation: {rmse_lin_interpolation[35]:.4f} - cubic interpolation: {rmse_cubic_interpolation[35]:.4f}')
-    # print(f'RMSE {vel} peak frame 34- pred - {rmse_pred[34]:.4f} - linear interpolation: {rmse_lin_interpolation[34]:.4f} - cubic interpolation: {rmse_cubic_interpolation[34]:.4f}')
-
-
-    # print(f'AVG REL error prediction {np.mean(REL_error_pred):.1f}')
-    # print(f'Last frame REL error prediction {REL_error_pred[-1]:.1f}')
-    # print(f'AVG REL error prediction diastole: {np.mean(REL_error_pred[:25]):.1f} - linear interpolation: {np.mean(REL_error_lin_interpolation[:25]):.1f} - cubic interpolation: {np.mean(REL_error_cubic_interpolation[:25]):.1f}')
-    # print(f'STD REL error prediction diastole:  {np.std(REL_error_pred[:25]):.1f} - linear interpolation: {np.std(REL_error_lin_interpolation[:25]):.1f} - cubic interpolation: {np.std(REL_error_cubic_interpolation[:25]):.1f}')
-    # print(f'AVG REL error prediction systole:  {np.mean(REL_error_pred[25:]):.1f} - linear interpolation: {np.mean(REL_error_lin_interpolation[25:]):.1f} - cubic interpolation: {np.mean(REL_error_cubic_interpolation[25:]):.1f}')
-    # print(f'STD REL error prediction systole:   {np.std(REL_error_pred[25:]):.1f} - linear interpolation: {np.std(REL_error_lin_interpolation[25:]):.1f} - cubic interpolation: {np.std(REL_error_cubic_interpolation[25:]):.1f}')
-
-    # print('Max mean speed deviation', np.max(np.abs(mean_speed_gt - mean_speed_pred)))
-    # print('mean speed deviation', np.mean(np.abs(mean_speed_gt - mean_speed_pred)))
-    # print('Max mean speed deviation linear interpolation', np.max(np.abs(mean_speed_gt - mean_speed_lin_interpolation)))
-    # print('Max mean speed deviation cubic interpolation', np.max(np.abs(mean_speed_gt - mean_speed_cubic_interpolation)))
-    # print('Min mean speed deviation', np.min(mean_speed_gt - mean_speed_pred))
-    # print('Max mean speed deviation', np.max(mean_speed_gt - mean_speed_pred))
-    # print('Count number of frames, where difference between mean speed gt and pred is smaller than 0', np.sum(mean_speed_gt - mean_speed_pred < 0))
-
-
-
-    # show_temporal_development_line(gt["u"], interpolate_linear["u"], pred["u"],gt["mask"], axis=3, indices=(20,20), save_as=f'{eval_dir}/{set_name}_temporal_development.png')
-    plt.clf()
-    #evaluate where the higest shift (temporal derivative) is for each frame
-    #show_quiver(gt["u"][4, :, :, :], gt["v"][4, :, :, :], gt["w"][4, :, :, :],gt["mask"], save_as=f'{result_dir}/plots/test_quiver.png')
-
-    
-    plt.clf()
-    plot_correlation(gt, pred, boundary_mask, frame_idx = T_peak_flow, save_as=f'{pred_dir}/plots/{set_name}_M{data_model}_correlation_pred_frame{T_peak_flow}')
-    plt.clf()
-
-    # plot_comparison_temporal(lr, gt, pred, frame_idx = 8, axis=1, slice_idx = 40, save_as=f'{eval_dir}/{set_name}_M{data_model}_visualize_interporalion_comparison.png')
-    # plt.clf()
-
-    print("Plot relative error and mean speed")
-    plt.subplot(2, 1, 1)
-    plt.title("Relative error")
-    plt.plot(rel_error, label = 'averaged prediction')
-    if load_interpolation_files:
-        plt.plot(rel_error_lin_interpolation[:-1], label = 'linear interpolation',color = 'yellowgreen')
-        plt.plot(rel_error_cubic_interpolation, label = 'cubic interpolation', color = 'forestgreen')
-    plt.plot(50*np.ones(len(rel_error)), 'k:')
-    plt.xlabel("Frame")
-    plt.ylabel("Relative error (%)")
-    plt.ylim((0, 100))
-    plt.legend()
-    plt.savefig(f'{eval_dir}/{set_name}_rel_error_1.svg')
-
-    plt.subplot(2, 1, 2)
-    plt.plot(mean_speed_gt, label ='Ground truth',color = 'black')
-    plt.plot(mean_speed_pred, label= set_name, color = 'steelblue')
-    if load_interpolation_files:
-        plt.plot(mean_speed_lin_interpolation[:-1], label = 'linear interpolation', color = 'yellowgreen')
-        plt.plot(mean_speed_cubic_interpolation[:-1], label = 'cubic interpoaltion', color = 'forestgreen')
-    plt.xlabel("Frame")
-    plt.ylabel("Mean speed (cm/s)")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(f'{eval_dir}/{set_name}_M{data_model}_pred_RE_mean_speed.svg')
-    plt.show()
-
-            
-
+    print('---------------DONE-----------------------')
