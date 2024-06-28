@@ -9,6 +9,9 @@ import scipy
 from scipy.ndimage import binary_erosion
 from matplotlib import pyplot as plt
 import matplotlib.ticker as ticker
+import matplotlib.animation as animation
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib import ticker
 import pandas as pd
 
 sys.path.insert(0, '../src')
@@ -478,13 +481,49 @@ def calculate_k_R2( pred, gt, binary_mask):
     slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(hr_vals, sr_vals)
     return slope,  r_value**2
 
+def calculate_k_R2_timeseries(pred, gt, binary_mask):
+
+    '''
+    Calculate r^2 and k in fluid region with line y = kx+m
+    Note that this takes a 4D data frame as input, i.e. it considers multiple frames
+    '''
+    assert len(pred.shape) == 4 # this should be a 4D data frame
+    N_frames = pred.shape[0]
+    k = np.zeros(N_frames)
+    r2 = np.zeros(N_frames)
+
+    for t in range(N_frames):
+        # extract values within fluid region for prediction (SR) and ground truth (HR)
+        sr_vals = get_fluid_region_points_frame(pred[t], binary_mask[t])
+        hr_vals = get_fluid_region_points_frame(gt[t], binary_mask[t])
+
+        # calculate linear regression parameters with scipy
+        slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(hr_vals, sr_vals)
+
+        k[t] = slope
+        r2[t] = r_value**2
+    return k, r2
+
+
+def calculate_flow_profile(velocity, binary_mask,spacing = [2.0, 2.0, 2.0]):
+    assert len(velocity.shape) ==3
+    assert len(binary_mask.shape) == 2
+    # assert velocity.shape == binary_mask.shape # check that the shapes are the same
+    area = np.sum(binary_mask)*spacing[0]*spacing[1]*spacing[2]
+    mean_vel = np.mean(velocity, where=binary_mask.astype(bool), axis=(1, 2))
+    return mean_vel*area
+
+
+
+
 #---------------PLOTTING-------------------
 
 
-def plot_correlation_nobounds(gt, prediction, frame_idx,color_b = KI_colors['Plum'],show_text = False, save_as = None):
+def plot_correlation_nobounds(gt, prediction, frame_idx,color_points = 'black',show_text = False, save_as = None):
     '''
     Plot correlation plot between ground truth and prediction at a given frame
     '''
+    fontsize = 16
     # set percentage of how many random points are used
     p = 0.1
     mask_threshold = 0.6
@@ -531,19 +570,21 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_b = KI_colors['Plu
 
         # plot linear correlation line and parms
         if show_text:
-            plt.gca().text(0.05, 0.95, text,transform=plt.gca().transAxes, fontsize=12, verticalalignment='top')
+            plt.gca().text(0.05, 0.95, text,transform=plt.gca().transAxes, fontsize=fontsize, verticalalignment='top')
         plt.plot(x_range, x_range, color= 'grey', label = 'diagonal line')
         plt.plot(x_range, corr_line, 'k--')
-        plt.scatter(hr_vals, sr_vals, s=30, c=["black"], label = 'core voxels')
+        plt.scatter(hr_vals, sr_vals, s=30, c=[color], label = 'core voxels')
         
-        plt.title(direction)
-        plt.xlabel("V HR (m/s)")
-        plt.ylabel("V SR (m/s)")
+        plt.title(direction, fontsize=fontsize)
+        plt.xlabel("V HR (m/s)", fontsize=fontsize)
+        plt.ylabel("V SR (m/s)", fontsize=fontsize)
         # lgnd = plt.legend(loc = 'lower right', markerscale=2.0, fontsize=10)
         plt.ylim(-abs_max, abs_max)
         plt.xlim(-abs_max, abs_max)
         plt.locator_params(axis='y', nbins=3)
         plt.locator_params(axis='x', nbins=3)
+        plt.tick_params(axis='y', labelsize = fontsize)
+        plt.tick_params(axis='x', labelsize = fontsize)
         # lgnd.legendHandles[1]._sizes = [30]
         # lgnd.legendHandles[2]._sizes = [30]
 
@@ -554,7 +595,7 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_b = KI_colors['Plu
         z = np.polyfit(hr_vals, sr_vals, 1)
         corr_line = np.poly1d(z)(x_range)
         slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(hr_vals, sr_vals)
-        text = f"$y={z[0]:0.4f}\;x{z[1]:+0.4f}$\n$R^2 = {r_value**2:0.4f}$"
+        text = f"$y={z[0]:0.3f}\;x{z[1]:+0.3f}$\n$R^2 = {r_value**2:0.4f}$"
         
         return corr_line, text
 
@@ -563,10 +604,10 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_b = KI_colors['Plu
 
     min_vals = np.min([np.min(sr_u_vals), np.min(sr_v_vals), np.min(sr_w_vals)])
     max_vals = np.max([np.max(sr_u_vals), np.max(sr_v_vals), np.max(sr_w_vals)])
-    abs_max = np.max([np.abs(min_vals), np.abs(max_vals)])
+    abs_max  = np.max([np.abs(min_vals), np.abs(max_vals)])
     print('min/max/abs max', min_vals, max_vals, abs_max)
 
-    plt.clf()
+    plt.close()
 
     # plot regression line for Vx, Vy and Vz
     plt.figure(figsize=(7, 7))
@@ -588,10 +629,11 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_b = KI_colors['Plu
 
     plt.clf()
     save_subplots = True
-
+    
+    plt.close()
     # plot Vx, Vy and Vz in subplots
     if save_subplots: 
-        plt.figure(figsize=(15, 5))
+        fig = plt.figure(figsize=(15, 5))
         plt.subplot(1, 3, 1)
         plot_regression_points(hr_u_core, sr_u_vals, hr_u[idx_core], sr_u[idx_core], direction=r'$V_x$')
         plt.subplot(1, 3, 2)
@@ -600,6 +642,7 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_b = KI_colors['Plu
         plot_regression_points(hr_w_core, sr_w_vals, hr_w[idx_core], sr_w[idx_core],  direction=r'$V_z$')
         plt.tight_layout()
         if save_as is not None: plt.savefig(f"{save_as}_all_notext_LRXYZ_subplots.pdf")
+    return fig
     
 def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KI_colors['Plum'], save_as = None):
     '''
@@ -1024,12 +1067,13 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
 
     # fig = plt.figure(figsize=figsize)
     fig, axes = plt.subplots(nrows=T, ncols=N, constrained_layout=True, figsize=figsize)
+    if min_v is None or max_v is None:
+        min_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.01)
+        max_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.99)
 
-    min_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.01)
-    max_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.99)
-
-    min_rel_error = np.min(np.array(abserror_cube))
-    max_rel_error = np.max(np.array(abserror_cube))
+    if include_error:
+        min_rel_error = np.min(np.array(abserror_cube))
+        max_rel_error = np.max(np.array(abserror_cube))
 
     img_cnt = 1
     for j,t in enumerate(timepoints):
@@ -1269,7 +1313,6 @@ def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparis
     fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 40, label = 'velocity (m/s)')
     plt.savefig(save_as,bbox_inches='tight' )
 
-
 def show_timeframes(gt,lr,  pred,mask, rel_error, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v,save_as = "Frame_comparison.png"):
     '''
     Plots a series of frames next to eachother to compare 
@@ -1404,6 +1447,9 @@ def show_timeframes(gt,lr,  pred,mask, rel_error, comparison_lst, comparison_nam
         plt.subplots_adjust(hspace=0, wspace=0)
         plt.savefig(save_under,bbox_inches='tight')
         #plt.clf()
+
+#-------- merge this functions---- above
+
 
 
 def calculate_temporal_derivative(data, timestep=1):
@@ -1619,6 +1665,7 @@ def plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbo
 
     t_range = range(frames)
     if exclude_tbounds:
+        print('Exclude temporal boundaries..')
         t_range = t_range[1:-1]
         k = k[:, 1:-1]
         r2 = r2[:, 1:-1]
@@ -1627,12 +1674,11 @@ def plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbo
         idx_peak_flow_frame = peak_flow_frame
 
     min_val = np.minimum(0.45, np.minimum(np.min(k), np.min(r2)))
-    max_val = np.maximum(np.max(k), np.max(r2))
-    max_val = np.maximum(max_val, 1.05)
+    max_val = np.maximum(1.05, np.maximum(np.max(k), np.max(r2)))
 
     # Create subplots
     plt.subplots_adjust(wspace=0.3)
-    fig, axs = plt.subplots(1, 3, figsize=figsize, sharey=True)
+    fig1, axs = plt.subplots(1, 3, figsize=figsize, sharey=True)
 
     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
         # Plot k values on the primary y-axis
@@ -1661,7 +1707,7 @@ def plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbo
     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
 
         # Create subplots
-        fig, ax = plt.subplots(figsize=(5, 5))
+        fig2, ax = plt.subplots(figsize=(5, 5))
 
         ax.set_ylim([min_val, max_val])
         ax.set_title(title, fontsize = fontsize)
@@ -1684,56 +1730,8 @@ def plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbo
 
         # Close the plot to avoid memory leaks
         plt.close()
-
-def plot_corr_k_r2_vals(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbounds = False,  save_as= 'K_R2_values_all'):
-    print('Plot k and r2 values with peak flow frame', peak_flow_frame, ' ..')
-
-    vel_colnames = ['u', 'v', 'w']
-    vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
-    fontsize = 16
-    frames = k.shape[1]
-
-    t_range = range(frames)
-    if exclude_tbounds:
-        t_range = t_range[1:-1]
-        k = k[:, 1:-1]
-        r2 = r2[:, 1:-1]
-        idx_peak_flow_frame = peak_flow_frame -1
-    else:
-        idx_peak_flow_frame = peak_flow_frame
-
-    min_val = np.minimum(0.45, np.minimum(np.min(k), np.min(r2)))
-    max_val = np.maximum(np.max(k), np.max(r2))
-    max_val = np.maximum(max_val, 1.05)
-
-    # Create subplots
-    plt.subplots_adjust(wspace=0.3)
-    fig, axs = plt.subplots(2, 3, figsize=figsize, sharey=True)
-
-    for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
-        # Plot k values on the primary y-axis
-        
-        axs[i].set_ylim([min_val, max_val])
-        axs[i].set_title(title, fontsize = fontsize)
-        axs[i].set_xlabel('frame', fontsize=fontsize)
-        axs[i].set_ylabel(r'k/$R^2$', fontsize=fontsize)
-        axs[i].locator_params(axis='y', nbins=3)
-        axs[i].locator_params(axis='x', nbins=3)
-        axs[i].tick_params(axis='y', labelsize = fontsize)
-        axs[i].tick_params(axis='x', labelsize = fontsize)
-        
-        # k-values
-        axs[i].plot(t_range, k[i, :], label='k', color='black')
-        axs[i].scatter(np.ones(1)*peak_flow_frame, [k[i, idx_peak_flow_frame]], color=KI_colors['Grey'])
-        # R2 values 
-        axs[i].plot(t_range, r2[i, :], '--', label=r'$R^2$', color=KI_colors['Plum'])
-        axs[i].scatter(np.ones(1)*peak_flow_frame, [r2[i, idx_peak_flow_frame]], label='peak flow frame', color=KI_colors['Grey'])
-        axs[i].plot(np.ones(frames), 'k:', label= 'ones')
-        axs[i].legend(loc='lower right')
-
-    plt.tight_layout()
-    plt.savefig(f'{save_as}_VXYZ.svg')
-
+    
+    return fig1, axs
 
 def calculate_and_plot_k_r2_vals_nobounds(gt, pred, mask, peak_flow_frame, figsize = (8,8),exclude_tbounds = False,  save_as= 'K_R2_values_all'):
 
@@ -1748,6 +1746,41 @@ def calculate_and_plot_k_r2_vals_nobounds(gt, pred, mask, peak_flow_frame, figsi
     plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = figsize,exclude_tbounds = exclude_tbounds,  save_as= save_as)
 
     return k, r2
+
+def animate_data_over_time_gif(spatial_idx, data,  min_v, max_v, save_as = 'Animate_',fps =10,  colormap = 'viridis', show_colorbar = False):
+
+    print('Create animation plotting data over time..')
+
+    fig = plt.figure(frameon=False)
+    im1 = plt.imshow(data[0, spatial_idx[0], spatial_idx[1], spatial_idx[2]],interpolation='none', vmin=min_v, vmax=max_v, cmap = colormap)
+    plt.axis('off')
+    if show_colorbar:
+        ax = plt.gca()
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05, ) 
+        cb = plt.colorbar(im1, cax=cax)
+        cb.set_label(label='V [m/s]',size=15,weight='bold')
+        cb.ax.locator_params(nbins=3)
+        # tick_locator = ticker.MaxNLocator(nbins=3)
+        # cb.locator = tick_locator
+        # cb.update_ticks()
+    plt.tight_layout()
+
+    # initialization function: plot the background of each frame
+    def init():
+        im1.set_data(np.random.random((5,5)))
+        return [im1]
+
+    # animation function is called sequentially
+    def animate(i):
+        im1.set_array(data[i, spatial_idx[0], spatial_idx[1], spatial_idx[2]])
+        return [im1]
+
+    anim = animation.FuncAnimation(fig,animate, init_func=init,
+                                frames = data.shape[0],
+                                interval = 100, repeat = False) # in ms)
+    anim.save(f'{save_as}_{fps}fps.gif', fps=fps)
+
 
 #TODO extend to time 
 def generate_gif_volume(img3D, axis = 0, save_as = "animation"):
@@ -1805,6 +1838,8 @@ def compare_peak_flow_pixel(gt,lr, model_names, set_names, labels, colors,name_c
 
     plt.savefig(f'{eval_dir}/{name_comparison}_peak_flow_voxel_speed.png')
     plt.show()
+
+
 
 
 # ------------------- INTERPOLATION FUNCTIONS---------------------------
