@@ -143,11 +143,11 @@ def load_interpolation(data_model, step, lr, gt):
 if __name__ == "__main__":
 
     # Define directories and filenames
-    model_name = '20240617-0933' 
+    model_name = '20240605-1504'#20240617-0933
     set_name = 'Test'               
     data_model= '4'
     step = 2
-    load_interpolation_files = False
+    load_interpolation_files = True
     ups_factor = 2
 
     #choose which plots to show
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     show_corr_plot = True
     show_planeMV_plot = True
     tabular_eval = True
-    show_animation = False #TODO: implement
+    show_animation = True 
     save_as_vti = False
 
 
@@ -169,7 +169,7 @@ if __name__ == "__main__":
 
     # filenames
     gt_filename = f'M{data_model}_2mm_step{step}_cs_invivoP02_hr.h5'
-    lr_filename = f'M{data_model}_2mm_step{step}_cs_invivoP02_lr_lessnoise.h5'
+    lr_filename = f'M{data_model}_2mm_step{step}_cs_invivoP02_lr.h5'
 
     pred_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'
     
@@ -191,6 +191,10 @@ if __name__ == "__main__":
 
     if load_interpolation_files: 
         # interpolate_linear, interpolate_cubic, interpolate_NN = load_interpolation(data_model, step,lr, gt)
+        interpolate_linear = {}
+        interpolate_linear['u'] = temporal_linear_interpolation_np(lr['u'], gt['u'].shape)
+        interpolate_linear['v'] = temporal_linear_interpolation_np(lr['v'], gt['v'].shape)
+        interpolate_linear['w'] = temporal_linear_interpolation_np(lr['w'], gt['w'].shape)
         # load sinc interpolation
         interpolate_sinc = {}
         hr_range = np.linspace(0,1,  gt['u'].shape[0])
@@ -253,78 +257,123 @@ if __name__ == "__main__":
         plt.show()
 
     # 2. Plot the relative error and mean speed over time
+
     if show_RE_plot:
-
-        plt.figure(figsize=(9, 7))
-
-        gt_meanspeed    = calculate_mean_speed(gt['u_fluid'], gt['v_fluid'], gt['w_fluid'], gt['mask'])
-        lr_meanspeed    = calculate_mean_speed(lr['u_fluid'], lr['v_fluid'], lr['w_fluid'], lr['mask'])
-        pred_meanspeed  = calculate_mean_speed(pred['u_fluid'], pred['v_fluid'], pred['w_fluid'], gt['mask'])
-
-        plt.subplot(3, 1, 1)
-        plt.plot(gt_meanspeed, '.-',label ='High resolution', color = 'black')
-        plt.plot(pred_meanspeed,'.-', label= '4DFlowNet', color = KI_colors['Blue'])
-        plt.plot(range(0, N_frames, 2),  lr_meanspeed,'.-',  label = 'Low resolution', color = KI_colors['Green'])
-        if load_interpolation_files:
-            sinc_mean = calculate_mean_speed(interpolate_sinc['u_fluid'], interpolate_sinc['v_fluid'], interpolate_sinc['w_fluid'], gt['mask'])
-            plt.plot(sinc_mean[:-1], label = 'sinc interpolation', color = 'orange')
-            # plt.plot(interpolate_linear['mean_speed'][:-1],'--', label = 'linear interpolation', color = 'pink')
-            # plt.plot(interpolate_cubic['mean_speed'][:-1] , label = 'cubic interpoaltion', color = 'forestgreen')
-        plt.xlabel("Frame")
-        plt.ylabel("Mean speed (cm/s)")
-        plt.legend(loc = 'upper left')
-        plt.title('Mean speed')
-        
-
-        plt.subplot(3, 1, 3)
-        #plot_relative_error([gt_filepath],[res_filepath], [set_name])
         N_frames = gt['u'].shape[0]
-        #plt.legend(lst_names)
+  
+        plt.figure(figsize=(10, 3))
         plt.title("Relative error")
-        plt.plot(rel_error, label = '4DFlowNet', color = KI_colors['Blue'])
+        plt.plot(rel_error, label = 'SR', color = KI_colors['Blue'])
         if load_interpolation_files:
             re_error_sinc = calculate_relative_error_normalized(interpolate_sinc['u'], interpolate_sinc['v'], interpolate_sinc['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
-            plt.plot(re_error_sinc, label = 'sinc interpolation', color = 'orange')
+            plt.plot(re_error_sinc, label = 'sinc', color = KTH_colors['green100'])
             print('AVG sinc:', np.mean(re_error_sinc))
-            # rel_error_lin_interpolation = calculate_relative_error_normalized(interpolate_linear['u'], interpolate_linear['v'], interpolate_linear['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
+            rel_error_lin_interpolation = calculate_relative_error_normalized(interpolate_linear['u'], interpolate_linear['v'], interpolate_linear['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
             # rel_error_cubic_interpolation = calculate_relative_error_normalized(interpolate_cubic['u'], interpolate_cubic['v'], interpolate_cubic['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
             # re_sinc = calculate_relative_error_normalized(interpolate_NN['u'], interpolate_NN['v'], interpolate_NN['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
-            # plt.plot(rel_error_lin_interpolation[:-1], label = 'linear interpolation',color = KI_colors['Green'])
+            plt.plot(rel_error_lin_interpolation[:-1], label = 'linear interpolation',color = 'forestgreen')
             # plt.plot(rel_error_cubic_interpolation, label = 'cubic interpolation', color = 'forestgreen')
             # plt.plot(re_sinc, label = 'sinc interpolation', color = 'orange')
         # plt.plot(50*np.ones(len(rel_error)), 'k:')
-        plt.xlabel("Frame")
-        plt.ylabel("Relative error (%)")
-        plt.ylim((0, 100))
-        plt.legend(loc = 'upper left')
+        plt.xlabel("Frame", fontsize = 14)
+        plt.ylabel("Relative error (%)", fontsize = 14)
+        plt.ylim((0, 50))
+        plt.legend(loc = 'upper left', fontsize = 14)
+        plt.savefig(f'{eval_dir}/{set_name}_M{data_model}_RE_pred2.svg',bbox_inches='tight')
 
-        plt.subplot(3, 1, 2)
-        plt.plot(calculate_rmse(pred['u'], gt['u'], gt['mask']), label = r'$V_x$ fluid region', color = KI_colors['Grey'])
-        plt.plot(calculate_rmse(pred['v'], gt['v'], gt['mask']), label = r'$V_y$ fluid region', color = KI_colors['LightBlue'])
-        plt.plot(calculate_rmse(pred['w'], gt['w'], gt['mask']), label = r'$V_z$ fluid region', color = KI_colors['Plum'])
-        if load_interpolation_files:
-            plt.plot(calculate_rmse(interpolate_sinc['u'], gt['u'], gt['mask']), label = r'$V_x$sinc', color = KI_colors['Grey'])
-            # plt.plot(calculate_rmse(pred['speed'], gt['speed'], gt['mask']), label = 'speed', color = KI_colors['LightGrey'])
-            # plt.plot(calculate_rmse(interpolate_linear['w'], gt['w'], gt['mask']), label = r'$V_z$ linear interpolation', color = KI_colors['Green'])
-        plt.ylabel('RMSE')
-        plt.xlabel('Frame')
-        plt.title('RMSE ')
-        plt.legend(loc = 'upper left')
-
-        plt.plot(calculate_rmse(pred['speed'], gt['speed'], gt['mask']), label = 'speed')
-        plt.plot(calculate_rmse(pred['u'], gt['u'], reverse_mask), label = r'$V_x$ non-fluid region',linestyle = '--',  color = KI_colors['Grey'])
-        plt.plot(calculate_rmse(pred['v'], gt['v'], reverse_mask), label = r'$V_y$ non-fluid region',linestyle = '--',  color = KI_colors['LightBlue'])
-        plt.plot(calculate_rmse(pred['w'], gt['w'], reverse_mask), label = r'$V_z$ non-fluid region',linestyle = '--',  color = KI_colors['Plum'])
+        plt.close()
+        # plt.figure(figsize=(10, 3))
+        # plt.title("Relative error")
+        # plt.plot(rel_error, label = 'SR', color = KI_colors['Blue'])
         # if load_interpolation_files:
-        #     plt.plot(calculate_rmse(interpolate_linear['w'], gt['w'], reverse_mask), label = r'$V_z$ non-fluid region linear interpolation',linestyle = '--',  color = KI_colors['Green'])
-        plt.ylabel('RMSE')
-        plt.xlabel('Frame')
-        plt.title('RMSE')
-        plt.legend(loc = 'upper left')
+        #     rmse_V_sinc = calculate_relative_error_normalized(interpolate_sinc['u'], interpolate_sinc['v'], interpolate_sinc['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
+        #     plt.plot(re_error_sinc, label = 'sinc', color = KTH_colors['green100'])
+        #     print('AVG sinc:', np.mean(re_error_sinc))
+        #     rel_error_lin_interpolation = calculate_relative_error_normalized(interpolate_linear['u'], interpolate_linear['v'], interpolate_linear['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
+        #     # rel_error_cubic_interpolation = calculate_relative_error_normalized(interpolate_cubic['u'], interpolate_cubic['v'], interpolate_cubic['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
+        #     # re_sinc = calculate_relative_error_normalized(interpolate_NN['u'], interpolate_NN['v'], interpolate_NN['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
+        #     plt.plot(rel_error_lin_interpolation[:-1], label = 'linear interpolation',color = 'forestgreen')
 
-        plt.tight_layout()
-        plt.savefig(f'{eval_dir}/{set_name}_M{data_model}_RE_RMSE_MEANSPEED_pred2.svg',bbox_inches='tight')
-        plt.show()
+        # # plt.plot(50*np.ones(len(rel_error)), 'k:')
+        # plt.xlabel("Frame", fontsize = 14)
+        # plt.ylabel("Relative error (%)", fontsize = 14)
+        # plt.ylim((0, 50))
+        # plt.legend(loc = 'upper left', fontsize = 14)
+        # plt.savefig(f'{eval_dir}/{set_name}_M{data_model}_RE_pred2.svg',bbox_inches='tight')
+
+        # plot RMSE
+
+        if True: 
+            plt.figure(figsize=(9, 7))
+
+            gt_meanspeed    = calculate_mean_speed(gt['u_fluid'], gt['v_fluid'], gt['w_fluid'], gt['mask'])
+            lr_meanspeed    = calculate_mean_speed(lr['u_fluid'], lr['v_fluid'], lr['w_fluid'], lr['mask'])
+            pred_meanspeed  = calculate_mean_speed(pred['u_fluid'], pred['v_fluid'], pred['w_fluid'], gt['mask'])
+
+            plt.subplot(3, 1, 1)
+            plt.plot(gt_meanspeed, '.-',label ='High resolution', color = 'black')
+            plt.plot(pred_meanspeed,'.-', label= '4DFlowNet', color = KI_colors['Blue'])
+            plt.plot(range(0, N_frames, 2),  lr_meanspeed,'.-',  label = 'Low resolution', color = KI_colors['Green'])
+            if load_interpolation_files:
+                sinc_mean = calculate_mean_speed(interpolate_sinc['u_fluid'], interpolate_sinc['v_fluid'], interpolate_sinc['w_fluid'], gt['mask'])
+                plt.plot(sinc_mean[:-1], label = 'sinc interpolation', color = 'orange')
+                # plt.plot(interpolate_linear['mean_speed'][:-1],'--', label = 'linear interpolation', color = 'pink')
+                # plt.plot(interpolate_cubic['mean_speed'][:-1] , label = 'cubic interpoaltion', color = 'forestgreen')
+            plt.xlabel("Frame")
+            plt.ylabel("Mean speed (cm/s)")
+            plt.legend(loc = 'upper left')
+            plt.title('Mean speed')
+            
+
+            plt.subplot(3, 1, 3)
+            #plot_relative_error([gt_filepath],[res_filepath], [set_name])
+            N_frames = gt['u'].shape[0]
+            #plt.legend(lst_names)
+            plt.title("Relative error")
+            plt.plot(rel_error, label = '4DFlowNet', color = KI_colors['Blue'])
+            if load_interpolation_files:
+                re_error_sinc = calculate_relative_error_normalized(interpolate_sinc['u'], interpolate_sinc['v'], interpolate_sinc['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
+                plt.plot(re_error_sinc, label = 'sinc interpolation', color = 'orange')
+                print('AVG sinc:', np.mean(re_error_sinc))
+                # rel_error_lin_interpolation = calculate_relative_error_normalized(interpolate_linear['u'], interpolate_linear['v'], interpolate_linear['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
+                # rel_error_cubic_interpolation = calculate_relative_error_normalized(interpolate_cubic['u'], interpolate_cubic['v'], interpolate_cubic['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
+                # re_sinc = calculate_relative_error_normalized(interpolate_NN['u'], interpolate_NN['v'], interpolate_NN['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
+                # plt.plot(rel_error_lin_interpolation[:-1], label = 'linear interpolation',color = KI_colors['Green'])
+                # plt.plot(rel_error_cubic_interpolation, label = 'cubic interpolation', color = 'forestgreen')
+                # plt.plot(re_sinc, label = 'sinc interpolation', color = 'orange')
+            # plt.plot(50*np.ones(len(rel_error)), 'k:')
+            plt.xlabel("Frame")
+            plt.ylabel("Relative error (%)")
+            plt.ylim((0, 100))
+            plt.legend(loc = 'upper left')
+
+            plt.subplot(3, 1, 2)
+            plt.plot(calculate_rmse(pred['u'], gt['u'], gt['mask']), label = r'$V_x$ fluid region', color = KI_colors['Grey'])
+            plt.plot(calculate_rmse(pred['v'], gt['v'], gt['mask']), label = r'$V_y$ fluid region', color = KI_colors['LightBlue'])
+            plt.plot(calculate_rmse(pred['w'], gt['w'], gt['mask']), label = r'$V_z$ fluid region', color = KI_colors['Plum'])
+            if load_interpolation_files:
+                plt.plot(calculate_rmse(interpolate_sinc['u'], gt['u'], gt['mask']), label = r'$V_x$sinc', color = KI_colors['Grey'])
+                # plt.plot(calculate_rmse(pred['speed'], gt['speed'], gt['mask']), label = 'speed', color = KI_colors['LightGrey'])
+                # plt.plot(calculate_rmse(interpolate_linear['w'], gt['w'], gt['mask']), label = r'$V_z$ linear interpolation', color = KI_colors['Green'])
+            plt.ylabel('RMSE')
+            plt.xlabel('Frame')
+            plt.title('RMSE ')
+            plt.legend(loc = 'upper left')
+
+            plt.plot(calculate_rmse(pred['speed'], gt['speed'], gt['mask']), label = 'speed')
+            plt.plot(calculate_rmse(pred['u'], gt['u'], reverse_mask), label = r'$V_x$ non-fluid region',linestyle = '--',  color = KI_colors['Grey'])
+            plt.plot(calculate_rmse(pred['v'], gt['v'], reverse_mask), label = r'$V_y$ non-fluid region',linestyle = '--',  color = KI_colors['LightBlue'])
+            plt.plot(calculate_rmse(pred['w'], gt['w'], reverse_mask), label = r'$V_z$ non-fluid region',linestyle = '--',  color = KI_colors['Plum'])
+            # if load_interpolation_files:
+            #     plt.plot(calculate_rmse(interpolate_linear['w'], gt['w'], reverse_mask), label = r'$V_z$ non-fluid region linear interpolation',linestyle = '--',  color = KI_colors['Green'])
+            plt.ylabel('RMSE')
+            plt.xlabel('Frame')
+            plt.title('RMSE')
+            plt.legend(loc = 'upper left')
+
+            plt.tight_layout()
+            plt.savefig(f'{eval_dir}/{set_name}_M{data_model}_RE_RMSE_MEANSPEED_pred2.svg',bbox_inches='tight')
+            plt.show()
 
     # 3. Plot the correlation between the prediction and the ground truth in peak flow frame
 
@@ -358,6 +407,10 @@ if __name__ == "__main__":
         plt.savefig(f'{eval_dir}/{set_name}_M{model_name}_correlation_frame{T_peak_flow}_K_R2.png')
         
         plt.show()
+        fig_sinc = plot_correlation_nobounds(gt, interpolate_sinc, T_peak_flow,show_text = True,color_points= KTH_colors['green100']
+                                             ,  save_as = f'{eval_dir}/{set_name}_M{model_name}_correlation_sinc_nobounds_frame{T_peak_flow}')
+        fig_linear = plot_correlation_nobounds(gt, interpolate_linear, T_peak_flow,show_text = True,color_points= 'forestgreen', 
+                                                save_as = f'{eval_dir}/{set_name}_M{model_name}_correlation_linear_nobounds_frame{T_peak_flow}')
 
     # 4. Plot MV plot through Mitral valve
 
@@ -470,6 +523,36 @@ if __name__ == "__main__":
 
 
 
+    if show_animation:
+        print("Plot animation..")
+
+        idx_slice = np.index_exp[20, :, :]
+        fps = 20
+        # animate prediction (slice)
+        animate_data_over_time_gif(idx_slice, pred['u'], min_v['u'], max_v['u'], fps = fps , save_as = f'{eval_dir}/{set_name}_animate_u_pred_cbar', show_colorbar = True)
+        animate_data_over_time_gif(idx_slice, pred['v'], min_v['v'], max_v['v'], fps = fps , save_as = f'{eval_dir}/{set_name}_animate_v_pred_cbar', show_colorbar = True)
+        animate_data_over_time_gif(idx_slice, pred['w'], min_v['w'], max_v['w'], fps = fps , save_as = f'{eval_dir}/{set_name}_animate_w_pred_cbar', show_colorbar = True)
+
+        if False: 
+            # animate HR (slice)
+            animate_data_over_time_gif(idx_slice, gt['u'], min_v['u'], max_v['u'], fps = fps , save_as = f'{eval_dir}/{set_name}_animate_u_gt')
+            animate_data_over_time_gif(idx_slice, gt['v'], min_v['v'], max_v['v'], fps = fps , save_as = f'{eval_dir}/{set_name}_animate_v_gt')
+            animate_data_over_time_gif(idx_slice, gt['w'], min_v['w'], max_v['w'], fps = fps , save_as = f'{eval_dir}/{set_name}_animate_w_gt')
+            # animate LR (slice)
+            animate_data_over_time_gif(idx_slice, lr['u'], min_v['u'], max_v['u'], fps = fps//2 , save_as = f'{eval_dir}/{set_name}_animate_u_lr')
+            animate_data_over_time_gif(idx_slice, lr['v'], min_v['v'], max_v['v'], fps = fps//2 , save_as = f'{eval_dir}/{set_name}_animate_v_lr')
+            animate_data_over_time_gif(idx_slice, lr['w'], min_v['w'], max_v['w'], fps = fps//2 , save_as = f'{eval_dir}/{set_name}_animate_w_lr')
+
+        # animate abs error
+        max_abs_err = np.max([np.abs(gt['u'] - pred['u'])[idx_slice], np.abs(gt['v'] - pred['v'])[idx_slice], np.abs(gt['w'] - pred['w'])[idx_slice]])
+        animate_data_over_time_gif(idx_slice, np.abs(gt['u'] - pred['u']), None, None, fps = fps , save_as = f'{eval_dir}/{set_name}_animate_u_abs_error', show_colorbar = True)
+        animate_data_over_time_gif(idx_slice, np.abs(gt['v'] - pred['v']), None, None, fps = fps , save_as = f'{eval_dir}/{set_name}_animate_v_abs_error', show_colorbar = True)
+        animate_data_over_time_gif(idx_slice, np.abs(gt['w'] - pred['w']), None, None, fps = fps , save_as = f'{eval_dir}/{set_name}_animate_w_abs_error', show_colorbar = True)
+
+        
+
+
+
 
     if save_as_vti:
         print("Save as vti files..")
@@ -568,5 +651,40 @@ if __name__ == "__main__":
         print(df_summary)
         print(df_summary.to_latex(index=False, float_format="%.2f"))
         # print(df_raw.to_latex(index=False, float_format="%.2f"))
+
+    #TODO: delete this later
+    if load_interpolation_files:
+        speed_sinc = np.sqrt(interpolate_sinc['u']**2 + interpolate_sinc['v']**2 + interpolate_sinc['w']**2 )
+        speed_linear = np.sqrt(interpolate_linear['u']**2 + interpolate_linear['v']**2 + interpolate_linear['w']**2 )
+
+        rmse_V_sinc = calculate_rmse(speed_sinc, gt['speed'], gt["mask"], return_std=False)
+        rmse_V_linear = calculate_rmse(speed_linear, gt['speed'], gt["mask"], return_std=False)
+
+        mean_abserror_sinc  =  np.average(np.mean(np.abs(speed_sinc - gt['speed']), where = bool_mask, axis = (1,2,3)))
+        mean_abserror_linear  =  np.average(np.mean(np.abs(speed_linear - gt['speed']), where = bool_mask, axis = (1,2,3)))
+
+        cossim_sinc =  cosine_similarity( gt['u'], gt['v'], gt['w'],interpolate_sinc['u'], interpolate_sinc['v'], interpolate_sinc['w'])
+        cossim_sinc_avg = np.mean(cossim_sinc, axis = (1,2,3), where=bool_mask)
+        cossim_linear =  cosine_similarity( gt['u'], gt['v'], gt['w'],interpolate_linear['u'], interpolate_linear['v'], interpolate_linear['w'])
+        cossim_linear_avg = np.mean(cossim_linear, axis = (1,2,3), where=bool_mask)
+
+        RE_sinc = calculate_relative_error_normalized(interpolate_sinc['u'], interpolate_sinc['v'], interpolate_sinc['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
+        RE_linear = calculate_relative_error_normalized(interpolate_linear['u'], interpolate_linear['v'], interpolate_linear['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
+
+        print('SINC interpolation values of model: ', lr_filename)
+        print('MAE |V|:', mean_abserror_sinc)
+        print('RMSE |V|:', np.average(rmse_V_sinc))
+        print('CO SIM:', np.average(cossim_sinc) )
+        print('RE avg: ', np.average(RE_sinc))
+
+        print('LINEAR interpolation values of model: ', lr_filename)
+        print('MAE |V|:', mean_abserror_linear)
+        print('RMSE |V|:', np.average(rmse_V_linear))
+        print('CO SIM:', np.average(cossim_linear) )
+        print('RE avg: ', np.average(RE_linear))
+
+
+
+
 
     print('---------------DONE-----------------------')
