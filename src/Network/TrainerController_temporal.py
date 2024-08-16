@@ -571,9 +571,9 @@ class  TrainerController_temporal:
         h5util.save_predictions(self.model_dir, quicksave_filename, "epoch", np.asarray([epoch_nr]), compression='gzip')
 
         preds = np.expand_dims(preds, 0) # Expand dim to [epoch_nr, batch, ....]
-        h5util.save_predictions(self.model_dir, quicksave_filename, "u", preds[...,0], compression='gzip')
-        h5util.save_predictions(self.model_dir, quicksave_filename, "v", preds[...,1], compression='gzip')
-        h5util.save_predictions(self.model_dir, quicksave_filename, "w", preds[...,2], compression='gzip')
+        h5util.save_predictions(self.model_dir, quicksave_filename, "sr_u", preds[...,0], compression='gzip')
+        h5util.save_predictions(self.model_dir, quicksave_filename, "sr_v", preds[...,1], compression='gzip')
+        h5util.save_predictions(self.model_dir, quicksave_filename, "sr_w", preds[...,2], compression='gzip')
 
         if epoch_nr == 1:
             # Save the actual data only for the first epoch

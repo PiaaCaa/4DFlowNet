@@ -247,7 +247,9 @@ class TemporalPatchData:
         self.step_t = step_t
         self.axis = axis
         self.idx = index
-        self.start_t = rnd.randrange(0, u.shape[0] - self.patch_size*self.step_t + 1) 
+        self.start_t = rnd.randrange(2, u.shape[0] - self.patch_size*self.step_t + 1) #TODO delete this later- only to not consider first two frames in cs data
+        if self.start_t <2:
+            print('START IS BEFORE 2!!')
         self.start_1 = rnd.randrange(0, u.shape[1] - self.patch_size) 
         self.start_2 = rnd.randrange(0, u.shape[2] - self.patch_size) 
 

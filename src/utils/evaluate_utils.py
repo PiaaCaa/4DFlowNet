@@ -523,7 +523,7 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_points = 'black',s
     '''
     Plot correlation plot between ground truth and prediction at a given frame
     '''
-    fontsize = 16
+    fontsize = 14
     # set percentage of how many random points are used
     p = 0.1
     mask_threshold = 0.6
@@ -573,7 +573,7 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_points = 'black',s
             plt.gca().text(0.05, 0.95, text,transform=plt.gca().transAxes, fontsize=fontsize, verticalalignment='top')
         plt.plot(x_range, x_range, color= 'grey', label = 'diagonal line')
         plt.plot(x_range, corr_line, 'k--')
-        plt.scatter(hr_vals, sr_vals, s=30, c=[color], label = 'core voxels')
+        plt.scatter(hr_vals, sr_vals, s=30, c=[color_points], label = 'core voxels')
         
         plt.title(direction, fontsize=fontsize)
         plt.xlabel("V HR (m/s)", fontsize=fontsize)
@@ -633,7 +633,7 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_points = 'black',s
     plt.close()
     # plot Vx, Vy and Vz in subplots
     if save_subplots: 
-        fig = plt.figure(figsize=(15, 5))
+        fig = plt.figure(figsize=(12, 4))
         plt.subplot(1, 3, 1)
         plot_regression_points(hr_u_core, sr_u_vals, hr_u[idx_core], sr_u[idx_core], direction=r'$V_x$')
         plt.subplot(1, 3, 2)
@@ -641,7 +641,7 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_points = 'black',s
         plt.subplot(1, 3, 3)
         plot_regression_points(hr_w_core, sr_w_vals, hr_w[idx_core], sr_w[idx_core],  direction=r'$V_z$')
         plt.tight_layout()
-        if save_as is not None: plt.savefig(f"{save_as}_all_notext_LRXYZ_subplots.pdf")
+        if save_as is not None: plt.savefig(f"{save_as}_all_notext_LRXYZ_subplots.png")
     return fig
     
 def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KI_colors['Plum'], save_as = None):
@@ -823,7 +823,6 @@ def show_temporal_development_line(gt, lr, pred, mask, axis, indices, save_as = 
     plt.yticks([])
 
     plt.savefig(save_as,bbox_inches='tight')
-
 def show_quiver( u, v, w, mask,frame,save_as = "Quiver_3DFlow.png"):
     x_len, y_len, z_len = u.shape
     fig = plt.figure()
@@ -922,6 +921,99 @@ def make_3D_quiver_plot(data,mask,  frame, set_to_zero=0.9):
         plt.ylabel('y')
         # plt.zlabel('z')
         # plt.show()
+
+
+def plot_rmse(gt, pred, comparison_lst, name_comparison,save_as,colors_comp = None,  figsize = (5, 5)):
+    '''
+    Plot RMSE for Vx, Vy and Vz within and outside the fluid region
+    '''
+
+    reverse_mask = 1 - gt['mask'] 
+
+    fig = plt.figure(figsize = figsize)
+    plt.plot(calculate_rmse(pred['u'], gt['u'], gt['mask']), label = r'$V_x$ fluid region', color = KI_colors['Grey'])
+    plt.plot(calculate_rmse(pred['v'], gt['v'], gt['mask']), label = r'$V_y$ fluid region', color = KI_colors['LightBlue'])
+    plt.plot(calculate_rmse(pred['w'], gt['w'], gt['mask']), label = r'$V_z$ fluid region', color = KI_colors['Plum'])
+
+    plt.plot(calculate_rmse(pred['speed'], gt['speed'], gt['mask']), label = 'speed')
+    plt.plot(calculate_rmse(pred['u'], gt['u'], reverse_mask), label = r'$V_x$ non-fluid region',linestyle = '--',  color = KI_colors['Grey'])
+    plt.plot(calculate_rmse(pred['v'], gt['v'], reverse_mask), label = r'$V_y$ non-fluid region',linestyle = '--',  color = KI_colors['LightBlue'])
+    plt.plot(calculate_rmse(pred['w'], gt['w'], reverse_mask), label = r'$V_z$ non-fluid region',linestyle = '--',  color = KI_colors['Plum'])
+
+    for i, (comp_res, name) in enumerate(zip(comparison_lst, name_comparison)):
+        if colors_comp is not None: 
+            color = colors_comp[i]
+        else:
+            color = None
+        for vel, plt_name in zip(['u', 'v', 'w'], [r'$V_x$', r'$V_y$', r'$V_z$']):
+            RMSE_comp = calculate_rmse(comp_res[vel],  gt[vel], gt['mask'] )
+            plt.plot(RMSE_comp, label= rf'{plt_name}_{name}', color = color)
+
+
+    plt.ylabel('RMSE')
+    plt.xlabel('Frame')
+    plt.title('RMSE ')
+    plt.legend(loc = 'upper left')
+
+    plt.tight_layout()
+    plt.savefig(save_as,bbox_inches='tight')
+    return fig
+
+def plot_relative_error(gt, pred, comparison_lst, name_comparison, save_as, colors_comp = None,  figsize = (10, 3)):
+
+  
+    fig = plt.figure(figsize=figsize)
+    rel_error = calculate_relative_error_normalized(pred['u'], pred['v'], pred['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
+
+    plt.plot(rel_error, label = 'SR', color = KI_colors['Blue'])
+
+    for i, (comp_res, name) in enumerate(zip(comparison_lst, name_comparison)):
+        if colors_comp is not None: 
+            color = colors_comp[i]
+        else:
+            color = None
+        RE_comp = calculate_relative_error_normalized(comp_res['u'], comp_res['v'], comp_res['w'], gt['u'], gt['v'], gt['w'], gt['mask'] )
+        plt.plot(RE_comp, label= name, color = color)
+
+    # plt.plot(50*np.ones(len(rel_error)), 'k:')
+    plt.xlabel("Frame", fontsize = 14)
+    plt.title("Relative error")
+    plt.ylabel("Relative error (%)", fontsize = 14)
+    #plt.ylim((0, 50))
+    plt.legend(loc = 'upper left', fontsize = 14)
+    plt.savefig(save_as,bbox_inches='tight')
+    return fig
+
+
+def plot_mean_speed(gt, pred, lr, comparison_lst, name_comparison,save_as,colors_comp = None,  figsize= (10, 3)):
+    fig = plt.figure(figsize=figsize)
+
+    gt_meanspeed    = calculate_mean_speed(gt['u'], gt['v'], gt['w'], gt['mask'])
+    lr_meanspeed    = calculate_mean_speed(lr['u'], lr['v'], lr['w'], lr['mask'])
+    pred_meanspeed  = calculate_mean_speed(pred['u'], pred['v'], pred['w'], gt['mask'])
+
+    plt.plot(gt_meanspeed, '.-',label ='High resolution', color = 'black')
+    plt.plot(pred_meanspeed,'.-', label= '4DFlowNet', color = KI_colors['Blue'])
+    plt.plot(range(0, len(gt_meanspeed), 2),  lr_meanspeed,'.-',  label = 'Low resolution', color = KI_colors['Green'])
+    for i, (comp_res, name) in enumerate(zip(comparison_lst, name_comparison)):
+        if colors_comp is not None: 
+            color = colors_comp[i]
+        else:
+            color = None
+        comp_meanspeed = calculate_mean_speed(comp_res['u'], comp_res['v'],gt['mask'] )
+        plt.plot(comp_meanspeed, label= name, color = color)
+
+    plt.xlabel("Frame")
+    plt.ylabel("Mean speed (cm/s)")
+    plt.legend(loc = 'upper left')
+    plt.title('Mean speed')
+    plt.savefig(save_as,bbox_inches='tight')
+    return fig
+
+
+
+
+
 
 def plot_spatial_comparison(low_res, ground_truth, prediction, frame_idx = 9, axis=1, slice_idx = 50):
 
@@ -1057,6 +1149,12 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
 
     print(f"Plotting qualitative comparison of timepoints {timepoints}...")
 
+    # gt_cube = np.abs(gt_cube)
+    # lr_cube = np.abs(lr_cube)
+    # pred_cube = np.abs(pred_cube)
+    # for i in range(len(comparison_lst)):
+    #     comparison_lst[i] = np.abs(comparison_lst[i])
+
     ups_factor = 2
     cmap = 'viridis'
     fontsize = 16
@@ -1068,12 +1166,27 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
     # fig = plt.figure(figsize=figsize)
     fig, axes = plt.subplots(nrows=T, ncols=N, constrained_layout=True, figsize=figsize)
     if min_v is None or max_v is None:
-        min_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.01)
-        max_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.99)
+        if len(mask_cube.shape) == 2:
+            print(mask_cube.shape)
+            mask_cube = np.repeat(mask_cube[np.newaxis, ...], gt_cube.shape[0])
+            
+            min_v = np.quantile(gt_cube.flatten(), 0.01)
+            max_v = np.quantile(gt_cube.flatten(), 0.99)
+        else:
+            min_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.01)
+            max_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.99)
 
     if include_error:
         min_rel_error = np.min(np.array(abserror_cube))
         max_rel_error = np.max(np.array(abserror_cube))
+
+    dsize=(gt_cube.shape[1],gt_cube.shape[2])
+    bar_width=1
+    text = 'Not acquired'
+    empty_data = np.full(dsize, fill_value=0.75, dtype=float)
+    for i in range(-dsize[0], dsize[1], bar_width*2):
+        empty_data += 0.5*np.eye(dsize[0], dsize[1], k=i, dtype=float)
+
 
     img_cnt = 1
     for j,t in enumerate(timepoints):
@@ -1081,10 +1194,13 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
         plt.subplot(T, N, row_based_idx(T, N, img_cnt))
         if t%ups_factor == 0:
             lr_slice = lr_cube[j//2]
-            plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap=cmap, aspect='auto')
+            plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap=cmap, )
             if img_cnt == 1: plt.ylabel("LR", fontsize = fontsize)
-            plt.xticks([])
-            plt.yticks([])
+
+        else:
+            plt.imshow(empty_data, cmap='gray',vmin=0, vmax=1)
+            plt.text(dsize[1] / 2, dsize[0] / 2, text, color='black', fontsize=10, ha='center', va='center', multialignment='center', fontweight='bold')
+            if img_cnt == 1: plt.ylabel("LR", fontsize = fontsize)
  
         # plt.title('frame '+ str(t))
         plt.xticks([])
@@ -1092,14 +1208,14 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
         
         img_cnt +=1
         plt.subplot(T, N, row_based_idx(T, N, img_cnt))
-        plt.imshow(gt_cube[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap, aspect='auto')
+        plt.imshow(gt_cube[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap,)
         if img_cnt == 2: plt.ylabel("HR", fontsize = fontsize)
         plt.xticks([])
         plt.yticks([])
 
         img_cnt +=1
         plt.subplot(T, N, row_based_idx(T, N, img_cnt))
-        im = plt.imshow(pred_cube[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap,aspect='auto')
+        im = plt.imshow(pred_cube[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap,)
         if img_cnt == 3: plt.ylabel("SR", fontsize = fontsize)
         plt.xticks([])
         plt.yticks([])
@@ -1108,7 +1224,7 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
         for comp, name in zip(comparison_lst, comparison_name):
             img_cnt +=1
             plt.subplot(T, N, row_based_idx(T, N, img_cnt))
-            im = plt.imshow(comp[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap, aspect='auto')
+            im = plt.imshow(comp[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap, )
             if img_cnt-1 == (img_cnt-1)%T: plt.ylabel(name, fontsize = fontsize)
             plt.xticks([])
             plt.yticks([])
@@ -1117,7 +1233,7 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
         img_cnt +=1
         if include_error:
             plt.subplot(T, N, row_based_idx(T, N, img_cnt))
-            err_img = plt.imshow(abserror_cube[j, :, :],vmin=min_rel_error, vmax=max_rel_error, cmap=cmap,aspect='auto')
+            err_img = plt.imshow(abserror_cube[j, :, :],vmin=min_rel_error, vmax=max_rel_error, cmap=cmap,)
             if img_cnt-1 == (img_cnt-1)%T: plt.ylabel("abs. error", fontsize = fontsize)
             plt.xticks([])
             plt.yticks([])
@@ -1133,7 +1249,7 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
     cbar.locator = ticker.MaxNLocator(nbins=4)  # Set the maximum number of ticks
     cbar.update_ticks()
     cbar.ax.tick_params(labelsize=fontsize)
-    plt.savefig(save_as,bbox_inches='tight' )
+    plt.savefig(save_as,bbox_inches='tight', transparent=True)
 
 def plot_slices_over_time(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v,exclude_rel_error = True, save_as = "Frame_comparison.png", figsize = (30,20)):
     def row_based_idx(num_rows, num_cols, idx):
@@ -1159,6 +1275,7 @@ def plot_slices_over_time(gt_cube,lr_cube,  mask_cube, rel_error_cube, compariso
 
     min_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.01)
     max_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.99)
+
     if not exclude_rel_error:
         rel_error_slices =[get_2Dslice(rel_error_cube, t, axis, idx) for t in timepoints]
         min_rel_error = np.min(np.array(rel_error_slices))
@@ -1180,9 +1297,7 @@ def plot_slices_over_time(gt_cube,lr_cube,  mask_cube, rel_error_cube, compariso
             
         plt.title('frame '+ str(t))
         plt.xticks([])
-        plt.yticks([])
-        # plt.axis('off')
-        
+        plt.yticks([])        
 
         i +=1
         plt.subplot(T, N, row_based_idx(T, N, i))
@@ -1217,11 +1332,10 @@ def plot_slices_over_time(gt_cube,lr_cube,  mask_cube, rel_error_cube, compariso
             if t == timepoints[-1]:
                 plt.colorbar(re_img, ax = axes[-1], aspect = 10, label = 'abs. error ')
 
-        
         i +=1
 
-    fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 50, label = 'velocity (m/s)')
-    plt.savefig(save_as,bbox_inches='tight' )
+    fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 60, label = 'velocity (m/s)')
+    plt.savefig(save_as,bbox_inches='tight', transparent=True)
     # plt.tight_layout()
 
 def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v,exclude_rel_error = True, save_as = "Frame_comparison.png", figsize = (30,20)):
@@ -1702,8 +1816,9 @@ def plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbo
         axs[i].legend(loc='lower right')
 
     plt.tight_layout()
-    plt.savefig(f'{save_as}_VXYZ.svg')
+    plt.savefig(f'{save_as}_VXYZ.png')
 
+    # save separate
     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
 
         # Create subplots

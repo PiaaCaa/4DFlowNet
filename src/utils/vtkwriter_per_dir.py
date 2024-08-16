@@ -197,9 +197,9 @@ def uvw_mask_to_vtk(vector_arrays, scalar_array, spacing, filename, include_mask
 
 def get_vector_fields(input_filepath, columns, idx):
     with h5py.File(input_filepath, 'r') as hf:
-        u = np.asarray(hf.get(columns[0])[idx])
-        v = np.asarray(hf.get(columns[1])[idx])
-        w = np.asarray(hf.get(columns[2])[idx])
+        u = np.asarray(hf.get(columns[0])).squeeze()[idx]
+        v = np.asarray(hf.get(columns[1])).squeeze()[idx]
+        w = np.asarray(hf.get(columns[2])).squeeze()[idx]
     return u,v,w
 
 def get_mask(input_filepath, idx):
@@ -228,12 +228,15 @@ if __name__ == "__main__":
     # output_dir = "/home/pcallmer/Temporal4DFlowNet/results/vtk/"
     # input_dir = "/home/pcallmer/Temporal4DFlowNet/results/Temporal4DFlowNet_20230620-0909" 
     # mask_file  = "/home/pcallmer/Temporal4DFlowNet/data/CARDIAC/M4_2mm_step2_static_dynamic.h5"
-    output_dir = "results/data/insilico"
+    # output_dir = "results/data/insilico"
+    output_dir = "C:/Users/piacal/Code/PINNs/"
+    input_dir = output_dir
 
     # columns = ['u_combined', 'v_combined', 'w_combined']
     columns = ['u', 'v', 'w']
     
-    files = ["M1_2mm_step1_static_dynamic", "M2_2mm_step1_static_dynamic", "M3_2mm_step1_static_dynamic", "M4_2mm_step1_static_dynamic"]   
+    # files = ["M1_2mm_step1_static_dynamic", "M2_2mm_step1_static_dynamic", "M3_2mm_step1_static_dynamic", "M4_2mm_step1_static_dynamic"]   
+    files = ["healthy-05mm3_sliced"]
     
     for file in files:
         print(f"Processing case {file}")
@@ -258,7 +261,8 @@ if __name__ == "__main__":
                 spacing = (dx[0], dx[1], dx[2])
                 # spacing = (dx, dx, dx)
             else:
-                spacing = (1.0, 1.0, 1.0)
+                # spacing = (1.0, 1.0, 1.0)
+                spacing = (0.5, 0.5, 0.5)
         print(spacing)
 
         # Build a vtk file per time frame    
@@ -266,16 +270,19 @@ if __name__ == "__main__":
             print('Processing index', idx)
             
             u, v, w = get_vector_fields(input_filepath, columns, idx)
+            mask = np.zeros_like(u)
+            mask[np.where(u != 0)] = 1
+            print(u.shape, mask.shape)
             # u, v, w = create_difference_field(mask_file, input_filepath,['u', 'v', 'w'], columns,  idx)
             # mask = get_mask(mask_file, idx)
             
             output_filepath = f'{output_path}/{output_filename}_{idx}_uvw.vti'
             # output_filepath = os.path.join(output_path, "{}_{}_absHRdiff.vti".format(output_filename, idx))
 
-            vectors_to_vtk((u,v,w), spacing, output_filepath)
+            # vectors_to_vtk((u,v,w), spacing, output_filepath)
             # scalar_to_vtk(u, spacing, output_filepath)
             #scalar_to_vtk(mask, spacing, output_filepath)
-            # uvw_mask_to_vtk((u,v,w), mask, spacing, output_filepath, include_mask=True)
+            uvw_mask_to_vtk((u,v,w), mask, spacing, output_filepath, include_mask=True)
             #uvw_mask_to_vtk((u,v,w), spacing, output_filepath)
         print(f"Saved as {output_filepath}")
             

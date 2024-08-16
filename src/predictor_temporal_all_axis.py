@@ -42,20 +42,17 @@ if __name__ == '__main__':
     if args.model is not None:
         model_name = args.model
     else:
-        model_name = '20240207-1150' # this model: training 2, 3, validation: 1, test:4
+        model_name = '20240605-1504' # this model: training 2, 3, validation: 1, test:4
 
     print("model_name: ", model_name)
     # Define directories and filenames
-    if args.model is not None:
-        model_name = args.model
-    else:
-        model_name = '20230602-1701' # this model: training 2, 3, validation: 1, test:4
-    print("Model name: ", model_name)
+
     set_names = ['Test', 'Validation', 'Training', 'Training']
     data_models= ['4', '1', '2', '3', ]
     steps = [ 2 ]#, 2 ]#, 2, 2]
-    file_names = ['M4_2mm_step2_invivoP02_magnitude_noise.h5', 'M1_2mm_step2_invivoP01_magnitude_noise.h5', 
-                  'M2_2mm_step2_invivoP02_magnitude_noise.h5', 'M3_2mm_step2_invivoP03_magnitude_noise.h5']
+    file_names = ['M4_2mm_step2_cs_invivoP02_lr.h5']
+    # file_names = ['M4_2mm_step2_invivoP02_magnitude_noise.h5', 'M1_2mm_step2_invivoP01_magnitude_noise.h5', 
+    #               'M2_2mm_step2_invivoP02_magnitude_noise.h5', 'M3_2mm_step2_invivoP03_magnitude_noise.h5']
     #file_names = ['M4_2mm_step2_static_dynamic_noise.h5', 'M1_2mm_step2_static_dynamic_noise.h5'] #'M2_2mm_step2_static_dynamic_noise.h5', 'M3_2mm_step2_static_dynamic_noise.h5', 
     # file_names = ['M4_2mm_step2_temporalsmoothing_toeger_periodic_LRfct_noise.h5', 'M1_2mm_step2_temporalsmoothing_toeger_periodic_LRfct_noise.h5'] #'M2_2mm_step2_static_dynamic_noise.h5', 'M3_2mm_step2_static_dynamic_noise.h5', 
     # set filenamaes and directories
@@ -75,7 +72,7 @@ if __name__ == '__main__':
         patch_size = 16
         res_increase = 2
         batch_size = 16
-        round_small_values = True
+        round_small_values = False
 
         # Network - default 8-4
         n_low_resblock = 8

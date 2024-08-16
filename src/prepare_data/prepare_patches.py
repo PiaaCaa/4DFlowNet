@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     
     base_path = '/mnt/c/Users/piacal/Code/SuperResolution4DFlowMRI/Temporal4DFlowNet/data/CARDIAC'#'data/CARDIAC'
-    output_filename = f'{base_path}/Temporal{patch_size}MODEL{hr_file[1]}_2mm_step2_cs_invivomagn.csv'
+    output_filename = f'{base_path}/Temporal{patch_size}MODEL{hr_file[1]}_2mm_step2_cs_invivomagn_exclfirst2frames.csv'
 
     # Check if the files exist  
     assert(os.path.isfile(f'{base_path}/{hr_file}'))    # HR file does not exist
@@ -71,7 +71,6 @@ if __name__ == "__main__":
     # check on temporal aspect
     if t_hr == t_lr:
         step_t = 2 #or adjust this to downsampling size, default is factor 2
-
         check_t = 1
     else:
         print('Set step size to 1, means it is expected that downsampling is already done in the data and not on the fly.')
