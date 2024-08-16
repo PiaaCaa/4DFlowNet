@@ -18,6 +18,55 @@ from utils.colors import *
 import matplotlib.animation as animation
 plt.rcParams['figure.figsize'] = [10, 8]
 
+
+def animate_invivo_HR_pred(idx, v_orig, v_gt_fluid, v_pred, min_v, max_v, save_as, fps = 10):
+    N_frames = v_orig.shape[0]
+    N = 3
+
+    fig = plt.figure(frameon=False)
+
+    plt.subplot(1, N, 1)
+    im1 = plt.imshow(v_orig[0, idx, :, :],vmin=min_v, vmax=max_v)
+    plt.axis('off')
+    plt.title('Native resolution')
+    plt.subplot(1, N, 2)
+    im2 = plt.imshow(v_gt_fluid[0, idx, :, :],vmin=min_v, vmax=max_v)
+    plt.title('Native resolution (masked)')
+    plt.axis('off')
+    plt.subplot(1, N, 3)
+    ax = plt.gca()
+    im3 = plt.imshow(v_pred[0, idx, :, :],vmin=min_v, vmax=max_v)
+    plt.axis('off')
+    plt.title('Network prediction')
+
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05, ) 
+    plt.colorbar(im3, cax=cax, label = 'velocity (m/s)')
+    plt.tight_layout()
+
+    #initialization function: plot the background of each frame
+    def init():
+        im1.set_data(np.random.random((5,5)))
+        im2.set_data(np.random.random((5,5)))
+        im3.set_data(np.random.random((5,5)))
+        return [im1, im2, im3]
+
+    # animation function.  This is called sequentially
+    def animate(i):
+        
+        im1.set_array(v_orig[i, idx, :, :])
+        im2.set_array(v_gt_fluid[i, idx, :, :])
+        im3.set_array(v_pred[i, idx, :, :])
+        
+        return [im1, im2, im3]
+
+    # plt.legend()
+    anim = animation.FuncAnimation(fig,animate, init_func=init, frames = N_frames - 1, interval = 100) # in ms
+    print('Saved animation as', save_as)
+    anim.save(f'{save_as}_{fps}fps.gif', fps=fps)
+
+
+
 def create_temporal_comparison_gif_single(spatial_idx, data,  min_v, max_v, eval_dir,title='', fps =10,  colormap = 'viridis'):
 
     print(title, 'nframes:', data.shape[0])
@@ -134,22 +183,29 @@ def plot_slices_over_time3(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparis
 
 
 if __name__ == "__main__":
-    # for one network evluation on multiple models
+    # for one network evluation on multiple invivo datasets
     if True:
         # set directories 
         input_dir = 'data/PIA/THORAX'
         res_dir   = 'results/in_vivo/'
-        eval_dir  = 'results/in_vivo/plots/20240314-1514_imagenet3Dmag_toeger'
+        eval_dir  = 'results/in_vivo/plots/20240605-1504'
+
+        plot_animation = False
+        plt_corrplot = True
+        plt_qualtimeseries = True
+        plt_meanspeed = False
 
         if not os.path.isdir(eval_dir):
             os.makedirs(eval_dir)
 
+        
+
         dict_results = defaultdict(list)
-        cases = ['P01', 'P02', 'P03', 'P04', 'P05'] 
+        cases = ['P01' , 'P02', 'P03', 'P04', 'P05'] 
         for c in cases:
             print('-------------------', c, '-------------------')
             in_vivo = f'{input_dir}/{c}/h5/{c}.h5'
-            in_vivo_upsampled = f'{res_dir}/{c}/{c}_20240314-1514_25Frames.h5' 
+            in_vivo_upsampled = f'{res_dir}/{c}/{c}_20240605-1504_25Frames.h5' 
             name_evaluation = f'THORAX_{c}_{os.path.basename(in_vivo)[:-3]}_25Frames'
 
             #set slice index for animation
@@ -175,9 +231,7 @@ if __name__ == "__main__":
                     print('original', vel, data_original[vel].shape)
                     data_original[f'{vel}_fluid'] = np.multiply(data_original[vel], data_original['mask'])
                 for mag in mag_colnames:
-                    data_original[mag] =  np.asarray(p1[mag]).squeeze()
-
-            
+                    data_original[mag] =  np.asarray(p1[mag]).squeeze()   
 
             # load prediction
             with h5py.File(in_vivo_upsampled, mode = 'r' ) as h_pred:
@@ -219,7 +273,7 @@ if __name__ == "__main__":
             max_V = np.max([max_v['u'], max_v['v'], max_v['w']])
             min_V = np.min([min_v['u'], min_v['v'], min_v['w']])
             #-----------------save img slices over time---------------------
-            if False:
+            if plt_qualtimeseries:
                 time_point = 10
                 slice_idx = np.index_exp[time_point, 18, :, :]
                 fig, axes = plt.subplots(nrows=2, ncols=3, ) #constrained_layout=True
@@ -252,7 +306,7 @@ if __name__ == "__main__":
             
                 plt.tight_layout()
                 plt.savefig(f'{eval_dir}/{c}_SUBPLOT_Invivo_Original_Frame{time_point}.png', bbox_inches='tight')
-
+                plt.show()
             
 
             
@@ -270,7 +324,7 @@ if __name__ == "__main__":
             print('MEAN SPEED', np.average(data_original['mean_speed']))
             print('MAX SPEED', np.max(speed))
 
-            if True:
+            if plt_meanspeed:
                 #-------------mean speed plot---------------------
                 plt.figure(figsize=(7, 4))
                 step_pred = 0.5 if super_resolved_prediction else 1
@@ -293,15 +347,20 @@ if __name__ == "__main__":
                 plt.savefig(f'{eval_dir}/Meanspeed_{name_evaluation}.svg')
                 # plt.show()
 
-                #---------------correlation + k + r^2 plots -------------------
-                if not super_resolved_prediction:
-                    # correlation
+            #---------------correlation + k + r^2 plots -------------------
+            if not super_resolved_prediction:
+                if plt_corrplot: 
+                    font = { # 'weight' : 'bold',
+                        'size'   : 12}
+
+                    matplotlib.rc('font', **font)
+                    #---------------linear regression plot and its parameters-------------------------------
                     peak_flow_frame = np.argmax(data_original['mean_speed'])
                     bounds, core_mask = get_boundaries(data_original['mask'])
                     frame_corr_plot = peak_flow_frame.copy()
                     if frame_corr_plot % 2 == 0: frame_corr_plot +=1 # take next frame if peak flow frame included in lr data
                     plt.figure(figsize=(15, 5))
-                    plot_correlation(data_original, data_predicted, bounds=bounds, frame_idx=frame_corr_plot, save_as=f'{eval_dir}/Correlation_frame{frame_corr_plot}_{name_evaluation}.svg')
+                    plot_correlation_nobounds(data_original, data_predicted, frame_idx=frame_corr_plot, save_as=f'{eval_dir}/Correlation_frame{frame_corr_plot}_{name_evaluation}.svg')
 
                     
                     print('Peak flow frame:', peak_flow_frame)
@@ -318,7 +377,7 @@ if __name__ == "__main__":
 
                     #plot k and r^2 values
                     # plot_k_r2_vals(frames, k,k_bounds, r2,  r2_bounds, peak_flow_frame, name_evaluation, eval_dir)
-                    plot_k_r2_vals(data_original, data_predicted, bounds, peak_flow_frame,color_b = KI_colors['Plum'] , save_as= f'K_r2_frame{frame_corr_plot}_{name_evaluation}.svg', eval_dir = eval_dir, model_name = name_evaluation)
+                    plot_k_r2_vals(data_original, data_predicted, bounds, peak_flow_frame,color_b = KI_colors['Plum'] , save_as= f'{eval_dir}/K_r2_frame{frame_corr_plot}_{name_evaluation}.svg')
 
                     #print mean k and r^2 values
                     dict_intermediate_results = defaultdict(list)
@@ -336,39 +395,63 @@ if __name__ == "__main__":
                         dict_results[f'{key}_std'].append(np.std(dict_intermediate_results[key]))
                         dict_results[f'{key}_peak'].append(dict_intermediate_results[key][eval_peak_flow_frame])
                     
+
+                    print('Mean k values over all patients:', np.average(dict_results[f'k_u']), np.average(dict_results[f'k_v']), np.average(dict_results[f'k_w']))
+                    print('Mean R2 values over all patients:', np.average(dict_results[f'R2_u']), np.average(dict_results[f'R2_v']), np.average(dict_results[f'R2_w']))
                     print('Eval peak flow frame:', eval_peak_flow_frame, peak_flow_frame)
 
+                #-----------------plot slices over time---------------------
+                if plt_qualtimeseries:
 
-
+                    idx_cube = np.index_exp[:, :, 15:70, 20:100]
+                    # plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v,exclude_rel_error = True, save_as = "Frame_comparison.png", figsize = (30,20)):
+                    plot_slices_over_time1(data_original['u'][idx_cube], data_original['u'][::2][idx_cube], data_original['mask'][idx_cube] , None, [data_predicted['u'][idx_cube], ], ['SR',], [2, 3, 4, 5], 0, 30,  min_v['u'], max_v['u'], exclude_rel_error = True, save_as = f"{eval_dir}/{name_evaluation}_u_comparison.pdf", figsize = (7, 4))
+                    # plot_comparison_temporal_slices(data_original, data_predicted, idx_slice, eval_dir, name_evaluation, super_resolved_prediction, min_v, max_v, exclude_rel_error = True)
+                    # plt.show()
 
             #---------create animation------------------------
-            if False:
+            if plot_animation:
+
+
+
                 fps_anim = 10
                 fps_pred = fps_anim*2 if super_resolved_prediction else fps_anim
+                if False: 
+                    if not os.path.exists(f'{eval_dir}/Animate_invivo_case00{c}_mag_{fps_anim}fps.gif'):
+                        create_temporal_comparison_gif_single(idx_slice, magn, 0, np.quantile(magn, 0.99),         eval_dir, fps = fps_anim , title = f'{c}_mag', colormap='Greys_r' )
+                        create_temporal_comparison_gif_single(idx_slice, data_original['mask'], 0, 1,         eval_dir, fps = fps_anim , title = f'{c}_mask', colormap='Greys' )
+                        create_temporal_comparison_gif_single(idx_slice, data_original['u'], min_v['u'], max_v['u'],      eval_dir, fps = fps_anim , title = f'{c}_u_gt')
+                        create_temporal_comparison_gif_single(idx_slice, data_original['v'], min_v['v'], max_v['v'],      eval_dir, fps = fps_anim , title = f'{c}_v_gt')
+                        create_temporal_comparison_gif_single(idx_slice, data_original['w'], min_v['w'], max_v['w'],      eval_dir, fps = fps_anim , title = f'{c}_w_gt')
+                        create_temporal_comparison_gif_single(idx_slice, data_original['u_fluid'], min_v['u'], max_v['u'],eval_dir, fps = fps_anim , title = f'{c}_u_gt_fluid')
+                        create_temporal_comparison_gif_single(idx_slice, data_original['v_fluid'], min_v['v'], max_v['v'],eval_dir, fps = fps_anim , title = f'{c}_v_gt_fluid')
+                        create_temporal_comparison_gif_single(idx_slice, data_original['w_fluid'], min_v['w'], max_v['w'],eval_dir, fps = fps_anim , title = f'{c}_w_gt_fluid')
 
-                if not os.path.exists(f'{eval_dir}/Animate_invivo_case00{c}_mag_{fps_anim}fps.gif'):
-                    create_temporal_comparison_gif_single(idx_slice, magn, 0, np.quantile(magn, 0.99),         eval_dir, fps = fps_anim , title = f'{c}_mag', colormap='Greys_r' )
+                if False: 
                     create_temporal_comparison_gif_single(idx_slice, data_original['mask'], 0, 1,         eval_dir, fps = fps_anim , title = f'{c}_mask', colormap='Greys' )
-                    create_temporal_comparison_gif_single(idx_slice, data_original['u'], min_v['u'], max_v['u'],      eval_dir, fps = fps_anim , title = f'{c}_u_gt')
-                    create_temporal_comparison_gif_single(idx_slice, data_original['v'], min_v['v'], max_v['v'],      eval_dir, fps = fps_anim , title = f'{c}_v_gt')
-                    create_temporal_comparison_gif_single(idx_slice, data_original['w'], min_v['w'], max_v['w'],      eval_dir, fps = fps_anim , title = f'{c}_w_gt')
-                    create_temporal_comparison_gif_single(idx_slice, data_original['u_fluid'], min_v['u'], max_v['u'],eval_dir, fps = fps_anim , title = f'{c}_u_gt_fluid')
-                    create_temporal_comparison_gif_single(idx_slice, data_original['v_fluid'], min_v['v'], max_v['v'],eval_dir, fps = fps_anim , title = f'{c}_v_gt_fluid')
-                    create_temporal_comparison_gif_single(idx_slice, data_original['w_fluid'], min_v['w'], max_v['w'],eval_dir, fps = fps_anim , title = f'{c}_w_gt_fluid')
+                    create_temporal_comparison_gif_single(idx_slice, data_predicted['u'], min_v['u'], max_v['u'], eval_dir, fps = fps_pred , title = f'{name_evaluation}_u_pred')
+                    create_temporal_comparison_gif_single(idx_slice, data_predicted['v'], min_v['v'], max_v['v'], eval_dir, fps = fps_pred , title = f'{name_evaluation}_v_pred')
+                    create_temporal_comparison_gif_single(idx_slice, data_predicted['w'], min_v['w'], max_v['w'], eval_dir, fps = fps_pred , title = f'{name_evaluation}_w_pred')
 
-                create_temporal_comparison_gif_single(idx_slice, data_original['mask'], 0, 1,         eval_dir, fps = fps_anim , title = f'{c}_mask', colormap='Greys' )
-                create_temporal_comparison_gif_single(idx_slice, data_predicted['u'], min_v['u'], max_v['u'], eval_dir, fps = fps_pred , title = f'{name_evaluation}_u_pred')
-                create_temporal_comparison_gif_single(idx_slice, data_predicted['v'], min_v['v'], max_v['v'], eval_dir, fps = fps_pred , title = f'{name_evaluation}_v_pred')
-                create_temporal_comparison_gif_single(idx_slice, data_predicted['w'], min_v['w'], max_v['w'], eval_dir, fps = fps_pred , title = f'{name_evaluation}_w_pred')
+                if not super_resolved_prediction:
+                    animate_invivo_HR_pred(18, data_original['u'], data_original['u_fluid'], data_predicted['u'], min_v['u'], max_v['u'], f'{eval_dir}/Animation_{name_evaluation}_3view_gt_fluid_pred_u', fps = fps_pred)
+                    animate_invivo_HR_pred(18, data_original['v'], data_original['v_fluid'], data_predicted['v'], min_v['v'], max_v['v'], f'{eval_dir}/Animation_{name_evaluation}_3view_gt_fluid_pred_v', fps = fps_pred)
+                    animate_invivo_HR_pred(18, data_original['w'], data_original['w_fluid'], data_predicted['w'], min_v['w'], max_v['w'], f'{eval_dir}/Animation_{name_evaluation}_3view_gt_fluid_pred_w', fps = fps_pred)
 
+                #     animate_invivo_HR_pred(idx, v_orig, v_gt_fluid, v_pred, min_v, max_v, save_as, fps = 10)
+                # animate_invivo_HR_pred(idx_slice, data_original['u'][::2], hr, pred, vel,min_v, max_v, save_as, fps = 10)
+
+
+        # Display tabular for all subject evaluations
         r_dt = pd.DataFrame(dict_results).round(2)
         rearaanged_columns = ['Patient', 'k_u', 'k_u_std', 'k_v', 'k_v_std', 'k_w', 'k_w_std','R2_u', 'R2_u_std', 'R2_v', 'R2_v_std', 'R2_w', 'R2_w_std', 'k_u_peak',  'k_v_peak',  'k_w_peak', 'R2_u_peak',  'R2_v_peak', 'R2_w_peak']
         r_dt = r_dt[rearaanged_columns]
 
         print(r_dt.to_latex(index=False, float_format="%.2f"))
+        r_dt.to_csv(f'{eval_dir}/Results_k_r2.csv', index = False)
 
     #-------------------------------------------------------------------------------------------------------------------------
-    # comparison of different networks on one dataset
+    # comparison of different networks on one invivo dataset
     if False:
         
         patient = 'P01'

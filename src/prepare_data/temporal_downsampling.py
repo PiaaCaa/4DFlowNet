@@ -4,8 +4,8 @@ import h5py
 from scipy.integrate import trapz
 from matplotlib import pyplot as plt
 # from utils import h5functions
-from prepare_data import h5functions
-# import h5functions
+# from prepare_data import h5functions
+import h5functions
 #from prepare_data 
 """
 This file contains functions for temporal downsampling with the aim to mimic the temporal sampling of MRI machine

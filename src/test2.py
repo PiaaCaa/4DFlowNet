@@ -54,8 +54,8 @@ if __name__ == '__main__':
 
 
         # K-space data and save
-        vel_u      = ks.adjust_image_size(vel_u, sample_mask.shape)
-        magn_large = ks.adjust_image_size(magn, sample_mask.shape)
+        vel_u      = ks.adjust_image_size_centered(vel_u, sample_mask.shape)
+        magn_large = ks.adjust_image_size_centered(magn, sample_mask.shape)
         complex_img = np.multiply(magn_large, np.exp(1j * ks.vel_to_phase_norm(vel_u)))
         u_kspace = ks.complex_image_to_centered_kspace(complex_img)
         u_kspace = np.multiply(u_kspace, sample_mask)
@@ -64,7 +64,7 @@ if __name__ == '__main__':
         plt.imshow(np.abs(u_kspace[0, 30, :, :]))
         plt.show()
         comp_u = ks.centered_kspace_to_complex_img(u_kspace)
-        comp_u = ks.adjust_image_size(comp_u, mask.shape)
+        comp_u = ks.adjust_image_size_centered(comp_u, mask.shape)
 
         print('vel_u shape', vel_u.shape)
         plt.imshow(np.angle(comp_u[0, 30, :, :]))
@@ -98,7 +98,7 @@ if __name__ == '__main__':
             #adjust image size
             compl_img  = fft_fcts.centered_kspace_to_complex_img(kspace[:, :, :, :, i])
             print(compl_img.shape)
-            compl_img  = ks.adjust_image_size(compl_img, mask.shape)
+            compl_img  = ks.adjust_image_size_centered(compl_img, mask.shape)
             kspace_small[:, :, :, :, i] = fft_fcts.complex_image_to_centered_kspace(compl_img)
 
         # sens = adjust_image_size(sens, mask.shape)

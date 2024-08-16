@@ -64,7 +64,7 @@ def add_complex_signal_noise(imgfft, targetSNRdb, add_complex_noise=False):
 
     logSNR = targetSNRdb / 10
     snr = 10 ** logSNR
-    print('SNR is', snr, 'with target snr is ', targetSNRdb)
+    print(f'SNR is {snr:.1f} with targetsnrdb is {targetSNRdb}')
 
     noise_power = signal_power / snr
 
@@ -78,7 +78,7 @@ def add_complex_signal_noise(imgfft, targetSNRdb, add_complex_noise=False):
         imgfft += gauss_noise
     else:
         # Add the noise to real and imaginary separately
-        sigma  = np.sqrt(noise_power/2) #note: deleted /2 from here
+        sigma  = np.sqrt(noise_power/2) 
         # print('Target SNR ', targetSNRdb, "db, sigma (real/imj)", sigma)
         
         real_signal = np.real(imgfft)
@@ -186,7 +186,7 @@ def complex_image_to_centered_kspace(complex_img):
     imgfft = np.fft.fftn(complex_img, axes = axes)
 
     # shift img to center
-    imgfft = np.fft.fftshift(imgfft, axes=axes)
+    imgfft = np.fft.fftshift(imgfft, axes=axes).astype(np.complex64)
     return imgfft
 
 def centered_kspace_to_complex_img(imgfft):

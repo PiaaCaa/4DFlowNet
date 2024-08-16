@@ -25,8 +25,8 @@ if __name__ == "__main__":
         lr_file = args.lrdata
         hr_file = args.hrdata
     else:
-        hr_file = 'M4_2mm_step2_cloudmagnRot_toeger_HRfct.h5'       #HiRes velocity data
-        lr_file = 'M4_2mm_step2_cloudmagnRot_toeger_LRfct_noise.h5' #LowRes velocity data 
+        hr_file = 'M6_2mm_step2_dynamic_cs_20ms.h5'       #HiRes velocity data
+        lr_file = 'M6_2mm_step2_dynamic_cs_40ms_noise.h5' #LowRes velocity data 
 
     # Parameters
     temporal_preparation = True
@@ -36,23 +36,17 @@ if __name__ == "__main__":
     all_rotation = False # When true, include 90,180, and 270 rotation for each patch. When False, only include 1 random rotation. (not possible for temporal sampling)
     reverse = True
     mask_threshold = 0.5 # Threshold for non-binary mask 
-    minimum_coverage = 0.2 # Minimum fluid region within a patch. Any patch with less than this coverage will not be taken. Range 0-1
+    minimum_coverage = 0.1 # Minimum fluid region within a patch. Any patch with less than this coverage will not be taken. Range 0-1
 
     
-    base_path = 'data/CARDIAC'
+    base_path = '/mnt/c/Users/piacal/Code/SuperResolution4DFlowMRI/Temporal4DFlowNet/data/CARDIAC'#'data/CARDIAC'
+    output_filename = f'{base_path}/Temporal{patch_size}MODEL{hr_file[1]}_2mm_step2_cs_invivomagn.csv'
 
-    output_filename = f'{base_path}/Temporal{patch_size}MODEL{hr_file[1]}_2mm_step2_cloudmagnRot_toeger.csv'
-
-
-    #TODO check the compatibility in the test iteratoor
-    
-    # Load the data
-    input_filepath = f'{base_path}/{lr_file}'
-    T, X, Y, Z = load_data_shape(input_filepath)
-  
     # Check if the files exist  
     assert(os.path.isfile(f'{base_path}/{hr_file}'))    # HR file does not exist
     assert(os.path.isfile(f'{base_path}/{lr_file}'))    # LR file does not exist 
+
+    
 
     # Prepare the CSV output
     if temporal_preparation:
@@ -61,37 +55,42 @@ if __name__ == "__main__":
         pd.write_header(output_filename)
 
     # because the data is homogenous in 1 table, we only need the first data
-    with h5py.File(input_filepath, mode = 'r' ) as hdf5:
-        mask = np.asarray(hdf5['mask']).squeeze()
-        if (len(mask.shape) == 4 and mask.shape[0]==1) or len(mask.shape) == 3:  
-            mask = pd.create_temporal_mask(mask, T)
+    with h5py.File(f'{base_path}/{lr_file}', mode = 'r' ) as hdf5:
+        frames, X, Y, Z = hdf5["u"].shape
+        mask_lr = np.asarray(hdf5['mask']).squeeze()
+        if (len(mask_lr.shape) == 4 and mask_lr.shape[0]==1) or len(mask_lr.shape) == 3:  
+            mask_lr = pd.create_temporal_mask(mask_lr, frames)
     
-        frames = hdf5["u"].shape[0]
         t_lr, x_lr, y_lr, z_lr = np.array(hdf5['u']).shape
 
 
-    with h5py.File(f'{base_path}/{lr_file}', 'r') as hf:
+    with h5py.File(f'{base_path}/{hr_file}', 'r') as hf:
         t_hr, x_hr, y_hr, z_hr = np.array(hf['u']).shape
-
-    assert((x_lr, y_lr, z_lr) == (x_hr, y_hr, z_hr))
+        mask_hr = np.asarray(hf['mask']).squeeze()
 
     # check on temporal aspect
     if t_hr == t_lr:
         step_t = 2 #or adjust this to downsampling size, default is factor 2
+
+        check_t = 1
     else:
         print('Set step size to 1, means it is expected that downsampling is already done in the data and not on the fly.')
         step_t = 1
+        check_t = 2
+
+    assert((x_lr, y_lr, z_lr) == (x_hr, y_hr, z_hr)) # for temporal downsampling we need the same spatial shape
+    assert np.sum(np.abs(mask_lr - mask_hr[::check_t])) == 0 # mask of lr and hr should be the same after downsampling
 
     # We basically need the mask on the lowres data, the patches index are retrieved based on the LR data.
-    print("Overall shape", mask.shape)
+    print("Overall shape", mask_lr.shape)
 
     # Do the thresholding
-    binary_mask = (mask >= mask_threshold) * 1
+    binary_mask = (mask_lr >= mask_threshold) * 1
 
     if temporal_preparation:
         
-        axis = [0, 1, 2]
-        for a in axis:
+
+        for a in [0, 1, 2]:
 
             if a == 0: 
                 print("______Create patches for (t, y, z) slices_____________")
@@ -107,7 +106,7 @@ if __name__ == "__main__":
                     pd.generate_temporal_random_patches_all_axis(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, patch_size, minimum_coverage, n_empty_patch_allowed, reverse, step_t)
     else:
         # Generate random patches for all time frames
-        for index in range(0, T):
+        for index in range(0, frames):
             print('Generating patches for row', index)
             pd.generate_random_patches(lr_file, hr_file, output_filename, index, n_patch, binary_mask, patch_size, minimum_coverage, n_empty_patch_allowed, all_rotation)
 

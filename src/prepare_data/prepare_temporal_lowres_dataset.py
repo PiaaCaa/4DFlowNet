@@ -40,12 +40,12 @@ if __name__ == '__main__':
     # Config
     base_path = 'data/CARDIAC'
     # Put your path to Hires Dataset
-    input_filepath  =  f'{base_path}/M6_2mm_step2_cloudmagnRot_toeger_LRfct.h5'
-    output_filename =  f'{base_path}/M6_2mm_step2_cloudmagnRot_toeger_LRfct_noise.h5' 
+    input_filepath  =  f'{base_path}/M4_2mm_step2_invivoP02_magnitude.h5'
+    output_filename =  f'{base_path}/M4_2mm_step2_invivoP02_magnitude_noise.h5' 
 
     # Downsample rate, set to 1 to keep the same resolution 
     spatial_downsample = 1.0 #1: no downsampling, 2: half the resolution, 4: quarter the resolution
-    temporal_downsample = 1
+    temporal_downsample = 1.0
     keep_framerate = True # if true, the framerate is kept (e.g. creating downsampling in training pipeline), otherwise the number of frames is downsampled by 1/temporal_downsample rate
     t_downsample_method = 'smooth' # options: 'radial', 'cartesian', 'box', 'smooth'
     
@@ -92,24 +92,24 @@ if __name__ == '__main__':
     # temporal downsampling/smoothing here before adding noise for each frame
     if temporal_downsample > 1:
         print("Temporal downsampling/smoothing with method: ", t_downsample_method)
-    elif t_downsample_method == 'box':
-        # overwrite the original data with smoothed data (created two "series" of temporal box averaging)
-        hr_u[::2],hr_u[1::2]  = temporal_box_averaging_and_downsampling(hr_u, temporal_downsample)
-        hr_v[::2],hr_v[1::2]  = temporal_box_averaging_and_downsampling(hr_v, temporal_downsample)
-        hr_w[::2],hr_w[1::2]  = temporal_box_averaging_and_downsampling(hr_w, temporal_downsample)
+        if t_downsample_method == 'box':
+            # overwrite the original data with smoothed data (created two "series" of temporal box averaging)
+            hr_u[::2],hr_u[1::2]  = temporal_box_averaging_and_downsampling(hr_u, temporal_downsample)
+            hr_v[::2],hr_v[1::2]  = temporal_box_averaging_and_downsampling(hr_v, temporal_downsample)
+            hr_w[::2],hr_w[1::2]  = temporal_box_averaging_and_downsampling(hr_w, temporal_downsample)
 
-        
-    elif t_downsample_method == 'smooth':
-        #parameters for toeger smoothing
-        t_range = np.linspace(0, 1, hr_u.shape[0])
-        smoothing = 0.004
-        hr_u[::2] = temporal_smoothing_box_function_toeger(hr_u[::2], t_range[::2], smoothing)
-        hr_v[::2] = temporal_smoothing_box_function_toeger(hr_v[::2], t_range[::2], smoothing)
-        hr_w[::2] = temporal_smoothing_box_function_toeger(hr_w[::2], t_range[::2], smoothing)
+            
+        elif t_downsample_method == 'smooth':
+            #parameters for toeger smoothing
+            t_range = np.linspace(0, 1, hr_u.shape[0])
+            smoothing = 0.004
+            hr_u[::2] = temporal_smoothing_box_function_toeger(hr_u[::2], t_range[::2], smoothing)
+            hr_v[::2] = temporal_smoothing_box_function_toeger(hr_v[::2], t_range[::2], smoothing)
+            hr_w[::2] = temporal_smoothing_box_function_toeger(hr_w[::2], t_range[::2], smoothing)
 
-        hr_u[1::2] = temporal_smoothing_box_function_toeger(hr_u[1::2], t_range[1::2], smoothing)
-        hr_v[1::2] = temporal_smoothing_box_function_toeger(hr_v[1::2], t_range[1::2], smoothing)
-        hr_w[1::2] = temporal_smoothing_box_function_toeger(hr_w[1::2], t_range[1::2], smoothing)
+            hr_u[1::2] = temporal_smoothing_box_function_toeger(hr_u[1::2], t_range[1::2], smoothing)
+            hr_v[1::2] = temporal_smoothing_box_function_toeger(hr_v[1::2], t_range[1::2], smoothing)
+            hr_w[1::2] = temporal_smoothing_box_function_toeger(hr_w[1::2], t_range[1::2], smoothing)
 
     #TODO extend if needed
 

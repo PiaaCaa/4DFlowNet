@@ -414,6 +414,128 @@ def calculate_k_R2( pred, gt, binary_mask):
     slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(hr_vals, sr_vals)
     return slope,  r_value**2
 
+def plot_correlation_nobounds(gt, prediction, frame_idx,color_b = KI_colors['Plum'],show_text = False, save_as = None):
+    '''
+    Plot correlation plot between ground truth and prediction at a given frame
+    '''
+    # set percentage of how many random points are used
+    p = 0.1
+    mask_threshold = 0.6
+
+    mask = np.asarray(gt['mask']).squeeze()
+
+    # if mask static make dynamic mask 
+    if len(mask.shape) == 3:
+        mask = create_dynamic_mask(mask, prediction['u'].shape[0])
+    
+    # threshold mask
+    mask[np.where(mask > mask_threshold)] = 1 
+
+    # get indices of core and boundary
+    idx_core = np.where(mask[frame_idx] == 1)
+
+    # get random indices for core and boundary to plot a subset of the points
+    x_idx, y_idx, z_idx = random_indices3D((mask)[frame_idx], n=int(p*np.count_nonzero(mask[frame_idx])))
+
+    
+    # Get velocity values in all directions
+    # HR
+    hr_u = np.asarray(gt['u'][frame_idx])
+    hr_u_core = hr_u[x_idx, y_idx, z_idx]
+    hr_v = np.asarray(gt['v'][frame_idx])
+    hr_v_core = hr_v[x_idx, y_idx, z_idx]
+    hr_w = np.asarray(gt['w'][frame_idx])
+    hr_w_core = hr_w[x_idx, y_idx, z_idx]
+
+    # SR 
+    sr_u = np.asarray(prediction['u'][frame_idx])
+    sr_u_vals = sr_u[x_idx, y_idx, z_idx]
+    sr_v = np.asarray(prediction['v'][frame_idx])
+    sr_v_vals = sr_v[x_idx, y_idx, z_idx]
+    sr_w = np.asarray(prediction['w'][frame_idx])
+    sr_w_vals = sr_w[x_idx, y_idx, z_idx]
+
+    def plot_regression_points(hr_vals, sr_vals, all_hr, all_sr, direction = 'u'):
+        N = 100
+        # make sure that the range is the same for all plots and make square range
+        x_range = np.linspace(-abs_max, abs_max, N)
+        
+        corr_line, text = get_corr_line_and_r2(all_hr, all_sr, x_range)
+
+        # plot linear correlation line and parms
+        if show_text:
+            plt.gca().text(0.05, 0.95, text,transform=plt.gca().transAxes, fontsize=12, verticalalignment='top')
+        plt.plot(x_range, x_range, color= 'grey', label = 'diagonal line')
+        plt.plot(x_range, corr_line, 'k--')
+        plt.scatter(hr_vals, sr_vals, s=30, c=["black"], label = 'core voxels')
+        
+        plt.title(direction)
+        plt.xlabel("V HR (m/s)")
+        plt.ylabel("V SR (m/s)")
+        # lgnd = plt.legend(loc = 'lower right', markerscale=2.0, fontsize=10)
+        plt.ylim(-abs_max, abs_max)
+        plt.xlim(-abs_max, abs_max)
+        plt.locator_params(axis='y', nbins=3)
+        plt.locator_params(axis='x', nbins=3)
+        # lgnd.legendHandles[1]._sizes = [30]
+        # lgnd.legendHandles[2]._sizes = [30]
+
+    def get_corr_line_and_r2(hr_vals, sr_vals, x_range):
+        '''
+        Returns correlation line and text for plot
+        '''
+        z = np.polyfit(hr_vals, sr_vals, 1)
+        corr_line = np.poly1d(z)(x_range)
+        slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(hr_vals, sr_vals)
+        text = f"$y={z[0]:0.4f}\;x{z[1]:+0.4f}$\n$R^2 = {r_value**2:0.4f}$"
+        
+        return corr_line, text
+
+    
+    print("Plotting correlation lines...")
+
+    min_vals = np.min([np.min(sr_u_vals), np.min(sr_v_vals), np.min(sr_w_vals)])
+    max_vals = np.max([np.max(sr_u_vals), np.max(sr_v_vals), np.max(sr_w_vals)])
+    abs_max = np.max([np.abs(min_vals), np.abs(max_vals)])
+    print('min/max/abs max', min_vals, max_vals, abs_max)
+
+    plt.clf()
+
+    # plot regression line for Vx, Vy and Vz
+    plt.figure(figsize=(7, 7))
+    plot_regression_points(hr_u_core, sr_u_vals, hr_u[idx_core], sr_u[idx_core],  direction=r'$V_x$')
+    plt.tight_layout()
+    if save_as is not None: plt.savefig(f"{save_as}_all_notext_LRXplot.svg")
+    
+    plt.clf()
+    plt.figure(figsize=(7, 7))
+    plot_regression_points(hr_v_core, sr_v_vals, hr_v[idx_core], sr_v[idx_core], direction=r'$V_y$')
+    plt.tight_layout()
+    if save_as is not None: plt.savefig(f"{save_as}_all_notext_LRYplot.svg")
+
+    plt.clf()
+    plt.figure(figsize=(7,7))
+    plot_regression_points(hr_w_core, sr_w_vals, hr_w[idx_core], sr_w[idx_core],  direction=r'$V_z$')
+    plt.tight_layout()
+    if save_as is not None: plt.savefig(f"{save_as}_all_notext_LRZplot.svg")
+
+    plt.clf()
+    save_subplots = True
+
+    # plot Vx, Vy and Vz in subplots
+    if save_subplots: 
+        plt.figure(figsize=(15, 5))
+        plt.subplot(1, 3, 1)
+        plot_regression_points(hr_u_core, sr_u_vals, hr_u[idx_core], sr_u[idx_core], direction=r'$V_x$')
+        plt.subplot(1, 3, 2)
+        plot_regression_points(hr_v_core, sr_v_vals, hr_v[idx_core], sr_v[idx_core], direction=r'$V_y$')
+        plt.subplot(1, 3, 3)
+        plot_regression_points(hr_w_core, sr_w_vals, hr_w[idx_core], sr_w[idx_core],  direction=r'$V_z$')
+        plt.tight_layout()
+        if save_as is not None: plt.savefig(f"{save_as}_all_notext_LRXYZ_subplots.pdf")
+    
+
+
 
 def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KI_colors['Plum'], save_as = None):
     '''
@@ -466,7 +588,6 @@ def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KI_colors['Plum
     sr_w_bounds = sr_w[x_idx_b, y_idx_b, z_idx_b]
 
     def plot_regression_points(hr_vals, sr_vals, hr_vals_bounds, sr_vals_bounds,all_hr, all_sr, all_hr_bounds, all_sr_bounds, direction = 'u'):
-        dimension = 2 #TODO
         N = 100
         # make sure that the range is the same for all plots and make square range
         x_range = np.linspace(-abs_max, abs_max, N)
@@ -475,20 +596,24 @@ def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KI_colors['Plum
         corr_line_bounds, text_bounds = get_corr_line_and_r2(all_hr_bounds, all_sr_bounds, x_range)
 
         # plot linear correlation line and parms
-        plt.gca().text(0.05, 0.95, text,transform=plt.gca().transAxes, fontsize=10, verticalalignment='top')
-        plt.gca().text(0.05, 0.85, text_bounds,transform=plt.gca().transAxes, fontsize=10, verticalalignment='top', color=color_b)
+        plt.gca().text(0.05, 0.95, text,transform=plt.gca().transAxes, fontsize=12, verticalalignment='top')
+        plt.gca().text(0.05, 0.82, text_bounds,transform=plt.gca().transAxes, fontsize=12, verticalalignment='top', color=color_b)
         plt.plot(x_range, x_range, color= 'grey', label = 'diagonal line')
         plt.plot(x_range, corr_line_bounds, '--', color = color_b)
         plt.plot(x_range, corr_line, 'k--')
-        plt.scatter(hr_vals, sr_vals, s=0.3, c=["black"], label = 'core voxels')
-        plt.scatter(hr_vals_bounds, sr_vals_bounds, s=0.3, c=[color_b], label = 'boundary voxels')
+        plt.scatter(hr_vals, sr_vals, s=1.2, c=["black"], label = 'core voxels')
+        plt.scatter(hr_vals_bounds, sr_vals_bounds, s=1.2, c=[color_b], label = 'boundary voxels')
         
         plt.title(direction)
         plt.xlabel("V HR (m/s)")
         plt.ylabel("V prediction (m/s)")
-        plt.legend(loc = 'lower right')
+        lgnd = plt.legend(loc = 'lower right', markerscale=2.0, fontsize=10)
         plt.ylim(-abs_max, abs_max)
         plt.xlim(-abs_max, abs_max)
+        plt.locator_params(axis='y', nbins=3)
+        plt.locator_params(axis='x', nbins=3)
+        lgnd.legendHandles[1]._sizes = [30]
+        lgnd.legendHandles[2]._sizes = [30]
 
     def get_corr_line_and_r2(hr_vals, sr_vals, x_range):
         '''
@@ -514,11 +639,13 @@ def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KI_colors['Plum
     # plot regression line for Vx, Vy and Vz
     plt.figure(figsize=(5, 5))
     plot_regression_points(hr_u_core, sr_u_vals, hr_u_bounds, sr_u_bounds,hr_u[idx_core], sr_u[idx_core], hr_u[idx_bounds], sr_u[idx_bounds],direction=r'$V_x$')
+    plt.tight_layout()
     if save_as is not None: plt.savefig(f"{save_as}_LRXplot.svg")
     
     plt.clf()
     plt.figure(figsize=(5, 5))
     plot_regression_points(hr_v_core, sr_v_vals, hr_v_bounds, sr_v_bounds,hr_v[idx_core], sr_v[idx_core], hr_v[idx_bounds], sr_v[idx_bounds],direction=r'$V_y$')
+    plt.tight_layout()
     if save_as is not None: plt.savefig(f"{save_as}_LRYplot.svg")
 
     plt.clf()
@@ -540,7 +667,7 @@ def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KI_colors['Plum
         plt.subplot(1, 3, 3)
         plot_regression_points(hr_w_core, sr_w_vals, hr_w_bounds, sr_w_bounds,hr_w[idx_core], sr_w[idx_core], hr_w[idx_bounds], sr_w[idx_bounds], direction=r'$V_z$')
         plt.tight_layout()
-        if save_as is not None: plt.savefig(f"{save_as}_LRXYZ_subplots.svg")
+        if save_as is not None: plt.savefig(f"{save_as}_LRXYZ_subplots.pdf")
     
 
     
@@ -958,6 +1085,86 @@ def make_3D_quiver_plot(data,mask,  frame, set_to_zero=0.9):
         # plt.show()
 
 
+
+def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, comparison_lst, comparison_name, timepoints, min_v, max_v, figsize = (10, 10), save_as = "Qualitative_frame_seq.png"):
+    def row_based_idx(num_rows, num_cols, idx):
+        return np.arange(1, num_rows*num_cols + 1).reshape((num_rows, num_cols)).transpose().flatten()[idx-1]
+
+    print(f"Plotting qualitative comparison of timepoints {timepoints}...")
+
+    ups_factor = 2
+    cmap = 'viridis'
+
+    T = 4 + len(comparison_lst)
+    N = len(timepoints)
+
+    fig = plt.figure(figsize=figsize)
+    fig, axes = plt.subplots(nrows=T, ncols=N, constrained_layout=True)
+
+    min_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.01)
+    max_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.99)
+
+    min_rel_error = np.min(np.array(abserror_cube))
+    max_rel_error = np.max(np.array(abserror_cube))
+
+    img_cnt = 1
+    for j,t in enumerate(timepoints):
+
+        plt.subplot(T, N, row_based_idx(T, N, img_cnt))
+        if t%ups_factor == 0:
+            lr_slice = lr_cube[j//2]
+            plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap=cmap, aspect='auto')
+            if img_cnt == 1: plt.ylabel("LR")
+            plt.xticks([])
+            plt.yticks([])
+ 
+        plt.title('frame '+ str(t))
+        plt.xticks([])
+        plt.yticks([])
+        
+        img_cnt +=1
+        plt.subplot(T, N, row_based_idx(T, N, img_cnt))
+        plt.imshow(gt_cube[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap, aspect='auto')
+        if img_cnt == 2: plt.ylabel("HR")
+        plt.xticks([])
+        plt.yticks([])
+
+        img_cnt +=1
+        plt.subplot(T, N, row_based_idx(T, N, img_cnt))
+        im = plt.imshow(pred_cube[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap,aspect='auto')
+        if img_cnt == 3: plt.ylabel("4DFlowNet")
+        plt.xticks([])
+        plt.yticks([])
+
+
+        for comp, name in zip(comparison_lst, comparison_name):
+            img_cnt +=1
+            plt.subplot(T, N, row_based_idx(T, N, img_cnt))
+            im = plt.imshow(comp[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap, aspect='auto')
+            if img_cnt-1 == (img_cnt-1)%T: plt.ylabel(name)
+            plt.xticks([])
+            plt.yticks([])
+        
+
+        img_cnt +=1
+        plt.subplot(T, N, row_based_idx(T, N, img_cnt))
+        err_img = plt.imshow(abserror_cube[j, :, :],vmin=min_rel_error, vmax=max_rel_error, cmap=cmap,aspect='auto')
+        if img_cnt-1 == (img_cnt-1)%T: plt.ylabel("abs. error")
+        plt.xticks([])
+        plt.yticks([])
+        if t == timepoints[-1]:
+            plt.colorbar(err_img, ax = axes[-1], aspect = 10, label = 'abs. error (m/s)')
+
+        
+        img_cnt +=1
+
+    fig.colorbar(im, ax=axes.ravel()[:-N].tolist(), aspect = 35, label = 'velocity (m/s)')
+    plt.savefig(save_as,bbox_inches='tight' )
+
+
+
+
+
 def show_timeframes(gt,lr,  pred,mask, rel_error, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v,save_as = "Frame_comparison.png"):
     '''
     Plots a series of frames next to eachother to compare 
@@ -1134,11 +1341,11 @@ def rmse_plane(idx_intersection_plane_fluid,normal,  data,gt,order_normal = [0, 
     plt.xlabel('frame')
     plt.ylabel('RMSE')
 
-def plot_max_speed_plane(idx_intersection_plane_fluid, data, mask, frames, label = '', color = 'black'):
+def plot_max_speed_plane(idx_intersection_plane_fluid, data, normal, frames,order_normal = [0, 1, 2], label = '', color = 'black'):
     N_frames = data['u'].shape[0]
 
     # Velocity through plane
-    V_plane = velocity_through_plane(idx_intersection_plane_fluid, data, normal, orderr_normal = [0, 1, 2])
+    V_plane = velocity_through_plane(idx_intersection_plane_fluid, data, normal, order_normal = order_normal)
     max_speed= np.max(V_plane, axis = 1)*100
     min_speed = np.min(V_plane, axis = 1)*100
 
@@ -1160,7 +1367,7 @@ def plot_max_speed_plane(idx_intersection_plane_fluid, data, mask, frames, label
     plt.ylabel('velocity (cm/s)')
     plt.title('Velocity through plane')
 
-def plot_mean_speed_plane(idx_intersection_plane_fluid, data, frames,order_normal = [0, 1, 2], label = '', color = 'black'):
+def plot_mean_speed_plane(idx_intersection_plane_fluid, data, frames,normal, order_normal = [0, 1, 2], label = '', color = 'black'):
     N_frames = data['u'].shape[0]
 
     #Velocity through plane
@@ -1317,8 +1524,8 @@ def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparis
     # pred_cube = pred_cube[idxs]
     #lr = lr[idxs]
 
-    min_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.01)
-    max_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.99)
+    # min_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.01)
+    # max_v = np.quantile(gt_cube[np.where(mask_cube !=0)].flatten(), 0.99)
     if not exclude_rel_error:
         rel_error_slices =[get_2Dslice(rel_error_cube, t, axis, idx) for t in timepoints]
         min_rel_error = np.min(np.array(rel_error_slices))
@@ -1381,7 +1588,7 @@ def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparis
         i +=1
     # plt.tight_layout()
     # plt.subplots_adjust(wspace=0, hspace=0)
-    fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 50, label = 'velocity (m/s)')
+    fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 40, label = 'velocity (m/s)')
     plt.savefig(save_as,bbox_inches='tight' )
 
     
@@ -1458,13 +1665,13 @@ def plot_slices_over_time1(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparis
 #         plt.savefig(f'{eval_dir}/{name_evaluation}_R2_vals_{vel}__.svg', bbox_inches='tight')
 
 
-def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum'] , save_as= '', eval_dir= '', set_name = '', model_name = ''):
+def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum'] , save_as= 'K_R2_values'):
     vel_colnames = ['u', 'v', 'w']
     vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
 
 
     print('Peak flow frame:', peak_flow_frame)
-    frames = gt['mean_speed'].shape[0]
+    frames = gt['u'].shape[0]
     k, r2, k_bounds,r2_bounds  = np.zeros(3*frames), np.zeros(3*frames), np.zeros(3*frames), np.zeros(3*frames)
     bounds_mask = bounds.copy()
     core_mask = gt['mask'] - bounds_mask
@@ -1488,6 +1695,8 @@ def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum']
         plt.title(title)
         plt.xlabel('frames')
         plt.ylabel('k')
+        plt.locator_params(axis='y', nbins=3)
+        plt.locator_params(axis='x', nbins=3)
         plt.scatter(np.ones(2)*peak_flow_frame, [k[i*frames+peak_flow_frame],k_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KI_colors['Grey'])
         plt.legend()
         print(f'Average k vals core {np.average(k[i*frames:i*frames+frames])}')
@@ -1508,6 +1717,8 @@ def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum']
         plt.xlabel('frames')
         plt.ylabel(r'$R^2$')
         plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KI_colors['Grey'])
+        plt.locator_params(axis='y', nbins=3)
+        plt.locator_params(axis='x', nbins=3)
         plt.legend()
 
     plt.tight_layout()
@@ -1524,9 +1735,11 @@ def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum']
         plt.title(title)
         plt.xlabel('frames')
         plt.ylabel('k')
+        plt.locator_params(axis='y', nbins=3)
+        plt.locator_params(axis='x', nbins=3)
         plt.scatter(np.ones(2)*peak_flow_frame, [k[i*frames+peak_flow_frame],k_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KI_colors['Grey'])
         plt.legend()
-        plt.savefig(f'{eval_dir}/k_vals_{vel}_{set_name}_{save_as}.svg', bbox_inches='tight')
+        plt.savefig(f'{save_as}.svg', bbox_inches='tight')
     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
         plt.clf()
         plt.plot(range(frames), r2[i*frames:i*frames+frames] ,label = r'$R^2$ core', color = 'black')
@@ -1536,9 +1749,11 @@ def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum']
         plt.title(title)
         plt.xlabel('frames')
         plt.ylabel(r'$R^2$')
+        plt.locator_params(axis='y', nbins=3)
+        plt.locator_params(axis='x', nbins=3)
         plt.scatter(np.ones(2)*peak_flow_frame, [r2[i*frames+peak_flow_frame], r2_bounds[i*frames+peak_flow_frame]] , label = 'peak flow frame', color = KI_colors['Grey'])
         plt.legend()
-        plt.savefig(f'{eval_dir}/R2_vals_{vel}_M{model_name}_{set_name}_{save_as}_.svg', bbox_inches='tight')
+        plt.savefig(f'{save_as}_.svg', bbox_inches='tight')
 
 
 
@@ -1556,7 +1771,6 @@ def temporal_linear_interpolation(lr, hr_shape):
     downsampling_factor = lr.shape[0]/hr_shape[0]
 
     t_hr = np.linspace(0, lr[0]-downsampling_factor,  hr_shape[0])
-    
     
     tg, xg, yg ,zg = np.mgrid[0:hr_shape[0], 0:hr_shape[1], 0:hr_shape[2], 0:hr_shape[3]]
     coord = np.array([tg.flatten(), xg.flatten(), yg.flatten() ,zg.flatten()])
@@ -1657,7 +1871,8 @@ def temporal_linear_interpolation_np(lr, hr_shape):
 
 
 def spatial3D_NN_interpolation(lr, hr_shape, method = 'nearest'):
-
+    assert len(lr.shape) == 3
+    assert len(hr_shape) == 3
 
     x_hr = np.linspace(0, lr.shape[0],  int(hr_shape[0]))
     y_hr = np.linspace(0, lr.shape[1],  int(hr_shape[1]))
@@ -1695,8 +1910,7 @@ def generate_gif_volume(img3D, axis = 0, save_as = "animation"):
         print("Invalid axis input.")
     
     frame_one = frames[0]
-    frame_one.save(save_as+".gif", format="GIF", append_images=frames,
-               save_all=True, duration=500, loop=0) #/home/pcallmer/Temporal4DFlowNet/results/plots
+    frame_one.save(save_as+".gif", format="GIF", append_images=frames,save_all=True, duration=500, loop=0) #/home/pcallmer/Temporal4DFlowNet/results/plots
     
 
 def compare_peak_flow_pixel(gt,lr, model_names, set_names, labels, colors,name_comparison,patch_size, show_avg, show_pixel, use_dynamical_mask = False):
