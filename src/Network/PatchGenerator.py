@@ -5,7 +5,6 @@ from utils import ImageDataset_temporal
 class PatchGenerator():
     def __init__(self, patch_size, res_increase, include_all_axis = False, downsample_input_first = True):
         self.patch_size = patch_size
-        #TODO changed here
         #self.effective_patch_size = patch_size - 4# we strip down 2 from each sides (on LR)
         self.effective_patch_size = patch_size - 4
         self.res_increase = res_increase
@@ -59,12 +58,13 @@ class PatchGenerator():
         """
             Pad image to the right, until it is exactly divisible by patch size
         """
+        print('(1) _pad_to_patch_size_with_overlap', img.shape)
         if (self.all_axis and self.downsample_input_first):
             
             img = img[::2, :, :]  # from shape (T, X, Y) to (1/2 T, X, Y) (or other combinations of X; Y; Z)
 
         side_pad = (self.patch_size-self.effective_patch_size) // 2
-        
+        print('(2) _pad_to_patch_size_with_overlap', img.shape)
         # mandatory padding
         
         #img = np.pad(img, ((side_pad, side_pad),(side_pad, side_pad),(side_pad, side_pad)), 'constant')
@@ -96,7 +96,7 @@ class PatchGenerator():
         self.padding = (pad_x*self.res_increase, pad_y, pad_z)
         # self.padding = (pad_x*self.res_increase, pad_y*self.res_increase, pad_z*self.res_increase)
         # print("LR padding:", self.padding)
-        
+        print('(3) _pad_to_patch_size_with_overlap', img.shape)
         return img
 
     def _generate_overlapping_patches(self, img):

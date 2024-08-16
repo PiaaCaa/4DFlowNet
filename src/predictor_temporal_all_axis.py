@@ -42,17 +42,30 @@ if __name__ == '__main__':
     if args.model is not None:
         model_name = args.model
     else:
-        model_name = '20240605-1504' # this model: training 2, 3, validation: 1, test:4
+        model_name = '20240709-2057' # this model: training 2, 3, validation: 1, test:4 
 
-    print("model_name: ", model_name)
     # Define directories and filenames
+    if args.model is not None:
+        model_name = args.model
+    else:
+        model_name = '20230602-1701' # this model: training 2, 3, validation: 1, test:4
+    print("Model name: ", model_name)
+    # set_names = ['Test', 'Validation', 'Training', 'Training', 'Training', 'Training']
+    # data_models= ['4', '1', '2', '3', '5', '6',]
+    # steps = [ 2, 2, 2, 2, 2, 2]
+    # file_names = ['M4_2mm_step2_cs_invivoP02_lr.h5', 'M1_2mm_step2_cs_invivoP01_lr.h5', 
+                #   'M2_2mm_step2_cs_invivoP04_lr.h5', 'M3_2mm_step2_cs_invivoP03_lr.h5', 
+                #   'M5_2mm_step2_cs_invivoP05_lr.h5', 'M6_2mm_step2_cs_invivoP03_lr.h5',]
+    # file_names = [ 'M1_2mm_step2_cs_invivoP01_lr_50frames.h5', 
+    #                'M2_2mm_step2_cs_invivoP04_lr_50frames.h5', ]
+    #TODO
+    set_names = ['Validation', 'Training', 'Training', 'Training', 'Training']
+    data_models= ['1', '2', '3', '5', '6',]
+    steps = [ 2, 2, 2, 2, 2]
+    file_names = ['M1_2mm_step2_cs_invivoP01_lr.h5', 
+                  'M2_2mm_step2_cs_invivoP04_lr.h5', 'M3_2mm_step2_cs_invivoP03_lr.h5', 
+                  'M5_2mm_step2_cs_invivoP05_lr.h5', 'M6_2mm_step2_cs_invivoP03_lr.h5']
 
-    set_names = ['Test', 'Validation', 'Training', 'Training']
-    data_models= ['4', '1', '2', '3', ]
-    steps = [ 2 ]#, 2 ]#, 2, 2]
-    file_names = ['M4_2mm_step2_cs_invivoP02_lr.h5']
-    # file_names = ['M4_2mm_step2_invivoP02_magnitude_noise.h5', 'M1_2mm_step2_invivoP01_magnitude_noise.h5', 
-    #               'M2_2mm_step2_invivoP02_magnitude_noise.h5', 'M3_2mm_step2_invivoP03_magnitude_noise.h5']
     #file_names = ['M4_2mm_step2_static_dynamic_noise.h5', 'M1_2mm_step2_static_dynamic_noise.h5'] #'M2_2mm_step2_static_dynamic_noise.h5', 'M3_2mm_step2_static_dynamic_noise.h5', 
     # file_names = ['M4_2mm_step2_temporalsmoothing_toeger_periodic_LRfct_noise.h5', 'M1_2mm_step2_temporalsmoothing_toeger_periodic_LRfct_noise.h5'] #'M2_2mm_step2_static_dynamic_noise.h5', 'M3_2mm_step2_static_dynamic_noise.h5', 
     # set filenamaes and directories
@@ -61,8 +74,11 @@ if __name__ == '__main__':
     model_dir = f'models/Temporal4DFlowNet_{model_name}'
 
     for set_name, data_model, step, filename in zip(set_names, data_models, steps, file_names):
+        print('Start predicition of:', set_name, data_model, filename)
 
         # set filenamaes and directories
+        output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
+        output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'
         
         output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'
         
@@ -73,14 +89,16 @@ if __name__ == '__main__':
         res_increase = 2
         batch_size = 16
         round_small_values = False
+        downsample_input_first = False # For LR data, which is downsampled on the fly this should be set to True
+        upsampling_factor = 2
 
         # Network - default 8-4
         n_low_resblock = 8
         n_hi_resblock = 4
-        low_res_block  = 'resnet_block'   # 'resnet_block' 'dense_block' csp_block
-        high_res_block = 'resnet_block'    #'resnet_block'
-        upsampling_block = 'linear' #'nearest_neigbor'#'linear'#'Conv3DTranspose'#'nearest_neigbor'#'linear''nearest_neigbor' 'Conv3DTranspose'
-        post_processing_block = None  #'unet_block'
+        low_res_block  = 'resnet_block'      # 'resnet_block' 'dense_block' csp_block
+        high_res_block = 'resnet_block'     #'resnet_block'
+        upsampling_block = 'linear'         #'nearest_neigbor'#'linear'#'Conv3DTranspose'#'nearest_neigbor'#'linear''nearest_neigbor' 'Conv3DTranspose'
+        post_processing_block = None        #'unet_block'
 
         # Setting up
         input_filepath = '{}/{}'.format(data_dir, filename)
@@ -88,9 +106,8 @@ if __name__ == '__main__':
         print("Output file path: ", output_filepath)
         assert(not os.path.exists(output_filepath))  #STOP if output file is already created
 
-        pgen = PatchGenerator(patch_size, res_increase,include_all_axis = True)
-        dataset = ImageDataset_temporal()
-        
+        pgen = PatchGenerator(patch_size, res_increase,include_all_axis = True, downsample_input_first=downsample_input_first)
+        dataset = ImageDataset_temporal(venc_colnames=['u_max', 'v_max', 'w_max'])#['venc_u', 'venc_v', 'venc_w'])
 
         print("Path exists:", os.path.exists(input_filepath), os.path.exists(model_path))
         print("Outputfile exists already: ", os.path.exists(output_filename))
@@ -98,18 +115,20 @@ if __name__ == '__main__':
         if not os.path.isdir(output_dir):
                 os.makedirs(output_dir)
 
-        axis = [0, 1, 2]
-
         with h5py.File(input_filepath, mode = 'r' ) as h5:
             lr_shape = h5.get("u").shape
 
-
-        u_combined = np.zeros(lr_shape)
-        v_combined = np.zeros(lr_shape)
-        w_combined = np.zeros(lr_shape)
+        if downsample_input_first:
+            u_combined = np.zeros(lr_shape)
+            v_combined = np.zeros(lr_shape)
+            w_combined = np.zeros(lr_shape)
+        else:
+            u_combined = np.zeros((upsampling_factor*lr_shape[0], *lr_shape[1::]))
+            v_combined = np.zeros((upsampling_factor*lr_shape[0], *lr_shape[1::]))
+            w_combined = np.zeros((upsampling_factor*lr_shape[0], *lr_shape[1::]))
 
         # Loop over all axis
-        for a in axis:
+        for a in [0, 1, 2]:
             print("________________________________Predict patches with axis: ", a, " ____________________________________________________")
             
             # Check the number of rows in the file
@@ -191,10 +210,9 @@ if __name__ == '__main__':
 
         print("save combined predictions")
         # save and divide by 3 to get average
-
-        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "u_combined", u_combined/len(axis), compression='gzip')
-        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "v_combined", v_combined/len(axis), compression='gzip')
-        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "w_combined", w_combined/len(axis), compression='gzip')
+        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "u_combined", u_combined/3, compression='gzip')
+        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "v_combined", v_combined/3, compression='gzip')
+        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "w_combined", w_combined/3, compression='gzip')
 
         print('-----------------------------Done with: ', set_name, data_model, '----------------------------------------------')
     print("Done!")

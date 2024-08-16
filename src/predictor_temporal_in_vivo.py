@@ -34,11 +34,16 @@ def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resb
     return model
 
 
+
+
 if __name__ == '__main__':
     # Define directories and filenames
     model_name = '20240410-1135' #'20230405-1417'#'20230602-1701'#'20230405-1417' ##'20230508-1433' 
 
     # set filenames and directories
+    data_dir = 'Temporal4DFlowNet/data/PIA/THORAX'
+    patients = ['P01', 'P02',  'P03', 'P04', 'P05'] #TODO double check this if the right mask is used # 'P01', 'P02', #['Volunteer3_4D_WholeHeart_2mm_40ms']#
+    output_root = f'Temporal4DFlowNet/results/in_vivo/THORAX'
     data_dir = 'data/PIA/THORAX/'
     patients = ['P01', 'P02', 'P03', 'P04', 'P05'] #TODO double check this if the right mask is used
     output_root = f'results/in_vivo/THORAX'
@@ -51,8 +56,9 @@ if __name__ == '__main__':
         # Setting up
         input_filepath = f'{data_dir}/{patient}/h5/{patient}.h5' 
         output_dir = f'{output_root}/{patient}'
-        output_filename = f'/{patient}_{model_name}_25Frames.h5'
-        output_filepath = '{}/{}'.format(output_dir, output_filename)      
+        # input_filepath = f'{data_dir}/{patient}.h5' 
+        # output_dir = f'{output_root}/SR/{patient}'
+        output_filepath = f'{output_dir}/{patient}_{model_name}_25Frames.h5'    
         
         model_path = f'models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
@@ -81,7 +87,7 @@ if __name__ == '__main__':
         
 
         print("Path exists:", os.path.exists(input_filepath), os.path.exists(model_path))
-        print("Outputfile exists already: ", os.path.exists(output_filename))
+        print("Outputfile exists already: ", os.path.exists(output_filepath))
 
         if not os.path.isdir(output_dir):
                 os.makedirs(output_dir)
@@ -91,7 +97,9 @@ if __name__ == '__main__':
         with h5py.File(input_filepath, mode = 'r' ) as h5:
             lr_shape = np.asarray(h5.get("u")).squeeze().shape
             print("Shape of in-vivo data", lr_shape)
+            # X, Y, Z, N_frames = lr_shape #TODO chnage back!!!
             N_frames, X, Y, Z = lr_shape
+
 
         if downsample_input_first:
             u_combined = np.zeros(lr_shape)
@@ -114,8 +122,6 @@ if __name__ == '__main__':
             print(f"Loading 4DFlowNet: {res_increase}x upsample")
             # Load the network
             network = prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block)
-            #low_res_block, high_res_block
-            #res_increase,low_res_block=low_res_block, high_res_block=high_res_block,  upsampling_block=upsampling_block 
             network.load_weights(model_path)
 
             volume = np.zeros((3, u_combined.shape[0],  u_combined.shape[1], u_combined.shape[2],  u_combined.shape[3] ))
@@ -191,12 +197,12 @@ if __name__ == '__main__':
             v_combined += volume[1, :, :, :] 
             w_combined += volume[2, :, :, :] 
 
-        print(f"save combined predictions to {output_dir}/{output_filename}" )
+        print(f"save combined predictions to output_filepath" )
         print("Elapsed time: ", time.time() - t_0)
         # save and divide by 3 to get average
-        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "u_combined", u_combined/len(axis), compression='gzip')
-        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "v_combined", v_combined/len(axis), compression='gzip')
-        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "w_combined", w_combined/len(axis), compression='gzip')
+        prediction_utils.save_to_h5(output_filepath, "u_combined", u_combined/len(axis), compression='gzip')
+        prediction_utils.save_to_h5(output_filepath, "v_combined", v_combined/len(axis), compression='gzip')
+        prediction_utils.save_to_h5(output_filepath, "w_combined", w_combined/len(axis), compression='gzip')
 
         print("Done!")
 
