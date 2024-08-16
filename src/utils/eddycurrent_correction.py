@@ -73,6 +73,7 @@ if __name__ == '__main__':
     print('Running test for eddy current compensation')
     
     # load velocity data: 
+    show_plot = False
     data_dir = 'data/PIA/THORAX/P05/h5'
     path_input = f'{data_dir}/P05.h5' 
     path_output = f'{data_dir}/P05_edd_corr.h5'
@@ -100,8 +101,7 @@ if __name__ == '__main__':
 
 
 
-
-    if False:
+    if show_plot:
         idx_line = np.index_exp[5, 30, 50, 40:120]
         idx_plane = np.index_exp[5, 30, :, :]
         
