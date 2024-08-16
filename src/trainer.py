@@ -26,11 +26,11 @@ if __name__ == "__main__":
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal16MODEL2356_2mm_step2_cs_cloudmagn.csv'.format(data_dir) 
-    validate_file = '{}/Temporal16MODEL1_2mm_step2_cs_cloudmagn.csv'.format(data_dir) #Temporal16MODEL23_2mm_step2_invivoP04P03_magn_tempsmooth_toeger.csv
+    training_file = '{}/Temporal16MODEL2356_2mm_step2_cs_invivomagn.csv'.format(data_dir) 
+    validate_file = '{}/Temporal16MODEL1_2mm_step2_cs_invivomagn.csv'.format(data_dir) #Temporal16MODEL23_2mm_step2_invivoP04P03_magn_tempsmooth_toeger.csv
 
     QUICKSAVE = True
-    benchmark_file = '{}/Temporal16MODEL4_2mm_step2_cs_cloudmagn.csv'.format(data_dir)
+    benchmark_file = '{}/Temporal16MODEL1_2mm_step2_cs_invivomagn.csv'.format(data_dir)
     
     overview_csv = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/results/Overview_models.csv'
 
@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     # Hyperparameters optimisation variables
     initial_learning_rate = 2e-4
-    epochs =  160
+    epochs =  130
     batch_size = 32
     mask_threshold = 0.6
     lr_decay_epochs = 0
@@ -63,12 +63,12 @@ if __name__ == "__main__":
     high_res_block = 'resnet_block' #'resnet_block'
     upsampling_block = 'linear'     #'Conv3DTranspose'#'nearest_neigbor'#'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
     post_processing_block = None #  'unet_block'#None#'unet_block'
-    sampling = 'Toeger' # this is not used for training but saved in the csv file for a better overview of what data it was trained on 
+    sampling = '-' # this is not used for training but saved in the csv file for a better overview of what data it was trained on 
 
     shuffle = True       
 
     #notes: if something about this training is more 'special' is can be added to the overview csv file
-    notes= 'more data (m5 m6) cs data, mse, random(cloud) magnitude now 3D rotated'
+    notes= ' CS data (more noise 14-17db + include first two frames), HR: original CFD, LR: CFD to MR pipeline, also train on models 2,3,5,6 with invivo magn, note validation=test set, fixed loss'
     # Load data file and indexes
     trainset = load_indexes(training_file)
     valset =   load_indexes(validate_file)

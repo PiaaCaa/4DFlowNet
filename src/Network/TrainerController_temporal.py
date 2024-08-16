@@ -100,10 +100,10 @@ class  TrainerController_temporal:
         u,v,w = y_true[...,0],y_true[...,1], y_true[...,2]
         u_pred,v_pred,w_pred = y_pred[...,0],y_pred[...,1], y_pred[...,2]
 
-        # alpha = 0.5
-        data_loss = self.calculate_mse(u,v,w, u_pred,v_pred,w_pred)
+        alpha = 0.8
+        # data_loss = self.calculate_mse(u,v,w, u_pred,v_pred,w_pred)
         # data_loss = self.calculate_mse(u,v,w, u_pred,v_pred,w_pred) *self.calculate_cosine_similarity_loss(u,v,w, u_pred,v_pred,w_pred)
-        # data_loss = alpha * self.calculate_mse(u,v,w, u_pred,v_pred,w_pred) +  (1-alpha)*self.calculate_l1_mutually_projected_loss(u, v, w, u_pred, v_pred, w_pred,alpha=0.5)
+        mse = self.calculate_mse(u,v,w, u_pred,v_pred,w_pred) 
         # calculate_l1_mutually_projected_loss
         # mse = alpha * self.calculate_mse(u,v,w, u_pred,v_pred,w_pred) +  (1-alpha)*self.directional_loss_cos(u,v,w, u_pred,v_pred,w_pred) 
         # mse = self.combined_l1_mutually_projected_loss(u, v, w, u_pred, v_pred, w_pred, weight= 0,alpha=0.5)
@@ -119,13 +119,19 @@ class  TrainerController_temporal:
         epsilon = 1 # minimum 1 pixel
 
         
-        fluid_loss = data_loss * mask
+        fluid_loss = mse * mask
         fluid_loss = tf.reduce_sum(fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + epsilon)
 
-        non_fluid_loss = data_loss * non_fluid_mask
+        non_fluid_loss = mse * non_fluid_mask
         non_fluid_loss = tf.reduce_sum(non_fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(non_fluid_mask, axis=[1,2,3]) + epsilon)
 
-        data_loss = fluid_loss + non_fluid_loss
+        mse_total = fluid_loss + non_fluid_loss
+        directional_loss = self.calculate_l1_mutually_projected_loss(u, v, w, u_pred, v_pred, w_pred,alpha=0.5)
+        directional_loss_fluid = tf.reduce_sum(directional_loss*mask , axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + epsilon)
+
+        data_loss = alpha *mse_total +  (1-alpha)*directional_loss_fluid
+        
+        
 
         # divergence
         

@@ -161,7 +161,8 @@ class PatchHandler4D_all_axis():
         self.data_directory = data_dir
         self.hr_colnames = ['u','v','w']
         self.lr_colnames = ['u','v','w']
-        self.venc_colnames = ['venc_u','venc_v','venc_w'] #['u_max', 'v_max', 'w_max']#
+        self.venc_colnames =  ['u_max', 'v_max', 'w_max']# ['venc_u','venc_v','venc_w'] #
+        print(self.venc_colnames)
         self.mag_colnames  = ['mag_u','mag_v','mag_w']
         self.mask_colname  = 'mask'
 
@@ -209,19 +210,32 @@ class PatchHandler4D_all_axis():
         reverse = int(indexes[8]) # 1 for no reverse, -1 for reverse order, only reverse te first spatial component
        
         patch_size = self.patch_size
-        hr_patch_size = self.patch_size * step_t    #self.res_increase
         
+        # if step is 1, the loaded LR data is already downsampled
+        if step_t == 1:
+            start_t_lr = int(start_t//self.res_increase)
+            hr_patch_size = int(patch_size*self.res_increase)
+            lr_patch_size = patch_size
+        else:
+            start_t_lr = start_t
+            hr_patch_size = self.patch_size * step_t    #self.res_increase
+            lr_patch_size = hr_patch_size
+
+        # print(start_t, start_t_lr, hr_patch_size, lr_patch_size)
+        # print('LR from:', start_t_lr , 'to', start_t_lr+lr_patch_size)
+        # print('HR from: ', start_t, start_t + hr_patch_size)
+
         # ============ get the patch ============ 
         if axis == 0 :
-            patch_t_index       = np.index_exp[start_t :start_t+hr_patch_size:step_t,   idx, start_1:start_1+patch_size, start_2:start_2+patch_size]
+            patch_t_index       = np.index_exp[start_t_lr :start_t_lr+lr_patch_size:step_t,   idx, start_1:start_1+patch_size, start_2:start_2+patch_size]
             hr_t_patch_index    = np.index_exp[start_t :start_t+hr_patch_size,          idx, start_1:start_1+patch_size, start_2:start_2+patch_size]
             mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,          idx, start_1:start_1+patch_size, start_2:start_2+patch_size]
         elif axis == 1:
-            patch_t_index       = np.index_exp[start_t :start_t+hr_patch_size:step_t, start_1:start_1+patch_size,idx, start_2:start_2+patch_size]
+            patch_t_index       = np.index_exp[start_t_lr :start_t_lr+lr_patch_size:step_t, start_1:start_1+patch_size,idx, start_2:start_2+patch_size]
             hr_t_patch_index    = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size,idx, start_2:start_2+patch_size]
             mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size,idx, start_2:start_2+patch_size]
         elif axis == 2:
-            patch_t_index       = np.index_exp[start_t :start_t+hr_patch_size:step_t, start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
+            patch_t_index       = np.index_exp[start_t_lr :start_t_lr+lr_patch_size:step_t, start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
             hr_t_patch_index    = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
             mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
 

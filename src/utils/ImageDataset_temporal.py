@@ -1,5 +1,6 @@
 import h5py
 import numpy as np
+import matplotlib.pyplot as plt
 
 class ImageDataset_temporal():
     def __init__(self, venc_colnames = ['venc_u', 'venc_v', 'venc_w']):
@@ -51,7 +52,9 @@ class ImageDataset_temporal():
             
                 
         return data_size
-   
+    
+
+
     def load_vectorfield(self, filepath, idx, axis = 0): 
         '''
             Override the load u v w data by adding some padding in xy planes
@@ -65,19 +68,38 @@ class ImageDataset_temporal():
         # Load the U, V, W component of LR, and MAG
         with h5py.File(filepath, 'r') as hl:
             
-            for i in range(len(self.velocity_colnames)):           
+            for i in range(len(self.velocity_colnames)):
+                
                 if axis == 0:
-                    w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[:, idx, :, :]
-                    mag_w =  np.asarray(hl.get(self.mag_colnames[i])).squeeze()[:, idx, :, :]
-                    mask = np.asarray(hl.get('mask')).squeeze()[:, idx, :, :]
+                    idx_vol = np.index_exp[:, idx, :, :]
                 elif axis == 1:
-                    w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[:, :, idx,  :]
-                    mag_w =  np.asarray(hl.get(self.mag_colnames[i])).squeeze()[:, :, idx,  :]
-                    mask = np.asarray(hl.get('mask')).squeeze()[:, :, idx, :]
-                elif axis == 2:
-                    w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[:, :, :, idx]
-                    mag_w =  np.asarray(hl.get(self.mag_colnames[i])).squeeze()[:, :, :, idx]
-                    mask = np.asarray(hl.get('mask')).squeeze()[:, :, :, idx]
+                    idx_vol = np.index_exp[:, :, idx, :]
+                elif axis == 2: 
+                    idx_vol = np.index_exp[:, :, :, idx]
+
+
+                # TODO delete later: 
+                w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()
+                mag_w = np.asarray(hl.get(self.mag_colnames[i])).squeeze()
+
+                # w = w.transpose(3, 0, 1, 2)
+                # mag_w = mag_w.transpose(3, 0, 1, 2)
+
+                w = w[idx_vol]
+                mag_w = mag_w[idx_vol]
+
+                # if axis == 0:
+                #     w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[:, idx, :, :]
+                #     mag_w =  np.asarray(hl.get(self.mag_colnames[i])).squeeze()[:, idx, :, :]
+                #     # mask = np.asarray(hl.get('mask')).squeeze()[:, idx, :, :]
+                # elif axis == 1:
+                #     w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[:, :, idx,  :]
+                #     mag_w =  np.asarray(hl.get(self.mag_colnames[i])).squeeze()[:, :, idx,  :]
+                #     # mask = np.asarray(hl.get('mask')).squeeze()[:, :, idx, :]
+                # elif axis == 2:
+                #     w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[:, :, :, idx]
+                #     mag_w =  np.asarray(hl.get(self.mag_colnames[i])).squeeze()[:, :, :, idx]
+                #     # mask = np.asarray(hl.get('mask')).squeeze()[:, :, :, idx]
                 
                 w_venc = np.asarray(hl.get(self.venc_colnames[i]))#)[idx])
 
