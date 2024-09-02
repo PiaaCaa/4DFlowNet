@@ -44,11 +44,6 @@ if __name__ == '__main__':
     else:
         model_name = '20240709-2057' # this model: training 2, 3, validation: 1, test:4 
 
-    # Define directories and filenames
-    if args.model is not None:
-        model_name = args.model
-    else:
-        model_name = '20230602-1701' # this model: training 2, 3, validation: 1, test:4
     print("Model name: ", model_name)
     # set_names = ['Test', 'Validation', 'Training', 'Training', 'Training', 'Training']
     # data_models= ['4', '1', '2', '3', '5', '6',]
