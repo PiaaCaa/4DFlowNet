@@ -103,7 +103,7 @@ class  TrainerController_temporal:
         alpha = 0.8
         # data_loss = self.calculate_mse(u,v,w, u_pred,v_pred,w_pred)
         # data_loss = self.calculate_mse(u,v,w, u_pred,v_pred,w_pred) *self.calculate_cosine_similarity_loss(u,v,w, u_pred,v_pred,w_pred)
-        mse = self.calculate_mse(u,v,w, u_pred,v_pred,w_pred) 
+        mse = self.calculate_l2_error(u,v,w, u_pred,v_pred,w_pred) 
         # calculate_l1_mutually_projected_loss
         # mse = alpha * self.calculate_mse(u,v,w, u_pred,v_pred,w_pred) +  (1-alpha)*self.directional_loss_cos(u,v,w, u_pred,v_pred,w_pred) 
         # mse = self.combined_l1_mutually_projected_loss(u, v, w, u_pred, v_pred, w_pred, weight= 0,alpha=0.5)
@@ -111,14 +111,12 @@ class  TrainerController_temporal:
         # mse = self.calculate_mae(u, v, w, u_pred, v_pred, w_pred)
         # mse = self.calculate_huber_loss(u, v, w, u_pred, v_pred, w_pred, delta=0.05)
 
-        # if mask is not None:
         # === Separate mse ===
         non_fluid_mask = tf.less(mask, tf.constant(0.5))
         non_fluid_mask = tf.cast(non_fluid_mask, dtype=tf.float32)
 
         epsilon = 1 # minimum 1 pixel
 
-        
         fluid_loss = mse * mask
         fluid_loss = tf.reduce_sum(fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + epsilon)
 
@@ -126,25 +124,13 @@ class  TrainerController_temporal:
         non_fluid_loss = tf.reduce_sum(non_fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(non_fluid_mask, axis=[1,2,3]) + epsilon)
 
         mse_total = fluid_loss + non_fluid_loss
+        
         directional_loss = self.calculate_l1_mutually_projected_loss(u, v, w, u_pred, v_pred, w_pred,alpha=0.5)
         directional_loss_fluid = tf.reduce_sum(directional_loss*mask , axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + epsilon)
 
         data_loss = alpha *mse_total +  (1-alpha)*directional_loss_fluid
         
-        
 
-        # divergence
-        
-        # divergence_loss = loss_utils.calculate_divergence_loss2(u,v,w, u_pred,v_pred,w_pred)
-        # divergence_loss = self.div_weight * divergence_loss
-
-        # fluid_divloss = divergence_loss * mask
-        # fluid_divloss = tf.reduce_sum(fluid_divloss, axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + epsilon)
-
-        # non_fluid_divloss = divergence_loss * non_fluid_mask
-        # non_fluid_divloss = tf.reduce_sum(non_fluid_divloss, axis=[1,2,3]) / (tf.reduce_sum(non_fluid_mask, axis=[1,2,3]) + epsilon)
-
-        # divergence_loss = fluid_divloss + non_fluid_divloss
         divergence_loss = 0
 
         # standard without masking
@@ -156,7 +142,7 @@ class  TrainerController_temporal:
         u,v,w = y_true[...,0],y_true[...,1], y_true[...,2]
         u_pred,v_pred,w_pred = y_pred[...,0],y_pred[...,1], y_pred[...,2]
 
-        mse = self.calculate_mse(u,v,w, u_pred,v_pred,w_pred) 
+        mse = self.calculate_l2_error(u,v,w, u_pred,v_pred,w_pred) 
 
         # === Separate mse ===
         non_fluid_mask = tf.less(mask, tf.constant(0.5))
@@ -188,11 +174,7 @@ class  TrainerController_temporal:
         fluid_loss = cs * mask
         fluid_loss = tf.reduce_sum(fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + epsilon)
 
-        non_fluid_loss = cs * non_fluid_mask
-        non_fluid_loss = tf.reduce_sum(non_fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(non_fluid_mask, axis=[1,2,3]) + epsilon)
-
-        cs = fluid_loss + non_fluid_loss
-        return cs
+        return fluid_loss
 
 
     def calculate_regularizer_loss(self):
@@ -218,13 +200,13 @@ class  TrainerController_temporal:
 
         return loss_utils.calculate_relative_error(u_pred, v_pred, w_pred, u, v, w, mask)
 
-    def calculate_mse(self, u, v, w, u_pred, v_pred, w_pred):
+    def calculate_l2_error(self, u, v, w, u_pred, v_pred, w_pred):
         """
             Calculate Speed magnitude error
         """
         return (u_pred - u) ** 2 +  (v_pred - v) ** 2 + (w_pred - w) ** 2
 
-    def calculate_mae(self, u, v, w, u_pred, v_pred, w_pred):
+    def calculate_l1_error(self, u, v, w, u_pred, v_pred, w_pred):
         """
             Calculate L1 Speed magnitude error
         """
@@ -241,7 +223,7 @@ class  TrainerController_temporal:
         cosine similarity calculation. 1 if simlar direction, 0 if orthogonal, -1 if opposite direction
         """
         eps = 0.00005
-        return (u*u_pred + v*v_pred + w*w_pred)/(self.calculate_l2norm(u, v, w)* (self.calculate_l2norm(u_pred, v_pred, w_pred) )+ eps)
+        return (u*u_pred + v*v_pred + w*w_pred)/(self.calculate_l2norm(u, v, w)* self.calculate_l2norm(u_pred, v_pred, w_pred)+ eps)
 
     def calculate_huber_loss(self, u, v, w, u_pred, v_pred, w_pred, delta = 0.05):
         """
@@ -271,7 +253,7 @@ class  TrainerController_temporal:
             Calculate L1 mutually projected loss
         """
         l1_mutuall_proj = self.calculate_l1_mutually_projected_loss(u, v, w, u_pred, v_pred, w_pred, alpha)
-        l1 = self.calculate_mae(u, v, w, u_pred, v_pred, w_pred)
+        l1 = self.calculate_l1_error(u, v, w, u_pred, v_pred, w_pred)
         return weight * l1_mutuall_proj + (1-weight) * l1
 
     def calculate_cosine_similarity_loss(self, u, v, w, u_pred, v_pred, w_pred):
@@ -360,7 +342,6 @@ class  TrainerController_temporal:
         
         self.calculate_and_update_metrics(hires, predictions, mask, 'val')
        
-
         return predictions
 
     def calculate_and_update_metrics(self, hires, predictions, mask, metric_set):
