@@ -519,11 +519,11 @@ def calculate_flow_profile(velocity, binary_mask,spacing = [2.0, 2.0, 2.0]):
 #---------------PLOTTING-------------------
 
 
-def plot_correlation_nobounds(gt, prediction, frame_idx,color_points = 'black',show_text = False, save_as = None):
+def plot_correlation_nobounds(gt, prediction, frame_idx,color_points = 'black',show_text = False, save_as = None, figsize = (7, 7)):
     '''
     Plot correlation plot between ground truth and prediction at a given frame
     '''
-    fontsize = 14
+    fontsize = 16
     # set percentage of how many random points are used
     p = 0.1
     mask_threshold = 0.6
@@ -537,10 +537,10 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_points = 'black',s
     # threshold mask
     mask[np.where(mask > mask_threshold)] = 1 
 
-    # get indices of core and boundary
+    # get indices of core 
     idx_core = np.where(mask[frame_idx] == 1)
 
-    # get random indices for core and boundary to plot a subset of the points
+    # get random indices for core to plot a subset of the points
     x_idx, y_idx, z_idx = random_indices3D((mask)[frame_idx], n=int(p*np.count_nonzero(mask[frame_idx])))
 
     
@@ -610,22 +610,22 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_points = 'black',s
     plt.close()
 
     # plot regression line for Vx, Vy and Vz
-    plt.figure(figsize=(7, 7))
+    plt.figure(figsize=figsize)
     plot_regression_points(hr_u_core, sr_u_vals, hr_u[idx_core], sr_u[idx_core],  direction=r'$V_x$')
     plt.tight_layout()
-    if save_as is not None: plt.savefig(f"{save_as}_all_notext_LRXplot.svg")
+    if save_as is not None: plt.savefig(f"{save_as}_LRXplot.svg")
     
     plt.clf()
-    plt.figure(figsize=(7, 7))
+    plt.figure(figsize=figsize)
     plot_regression_points(hr_v_core, sr_v_vals, hr_v[idx_core], sr_v[idx_core], direction=r'$V_y$')
     plt.tight_layout()
-    if save_as is not None: plt.savefig(f"{save_as}_all_notext_LRYplot.svg")
+    if save_as is not None: plt.savefig(f"{save_as}_LRYplot.svg")
 
     plt.clf()
-    plt.figure(figsize=(7,7))
+    plt.figure(figsize=figsize)
     plot_regression_points(hr_w_core, sr_w_vals, hr_w[idx_core], sr_w[idx_core],  direction=r'$V_z$')
     plt.tight_layout()
-    if save_as is not None: plt.savefig(f"{save_as}_all_notext_LRZplot.svg")
+    if save_as is not None: plt.savefig(f"{save_as}_LRZplot.svg")
 
     plt.clf()
     save_subplots = True
@@ -1143,6 +1143,8 @@ def comparison_plot_slices_over_time(gt_cube,lr_cube,  mask_cube, comparison_lst
     fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 50, label = 'velocity (m/s)')
     plt.savefig(save_as,bbox_inches='tight' )
 
+
+# adapted with LR is 'not acquired'
 def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, comparison_lst, comparison_name, timepoints, min_v, max_v, include_error = False,  figsize = (10, 10), save_as = "Qualitative_frame_seq.png"):
     def row_based_idx(num_rows, num_cols, idx):
         return np.arange(1, num_rows*num_cols + 1).reshape((num_rows, num_cols)).transpose().flatten()[idx-1]
@@ -1238,18 +1240,22 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
             plt.xticks([])
             plt.yticks([])
             if t == timepoints[-1]:
-                plt.colorbar(err_img, ax = axes[-1], aspect = 10, label = 'abs. error (m/s)')
+                fig.colorbar(err_img, ax = axes[-1], aspect = 15,pad=0.01, label = 'abs. error (m/s)')
 
             img_cnt +=1
+
     if include_error:
-        cbar = plt.colorbar(im, ax=axes.ravel()[:-N].tolist(), aspect = 35, label = 'velocity (m/s)')
+        cbar = fig.colorbar(im, ax=axes.ravel()[:-N].tolist(), aspect = 15,pad=0.01, label = 'velocity (m/s)')
     else:
-        cbar = plt.colorbar(im, ax=axes.ravel().tolist(), aspect = 35, label = 'velocity (m/s)')
+        cbar = fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 15,pad=0.01, label = 'velocity (m/s)')
+
     cbar.set_label('velocity (m/s)', fontsize=fontsize)
     cbar.locator = ticker.MaxNLocator(nbins=4)  # Set the maximum number of ticks
     cbar.update_ticks()
     cbar.ax.tick_params(labelsize=fontsize)
+    print(f'Qualitative comparison saved under {save_as}')
     plt.savefig(save_as,bbox_inches='tight', transparent=True)
+
 
 def plot_slices_over_time(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v,exclude_rel_error = True, save_as = "Frame_comparison.png", figsize = (30,20)):
     def row_based_idx(num_rows, num_cols, idx):
@@ -1774,7 +1780,10 @@ def plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbo
 
     vel_colnames = ['u', 'v', 'w']
     vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
-    fontsize = 16
+    k_legendname = [r'k$_x$', r'k$_y$', r'k$_z$']
+    R2_legendname = [r'R$_x^2$',r'R$_y^2$',r'R$_z^2$']
+
+    fontsize = 18
     frames = k.shape[1]
 
     t_range = range(frames)
@@ -1791,8 +1800,8 @@ def plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbo
     max_val = np.maximum(1.05, np.maximum(np.max(k), np.max(r2)))
 
     # Create subplots
-    plt.subplots_adjust(wspace=0.3)
-    fig1, axs = plt.subplots(1, 3, figsize=figsize, sharey=True)
+    # plt.subplots_adjust(wspace=0.3)
+    fig1, axs = plt.subplots(1, 3, figsize=figsize)#, sharey=True)
 
     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
         # Plot k values on the primary y-axis
@@ -1807,16 +1816,20 @@ def plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbo
         axs[i].tick_params(axis='x', labelsize = fontsize)
         
         # k-values
-        axs[i].plot(t_range, k[i, :], label='k', color='black')
+        axs[i].plot(t_range, k[i, :], label=k_legendname[i], color='black')
         axs[i].scatter(np.ones(1)*peak_flow_frame, [k[i, idx_peak_flow_frame]], color=KI_colors['Grey'])
         # R2 values 
-        axs[i].plot(t_range, r2[i, :], '--', label=r'$R^2$', color=KI_colors['Plum'])
-        axs[i].scatter(np.ones(1)*peak_flow_frame, [r2[i, idx_peak_flow_frame]], label='peak flow frame', color=KI_colors['Grey'])
-        axs[i].plot(np.ones(frames), 'k:', label= 'ones')
-        axs[i].legend(loc='lower right')
+        axs[i].plot(t_range, r2[i, :], '--', label=R2_legendname[i], color=KI_colors['Plum'])
+        axs[i].scatter(np.ones(1)*peak_flow_frame, [r2[i, idx_peak_flow_frame]],  color=KI_colors['Grey']) #label='peak flow frame',
+
+
+        axs[i].plot(np.ones(frames), 'k:')
+        text_frame = len(t_range) -7  # Middle of the plot range
+        axs[i].text(text_frame, 1.0, '1.0', verticalalignment='bottom', horizontalalignment='left', fontsize=fontsize, color='black')
+        axs[i].legend(loc='lower right', fontsize=fontsize)
 
     plt.tight_layout()
-    plt.savefig(f'{save_as}_VXYZ.png')
+    if save_as is not None: plt.savefig(f'{save_as}_VXYZ.png')
 
     # save separate
     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
@@ -1839,16 +1852,17 @@ def plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbo
         # R2 values 
         ax.plot(t_range, r2[i, :], '--', label=r'$R^2$', color=KI_colors['Plum'])
         ax.scatter(np.ones(1)*peak_flow_frame, [r2[i, peak_flow_frame]], label='peak flow frame', color=KI_colors['Grey'])
-        ax.plot(np.ones(frames), 'k:', label= 'ones')
+        ax.plot(np.ones(frames), 'k:')
+        ax.text(text_frame, 1.0, '1.0', verticalalignment='bottom', horizontalalignment='left', fontsize=fontsize, color='black')
         ax.legend(loc='lower right')
-        plt.savefig(f'{save_as}_{vel}.svg')
+        if save_as is not None: plt.savefig(f'{save_as}_{vel}.svg')
 
         # Close the plot to avoid memory leaks
         plt.close()
     
     return fig1, axs
 
-def calculate_and_plot_k_r2_vals_nobounds(gt, pred, mask, peak_flow_frame, figsize = (8,8),exclude_tbounds = False,  save_as= 'K_R2_values_all'):
+def calculate_and_plot_k_r2_vals_nobounds(gt, pred, mask, peak_flow_frame, figsize = (8,8),exclude_tbounds = False,  save_as= None):
 
     vel_colnames = ['u', 'v', 'w']
     frames = gt['u'].shape[0]
@@ -1861,6 +1875,138 @@ def calculate_and_plot_k_r2_vals_nobounds(gt, pred, mask, peak_flow_frame, figsi
     plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = figsize,exclude_tbounds = exclude_tbounds,  save_as= save_as)
 
     return k, r2
+
+
+def combined_correlation_k_r2_plots(gt, prediction, frame_idx, k, r2, peak_flow_frame, color_points='black', show_text=False, save_as=None, figsize=(15, 10), exclude_tbounds=False):
+    '''
+    Combine correlation plots and k/r2 value plots into a single subplot of size (2, 3).
+    '''
+    fontsize = 18
+    p = 0.1
+    mask_threshold = 0.6
+
+    # Handle mask
+    mask = np.asarray(gt['mask']).squeeze()
+    if len(mask.shape) == 3:
+        mask = create_dynamic_mask(mask, prediction['u'].shape[0])
+    mask[np.where(mask > mask_threshold)] = 1 
+
+    # Random indices for core and boundary points
+    idx_core = np.where(mask[frame_idx] == 1)
+    x_idx, y_idx, z_idx = random_indices3D(mask[frame_idx], n=int(p * np.count_nonzero(mask[frame_idx])))
+
+    # Velocity values
+    hr_u = np.asarray(gt['u'][frame_idx])
+    hr_v = np.asarray(gt['v'][frame_idx])
+    hr_w = np.asarray(gt['w'][frame_idx])
+
+    sr_u = np.asarray(prediction['u'][frame_idx])
+    sr_v = np.asarray(prediction['v'][frame_idx])
+    sr_w = np.asarray(prediction['w'][frame_idx])
+
+    # Core values for correlation plots
+    hr_u_core, hr_v_core, hr_w_core = hr_u[x_idx, y_idx, z_idx], hr_v[x_idx, y_idx, z_idx], hr_w[x_idx, y_idx, z_idx]
+    sr_u_core, sr_v_core, sr_w_core = sr_u[x_idx, y_idx, z_idx], sr_v[x_idx, y_idx, z_idx], sr_w[x_idx, y_idx, z_idx]
+    
+    def plot_regression_points(hr_vals, sr_vals, all_hr, all_sr, direction='u'):
+        N = 100
+        x_range = np.linspace(-abs_max, abs_max, N)
+        
+        corr_line, text = get_corr_line_and_r2(all_hr, all_sr, x_range)
+
+        if show_text:
+            plt.gca().text(0.05, 0.95, text, transform=plt.gca().transAxes, fontsize=fontsize, verticalalignment='top')
+        plt.plot(x_range, x_range, color='grey', label='diagonal line')
+        plt.plot(x_range, corr_line, 'k--')
+        plt.scatter(hr_vals, sr_vals, s=30, c=[color_points], label='core voxels')
+        plt.title(direction, fontsize=fontsize+2)
+        plt.xlabel("V HR (m/s)", fontsize=fontsize)
+        plt.ylabel("V SR (m/s)", fontsize=fontsize)
+        plt.ylim(-abs_max, abs_max)
+        plt.xlim(-abs_max, abs_max)
+        plt.locator_params(axis='y', nbins=3)
+        plt.locator_params(axis='x', nbins=3)
+        plt.tick_params(axis='y', labelsize=fontsize)
+        plt.tick_params(axis='x', labelsize=fontsize)
+
+    def get_corr_line_and_r2(hr_vals, sr_vals, x_range):
+        z = np.polyfit(hr_vals, sr_vals, 1)
+        corr_line = np.poly1d(z)(x_range)
+        r_value = scipy.stats.linregress(hr_vals, sr_vals)[2]
+        text = f"$y={z[0]:0.3f}\;x{z[1]:+0.3f}$\n$R^2 = {r_value**2:0.3f}$"
+        return corr_line, text
+
+    vel_colnames = ['u', 'v', 'w']
+    vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
+    k_legendname = [r'k$_x$', r'k$_y$', r'k$_z$']
+    R2_legendname = [r'R$_x^2$',r'R$_y^2$',r'R$_z^2$']
+
+    frames = k.shape[1]
+
+    t_range = range(frames)
+    if exclude_tbounds:
+        t_range = t_range[1:-1]
+        k = k[:, 1:-1]
+        r2 = r2[:, 1:-1]
+        idx_peak_flow_frame = peak_flow_frame - 1
+    else:
+        idx_peak_flow_frame = peak_flow_frame
+
+    min_val = np.minimum(0.45, np.minimum(np.min(k), np.min(r2)))
+    max_val = np.maximum(1.05, np.maximum(np.max(k), np.max(r2)))
+
+    # Create the combined subplot
+    fig, axs = plt.subplots(2, 3, figsize=figsize)
+
+    # Adjust vertical spacing
+    # plt.subplots_adjust(hspace=1.0)
+
+    # First row - correlation plots
+    plot_pairs = [(hr_u_core, sr_u_core, hr_u, sr_u, r'V$_x$'),
+                  (hr_v_core, sr_v_core, hr_v, sr_v, r'V$_y$'),
+                  (hr_w_core, sr_w_core, hr_w, sr_w, r'V$_z$')]
+    
+    abs_max = max(np.abs(np.hstack([hr_u_core, hr_v_core, hr_w_core])).max(), np.abs(np.hstack([sr_u_core, sr_v_core, sr_w_core])).max())
+
+    for i, (hr_vals, sr_vals, all_hr, all_sr, direction) in enumerate(plot_pairs):
+        plt.sca(axs[0, i])
+        plot_regression_points(hr_vals, sr_vals, all_hr[idx_core], all_sr[idx_core], direction=direction)
+
+    # Second row - k and R² value plots
+    for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
+        axs[1, i].set_ylim([min_val, max_val])
+        # axs[1, i].set_title(title, fontsize=fontsize)
+        axs[1, i].set_xlabel('frame', fontsize=fontsize)
+        axs[1, i].set_ylabel(r'k/$R^2$', fontsize=fontsize)
+        axs[1, i].locator_params(axis='y', nbins=3)
+        axs[1, i].locator_params(axis='x', nbins=3)
+        axs[1, i].tick_params(axis='y', labelsize=fontsize)
+        axs[1, i].tick_params(axis='x', labelsize=fontsize)
+
+        # k-values
+        axs[1, i].plot(t_range, k[i, :], label=k_legendname[i], color='black')
+        axs[1, i].scatter(np.ones(1) * peak_flow_frame, [k[i, idx_peak_flow_frame]], color='grey')
+        # R² values
+        axs[1, i].plot(t_range, r2[i, :], '--', label=R2_legendname[i], color=KI_colors['Plum'])
+        axs[1, i].scatter(np.ones(1) * peak_flow_frame, [r2[i, idx_peak_flow_frame]], color='grey')
+
+        axs[1, i].plot(np.ones(frames), 'k:')
+        text_frame = len(t_range) - 7
+        axs[1, i].text(text_frame, 1.0, '1.0', verticalalignment='bottom', horizontalalignment='left', fontsize=fontsize-2, color='black')
+        axs[1, i].legend(loc='lower right', fontsize=fontsize)
+
+    plt.tight_layout()
+    plt.subplots_adjust(hspace=0.5)
+    if save_as is not None:
+        print(f'Saving combined correlation and k/r2 figure in {save_as}_combined_plot.svg')
+        plt.savefig(f'{save_as}_combined_plot.svg')
+
+    plt.show()
+
+    return fig, axs
+
+
+
 
 def animate_data_over_time_gif(spatial_idx, data,  min_v, max_v, save_as = 'Animate_',fps =10,  colormap = 'viridis', show_colorbar = False):
 
