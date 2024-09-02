@@ -9,6 +9,7 @@ from utils.ImageDataset_temporal import ImageDataset_temporal
 from matplotlib import pyplot as plt
 import h5py
 import timeit
+import argparse
 from scipy.interpolate import CubicSpline, RegularGridInterpolator
 # os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
@@ -37,16 +38,26 @@ def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resb
 
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description="My script description")
+    parser.add_argument("--model", type=str, help="Optional argument to pass the name of the model")
+    args = parser.parse_args()
+
     # Define directories and filenames
-    model_name = '20240410-1135' #'20230405-1417'#'20230602-1701'#'20230405-1417' ##'20230508-1433' 
+    if args.model is not None:
+        model_name = args.model
+    else:
+        model_name = '20240709-2057' # this model: training 2, 3, validation: 1, test:4 
+
+    # # Define directories and filenames
+    # model_name = '20240807-1745' #'20230405-1417'#'20230602-1701'#'20230405-1417' ##'20230508-1433' 
 
     # set filenames and directories
     data_dir = 'Temporal4DFlowNet/data/PIA/THORAX'
     patients = ['P01', 'P02',  'P03', 'P04', 'P05'] #TODO double check this if the right mask is used # 'P01', 'P02', #['Volunteer3_4D_WholeHeart_2mm_40ms']#
     output_root = f'Temporal4DFlowNet/results/in_vivo/THORAX'
-    data_dir = 'data/PIA/THORAX/'
-    patients = ['P01', 'P02', 'P03', 'P04', 'P05'] #TODO double check this if the right mask is used
-    output_root = f'results/in_vivo/THORAX'
+
+    output_root = f'Temporal4DFlowNet/results/in_vivo/THORAX'
 
     for patient in patients:
         print('Patient:', patient)
@@ -60,7 +71,7 @@ if __name__ == '__main__':
         # output_dir = f'{output_root}/SR/{patient}'
         output_filepath = f'{output_dir}/{patient}_{model_name}_25Frames.h5'    
         
-        model_path = f'models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
+        model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
 
         # Params
