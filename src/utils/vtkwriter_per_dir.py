@@ -229,14 +229,14 @@ if __name__ == "__main__":
     # input_dir = "/home/pcallmer/Temporal4DFlowNet/results/Temporal4DFlowNet_20230620-0909" 
     # mask_file  = "/home/pcallmer/Temporal4DFlowNet/data/CARDIAC/M4_2mm_step2_static_dynamic.h5"
     # output_dir = "results/data/insilico"
-    output_dir = "C:/Users/piacal/Code/PINNs/"
+    output_dir = "C:/Users/piacal/Code/PINNs/PINN-1458 new"
     input_dir = output_dir
 
     # columns = ['u_combined', 'v_combined', 'w_combined']
     columns = ['u', 'v', 'w']
     
     # files = ["M1_2mm_step1_static_dynamic", "M2_2mm_step1_static_dynamic", "M3_2mm_step1_static_dynamic", "M4_2mm_step1_static_dynamic"]   
-    files = ["healthy-05mm3_sliced"]
+    files = ["healthy-05mm3_SR_t30"]
     
     for file in files:
         print(f"Processing case {file}")
@@ -253,6 +253,8 @@ if __name__ == "__main__":
         with h5py.File(input_filepath, mode = 'r' ) as hdf5:
             data_nr = len(hdf5[columns[0]])
             print(hdf5[columns[0]].shape)
+            if hdf5[columns[0]].ndim == 3:
+                data_nr = 1
 
         with h5py.File(input_filepath, 'r') as hf:
             if "dx" in hf.keys():
@@ -269,10 +271,33 @@ if __name__ == "__main__":
         for idx in range(0, data_nr, 1):
             print('Processing index', idx)
             
-            u, v, w = get_vector_fields(input_filepath, columns, idx)
+            # u, v, w = get_vector_fields(input_filepath, columns, idx)
+            with h5py.File(input_filepath, 'r') as hf:
+                if hf[columns[0]].ndim == 4:
+
+                    u = np.asarray(hf.get(columns[0])).squeeze()[idx]
+                    v = np.asarray(hf.get(columns[1])).squeeze()[idx]
+                    w = np.asarray(hf.get(columns[2])).squeeze()[idx]
+                elif hf[columns[0]].ndim == 5:
+                    u = np.asarray(hf.get(columns[0]))[0, idx, :, :, :]
+                    v = np.asarray(hf.get(columns[1]))[0, idx, :, :, :]
+                    w = np.asarray(hf.get(columns[2]))[0, idx, :, :, :]
+                
+                elif hf[columns[0]].ndim == 3:
+                    u = np.asarray(hf.get(columns[0]))
+                    v = np.asarray(hf.get(columns[1]))
+                    w = np.asarray(hf.get(columns[2]))
+
+            # u_hr, _, _ = get_vector_fields(f"{input_dir}/healthy-05mm3_sliced.h5", columns, idx)
+            # with h5py.File(f"{input_dir}/healthy-05mm3_sliced.h5", 'r') as hf:
+            #         print(hf[columns[0]].shape)
+            #         u_hr = np.asarray(hf.get(columns[0]))[0, idx, :, :, :]
+            # mask = get_mask(input_filepath, idx)
             mask = np.zeros_like(u)
             mask[np.where(u != 0)] = 1
             print(u.shape, mask.shape)
+            print('shapes:', u.shape, mask.shape)
+
             # u, v, w = create_difference_field(mask_file, input_filepath,['u', 'v', 'w'], columns,  idx)
             # mask = get_mask(mask_file, idx)
             
