@@ -167,6 +167,8 @@ if __name__ == "__main__":
     data_dir = 'data/CARDIAC'
     pred_dir = f'results/Temporal4DFlowNet_{nn_name}'
     eval_dir = f'{pred_dir}/plots'
+    eval_dir_overview = f'{eval_dir}/overview'
+    eval_dir_detailed = f'{eval_dir}/detailed_view'
 
     # filenames
     gt_filename = f'M{data_model}_2mm_step{step}_cs_invivoP02_hr.h5'
@@ -178,8 +180,10 @@ if __name__ == "__main__":
     pred_filepath = '{}/{}'.format(pred_dir, pred_filename)
     lr_filepath   = '{}/{}'.format(data_dir, lr_filename)
 
-    if not os.path.isdir(eval_dir):
-        os.makedirs(eval_dir)
+    # create directories
+    os.makedirs(eval_dir, exist_ok=True)
+    os.makedirs(eval_dir_overview, exist_ok=True)
+    os.makedirs(eval_dir_detailed, exist_ok=True)
 
     # ----------Load data and interpolation files and calculate visualization params----------------
 
@@ -245,13 +249,13 @@ if __name__ == "__main__":
             # input_lst_ = [interpolate_sinc[idx_cube]]
             # input_name = ['sinc']
 
-            plot_qual_comparsion(gt['u'][idx_cube],lr['u'][idx_cube_lr],  pred['u'][idx_cube],gt['mask'][idx_cube], np.abs(gt['u'][idx_cube]- pred['u'][idx_cube]), [interpolate_sinc['u'][idx_cube]], ['sinc'], frames,min_v = None, max_v = None,figsize = (8, 6.5), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_u_test.png")
-            plot_qual_comparsion(gt['v'][idx_cube],lr['v'][idx_cube_lr],  pred['v'][idx_cube],gt['mask'][idx_cube], np.abs(gt['v'][idx_cube]- pred['v'][idx_cube]), [interpolate_sinc['v'][idx_cube]], ['sinc'], frames,min_v = None, max_v = None,figsize = (8, 6.5), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_v_test.png")
-            plot_qual_comparsion(gt['w'][idx_cube],lr['w'][idx_cube_lr],  pred['w'][idx_cube],gt['mask'][idx_cube], np.abs(gt['w'][idx_cube]- pred['w'][idx_cube]), [interpolate_sinc['w'][idx_cube]], ['sinc'], frames,min_v = None, max_v = None,figsize = (8, 6.5), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_w_test.png")
+            plot_qual_comparsion(gt['u'][idx_cube], lr['u'][idx_cube_lr], pred['u'][idx_cube], gt['mask'][idx_cube], np.abs(gt['u'][idx_cube]- pred['u'][idx_cube]), [interpolate_sinc['u'][idx_cube]], ['sinc'], frames,min_v = None, max_v = None,figsize = (8, 6.5), save_as = f"{eval_dir_detailed}/{set_name}_M{data_model}_Qualit_frameseq_u_test.png")
+            plot_qual_comparsion(gt['v'][idx_cube], lr['v'][idx_cube_lr], pred['v'][idx_cube], gt['mask'][idx_cube], np.abs(gt['v'][idx_cube]- pred['v'][idx_cube]), [interpolate_sinc['v'][idx_cube]], ['sinc'], frames,min_v = None, max_v = None,figsize = (8, 6.5), save_as = f"{eval_dir_detailed}/{set_name}_M{data_model}_Qualit_frameseq_v_test.png")
+            plot_qual_comparsion(gt['w'][idx_cube], lr['w'][idx_cube_lr], pred['w'][idx_cube], gt['mask'][idx_cube], np.abs(gt['w'][idx_cube]- pred['w'][idx_cube]), [interpolate_sinc['w'][idx_cube]], ['sinc'], frames,min_v = None, max_v = None,figsize = (8, 6.5), save_as = f"{eval_dir_detailed}/{set_name}_M{data_model}_Qualit_frameseq_w_test.png")
         else:
-            plot_qual_comparsion(gt['u'][idx_cube],lr['u'][idx_cube_lr],  pred['u'][idx_cube],gt['mask'][idx_cube], np.abs(gt['u'][idx_cube]- pred['u'][idx_cube]), [], [], frames,min_v = min_v['u'], max_v = max_v['u'],figsize = (8,5), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_u_test.png")
-            plot_qual_comparsion(gt['v'][idx_cube],lr['v'][idx_cube_lr],  pred['v'][idx_cube],gt['mask'][idx_cube], np.abs(gt['v'][idx_cube]- pred['v'][idx_cube]), [], [], frames,min_v = min_v['v'], max_v = max_v['v'],figsize = (8,5), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_v_test.png")
-            plot_qual_comparsion(gt['w'][idx_cube],lr['w'][idx_cube_lr],  pred['w'][idx_cube],gt['mask'][idx_cube], np.abs(gt['w'][idx_cube]- pred['w'][idx_cube]), [], [], frames,min_v = min_v['w'], max_v = max_v['w'],figsize = (8,5), save_as = f"{eval_dir}/{set_name}_M{data_model}_Qualit_frameseq_w_test.png")
+            plot_qual_comparsion(gt['u'][idx_cube], lr['u'][idx_cube_lr], pred['u'][idx_cube], gt['mask'][idx_cube], np.abs(gt['u'][idx_cube]- pred['u'][idx_cube]), [], [], frames,min_v = min_v['u'], max_v = max_v['u'],figsize = (8,5), save_as = f"{eval_dir_detailed}/{set_name}_M{data_model}_Qualit_frameseq_u_test.png")
+            plot_qual_comparsion(gt['v'][idx_cube], lr['v'][idx_cube_lr], pred['v'][idx_cube], gt['mask'][idx_cube], np.abs(gt['v'][idx_cube]- pred['v'][idx_cube]), [], [], frames,min_v = min_v['v'], max_v = max_v['v'],figsize = (8,5), save_as = f"{eval_dir_detailed}/{set_name}_M{data_model}_Qualit_frameseq_v_test.png")
+            plot_qual_comparsion(gt['w'][idx_cube], lr['w'][idx_cube_lr], pred['w'][idx_cube], gt['mask'][idx_cube], np.abs(gt['w'][idx_cube]- pred['w'][idx_cube]), [], [], frames,min_v = min_v['w'], max_v = max_v['w'],figsize = (8,5), save_as = f"{eval_dir_detailed}/{set_name}_M{data_model}_Qualit_frameseq_w_test.png")
 
         plt.show()
 
@@ -260,17 +264,17 @@ if __name__ == "__main__":
     if show_RE_plot:
 
         fig_re = plot_relative_error(gt, pred, [interpolate_linear, interpolate_sinc], ['linear', 'sinc'], 
-                                     f'{eval_dir}/{set_name}_M{data_model}_RE_pred2.svg', figsize = (10, 5))
+                                     f'{eval_dir_overview}/{set_name}_M{data_model}_RE_pred2.svg', figsize = (10, 5))
         plt.show()
         plt.close()
 
         # plot RMSE
-        fig_rmse = plot_rmse(gt, pred, [interpolate_linear, interpolate_sinc], ['linear', 'sinc'],f'{eval_dir}/{set_name}_M{data_model}_RMSE.svg',colors_comp = None,  figsize = (10, 5))
+        fig_rmse = plot_rmse(gt, pred, [interpolate_linear, interpolate_sinc], ['linear', 'sinc'],f'{eval_dir_overview}/{set_name}_M{data_model}_RMSE.svg',colors_comp = None,  figsize = (10, 5))
         plt.show()
 
         if True:
             
-            fig_ms = plot_mean_speed(gt, pred, lr, [], [],save_as = f'{eval_dir}/{set_name}_M{nn_name}_meanspeed.png',colors_comp = None,  figsize= (10, 5))
+            fig_ms = plot_mean_speed(gt, pred, lr, [], [],save_as = f'{eval_dir_overview}/{set_name}_M{nn_name}_meanspeed.png',colors_comp = None,  figsize= (10, 5))
             plt.show()
 
             # Merge the two figures into a single figure
@@ -304,10 +308,10 @@ if __name__ == "__main__":
             print('Increase peak flow frame to next frame', T_peak_flow)
 
         # # 4. Plot slope and R2 values for core, boundary and all voxels over time
-        k_SR, r2_SR = calculate_and_plot_k_r2_vals_nobounds(gt, pred,gt['mask'], T_peak_flow,figsize=(15, 5), save_as = f'{eval_dir}/{set_name}_M{data_model}_corr_k_r2_vals_nobounds_frame{T_peak_flow}_pred')
+        k_SR, r2_SR = calculate_and_plot_k_r2_vals_nobounds(gt, pred,gt['mask'], T_peak_flow,figsize=(15, 5), save_as = f'{eval_dir_detailed}/{set_name}_M{data_model}_k_r2_vals_nobounds_frame{T_peak_flow}_pred')
 
-        fig3, axs3 = plot_k_r2_vals_nobounds(k_SR, r2_SR, T_peak_flow, figsize = (12, 4),exclude_tbounds = True,  save_as= f'{eval_dir}/{set_name}_M{data_model}_corr_k_r2_vals_nobounds_frame{T_peak_flow}_pred')
-        fig1 = plot_correlation_nobounds(gt, pred, T_peak_flow, show_text = True, save_as = f'{eval_dir}/{set_name}_M{data_model}_correlation_pred_nobounds_frame{T_peak_flow}')
+        fig3, axs3 = plot_k_r2_vals_nobounds(k_SR, r2_SR, T_peak_flow, figsize = (12, 4),exclude_tbounds = True,  save_as= None)
+        fig1 = plot_correlation_nobounds(gt, pred, T_peak_flow, show_text = True, save_as = f'{eval_dir_detailed}/{set_name}_M{data_model}_correlation_pred_nobounds_frame{T_peak_flow}')
         
         # Merge the two figures into a single figure
         fig = plt.figure(figsize=(15, 10))
@@ -322,8 +326,10 @@ if __name__ == "__main__":
         ax1.imshow(fig1.canvas.renderer._renderer)
         ax2.imshow(fig3.canvas.renderer._renderer)
         plt.tight_layout()
-        plt.savefig(f'{eval_dir}/{set_name}_M{data_model}_correlation_frame{T_peak_flow}_K_R2.png')
+        plt.savefig(f'{eval_dir_overview}/{set_name}_M{data_model}_correlation_frame{T_peak_flow}_K_R2.png')
         
+        combined_correlation_k_r2_plots(gt, pred, T_peak_flow, k_SR, r2_SR, T_peak_flow, color_points='black', show_text=True, save_as=f'{eval_dir_overview}/{set_name}_M{data_model}_correlation_K_R2_frame{T_peak_flow}', figsize=(15, 10), exclude_tbounds=False)
+
         plt.show()
         # fig_sinc = plot_correlation_nobounds(gt, interpolate_sinc, T_peak_flow,show_text = True,color_points= KTH_colors['green100']
         #                                      ,  save_as = f'{eval_dir}/{set_name}_M{model_name}_correlation_sinc_nobounds_frame{T_peak_flow}')
@@ -397,7 +403,7 @@ if __name__ == "__main__":
                 axs[1, i].legend(loc='lower right')
 
             plt.tight_layout()
-            plt.savefig(f'{eval_dir}/{set_name}_M{data_model}_K_R2_vals_SR_lin_sinc_VXYZ.png')
+            plt.savefig(f'{eval_dir_detailed}/{set_name}_M{data_model}_K_R2_vals_SR_lin_sinc_VXYZ.png')
             plt.show()
 
 
@@ -408,7 +414,8 @@ if __name__ == "__main__":
         # define plane 
         t = 0
         plane_points = [51/2, 56/2, 72/2]
-        plane_normal = [0.18, 0.47, -0.86]
+        # plane_normal = [0.18, 0.47, -0.86]
+        plane_normal = [-0.18, -0.47, 0.86]
         order_normal = [2, 1, 0]
         plane_normal /= np.linalg.norm(plane_normal)
 
@@ -464,9 +471,9 @@ if __name__ == "__main__":
         pred_vel_crop = pred_vel[idx_crop]
         img_MV_mask_crop = img_MV_mask[idx_crop2]
 
-        timepoints = [6, 7, 8, 9]
-        timepoints_lr = [3, 4, 5, 6]
-        plot_qual_comparsion(hr_vel_crop[timepoints[0]:timepoints[-1]+1], lr_vel_crop[timepoints_lr[0]:timepoints_lr[-1]+1], pred_vel_crop[timepoints[0]:timepoints[-1]+1], img_MV_mask,None,  [], [], min_v=None, max_v=None,  timepoints = timepoints,figsize=(8, 5),  save_as = f'{eval_dir}/{set_name}_M{data_model}_Velocity_through_MVplane_meanV_prediction.png')
+        timepoints = [33, 34, 35, 36]
+        timepoints_lr = [17, 18]
+        plot_qual_comparsion(hr_vel_crop[timepoints[0]:timepoints[-1]+1], lr_vel_crop[timepoints_lr[0]:timepoints_lr[-1]+1], pred_vel_crop[timepoints[0]:timepoints[-1]+1], img_MV_mask,None,  [], [], min_v=None, max_v=None,  timepoints = timepoints,figsize=(8, 5),  save_as = f'{eval_dir_detailed}/{set_name}_M{data_model}_Velocity_through_MVplane_meanV_prediction.png')
 
         if False: 
             fig = plt.figure(figsize=(10, 10))
@@ -505,8 +512,10 @@ if __name__ == "__main__":
         plt.legend(fontsize = 16)
         plt.xticks(fontsize = 16)
         plt.yticks(fontsize = 16)
+        plt.locator_params(axis='y', nbins=3)
+        plt.locator_params(axis='x', nbins=3)
         plt.tight_layout()
-        plt.savefig(f'{eval_dir}/{set_name}_M{data_model}_MV_Flow_rate.png',bbox_inches='tight',transparent=True)
+        plt.savefig(f'{eval_dir_detailed}/{set_name}_M{data_model}_MV_Flow_rate.png',bbox_inches='tight',transparent=True)
         plt.show()
     
     if show_planeAV_plot:
@@ -514,8 +523,11 @@ if __name__ == "__main__":
 
         # define plane 
         t = 0
+        # setting over aortic valvle for M4
         plane_points = [68.5/2, 35.8/2, 79.18/2]
         plane_normal = [0.6147, -0.1981, -0.7635]
+        # plane_points = [75.3/2, 25.26/2, 48.45/2]
+        # plane_normal = [0.6236056784528764, -0.21279177467751542, -0.752220458662832]
         order_normal = [2, 1, 0]
         plane_normal /= np.linalg.norm(plane_normal)
 
@@ -526,8 +538,6 @@ if __name__ == "__main__":
 
         zz[np.where(zz < 0)] = 0
         zz[np.where(zz >= gt['u'].shape[3])] = gt['u'].shape[3] - 1
-        print(xx.max(), yy.max(), zz.max())
-        print(xx.min(), yy.min(), zz.min())
 
         # Get point coordiantes in plane
         points_in_plane = np.zeros_like(gt['mask'][t])
@@ -538,20 +548,23 @@ if __name__ == "__main__":
         points_plane_core[np.where(gt['mask'][t]==0)] = 0
 
         #Always adjust to different models
-        points_MV = points_plane_core.copy()
-        points_MV[:, :, :15] = 0
-        points_MV[:, 22:, :] = 0
-        points_MV[35:, :, :] = 0
+        points_AV = points_plane_core.copy()
+        points_AV[:, :, :15] = 0
+        points_AV[:, 22:, :] = 0
+        points_AV[35:, :, :] = 0
+        # points_AV[:, 22:, :] = 0
+        # points_AV[:, :, :10] = 0
+        # points_AV[:35, :, :] = 0
 
         #2. Get points in plane and cut out right region
 
         #get indices
         idx_intersec_plane_fluid = np.where(points_plane_core>0)
         idx_plane                = np.where(points_in_plane>0)
-        idx_MV                   = np.where(points_MV>0) 
+        idx_MV                   = np.where(points_AV>0) 
 
         img_mask = gt['mask'][t][idx_plane].reshape(xx.shape[1], -1)
-        img_MV_mask = points_MV[idx_plane].reshape(xx.shape[1], -1)
+        img_MV_mask = points_AV[idx_plane].reshape(xx.shape[1], -1)
         plt.imshow(gt['mask'][t][idx_plane].reshape(xx.shape[1], -1))
         plt.imshow(img_MV_mask+img_mask)
         plt.show()
@@ -572,7 +585,7 @@ if __name__ == "__main__":
         print('Shapes AV cubes:', hr_vel_crop.shape, lr_vel_crop.shape, pred_vel_crop.shape, img_MV_mask_crop.shape)
         timepoints = [6, 7, 8, 9]
         timepoints_lr = [3, 4, 5, 6]
-        plot_qual_comparsion(hr_vel_crop[timepoints[0]:timepoints[-1]+1], lr_vel_crop[timepoints_lr[0]:timepoints_lr[-1]+1], pred_vel_crop[timepoints[0]:timepoints[-1]+1], img_MV_mask,None,  [], [], min_v=None, max_v=None,  timepoints = timepoints,figsize=(8, 5),  save_as = f'{eval_dir}/{set_name}_M{data_model}_Velocity_through_AVplane_3D_img_meanV_prediction.png')
+        plot_qual_comparsion(hr_vel_crop[timepoints[0]:timepoints[-1]+1], lr_vel_crop[timepoints_lr[0]:timepoints_lr[-1]+1], pred_vel_crop[timepoints[0]:timepoints[-1]+1], img_MV_mask,None,  [], [], min_v=None, max_v=None,  timepoints = timepoints,figsize=(8, 5),  save_as = f'{eval_dir_detailed}/{set_name}_M{data_model}_Velocity_through_AVplane_3D_img_meanV_prediction.png')
 
         if False: 
             fig = plt.figure(figsize=(10, 10))
@@ -582,7 +595,7 @@ if __name__ == "__main__":
             x_bounds, y_bounds, z_bounds = np.where(boundary_mask[t, :, :,:]==1)
             xp, yp, zp = idx_intersec_plane_fluid
             xl, yl, zl = np.where(points_plane_core ==2) 
-            x_MV, y_MV, z_MV = np.where(points_MV ==1)
+            x_MV, y_MV, z_MV = np.where(points_AV ==1)
             ax.plot_surface(xx, yy, zz, alpha = 0.33, color = KI_colors['Grey']) # plot plane
             ax.scatter3D(x_bounds, y_bounds, z_bounds, s= 3, alpha = 0.1) #plot boundary points
             ax.scatter3D(plane_points[0], plane_points[1], plane_points[2],'x', color = 'red') #show point in plane
@@ -611,8 +624,10 @@ if __name__ == "__main__":
         plt.legend(fontsize = 16)
         plt.xticks(fontsize = 16)
         plt.yticks(fontsize = 16)
+        plt.locator_params(axis='y', nbins=3)
+        plt.locator_params(axis='x', nbins=3)
         plt.tight_layout()
-        plt.savefig(f'{eval_dir}/{set_name}_M{data_model}_AV_Flow_rate.png',bbox_inches='tight', transparent = True)
+        plt.savefig(f'{eval_dir_detailed}/{set_name}_M{data_model}_AV_Flow_rate.png',bbox_inches='tight', transparent = True)
         plt.show()
         
         #-----plot AV 4; Plot velocity profile within mask----- 
@@ -629,35 +644,38 @@ if __name__ == "__main__":
         plt.xticks(fontsize = 16)
         plt.yticks(fontsize = 16)
         plt.tight_layout()
-        plt.savefig(f'{eval_dir}/{set_name}_M{data_model}_AV_velocity_plane.svg',bbox_inches='tight')
+        plt.savefig(f'{eval_dir_detailed}/{set_name}_M{data_model}_AV_velocity_plane.svg',bbox_inches='tight')
         plt.show()
 
 
     if show_animation:
         print("Plot animation..")
 
+        eval_gifs = f'{eval_dir_detailed}/gifs'
+        os.makedirs(eval_gifs, exist_ok = True)
+
         idx_slice = np.index_exp[20, :, :]
         fps = 20
         # animate prediction (slice)
-        animate_data_over_time_gif(idx_slice, pred['u'], min_v['u'], max_v['u'], fps = fps , save_as = f'{eval_dir}/{set_name}_animate_u_pred_cbar_jet', show_colorbar = True, colormap='jet')
-        animate_data_over_time_gif(idx_slice, pred['v'], min_v['v'], max_v['v'], fps = fps , save_as = f'{eval_dir}/{set_name}_animate_v_pred_cbar_jet', show_colorbar = True, colormap='jet')
-        animate_data_over_time_gif(idx_slice, pred['w'], min_v['w'], max_v['w'], fps = fps , save_as = f'{eval_dir}/{set_name}_animate_w_pred_cbar_jet', show_colorbar = True, colormap='jet')
+        animate_data_over_time_gif(idx_slice, pred['u'], min_v['u'], max_v['u'], fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_u_pred_cbar_jet', show_colorbar = True, colormap='jet')
+        animate_data_over_time_gif(idx_slice, pred['v'], min_v['v'], max_v['v'], fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_v_pred_cbar_jet', show_colorbar = True, colormap='jet')
+        animate_data_over_time_gif(idx_slice, pred['w'], min_v['w'], max_v['w'], fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_w_pred_cbar_jet', show_colorbar = True, colormap='jet')
 
         if False: 
             # animate HR (slice)
-            animate_data_over_time_gif(idx_slice, gt['u'], min_v['u'], max_v['u'], fps = fps , save_as = f'{eval_dir}/{set_name}_animate_u_gt')
-            animate_data_over_time_gif(idx_slice, gt['v'], min_v['v'], max_v['v'], fps = fps , save_as = f'{eval_dir}/{set_name}_animate_v_gt')
-            animate_data_over_time_gif(idx_slice, gt['w'], min_v['w'], max_v['w'], fps = fps , save_as = f'{eval_dir}/{set_name}_animate_w_gt')
+            animate_data_over_time_gif(idx_slice, gt['u'], min_v['u'], max_v['u'], fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_u_gt')
+            animate_data_over_time_gif(idx_slice, gt['v'], min_v['v'], max_v['v'], fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_v_gt')
+            animate_data_over_time_gif(idx_slice, gt['w'], min_v['w'], max_v['w'], fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_w_gt')
             # animate LR (slice)
-            animate_data_over_time_gif(idx_slice, lr['u'], min_v['u'], max_v['u'], fps = fps//2 , save_as = f'{eval_dir}/{set_name}_animate_u_lr')
-            animate_data_over_time_gif(idx_slice, lr['v'], min_v['v'], max_v['v'], fps = fps//2 , save_as = f'{eval_dir}/{set_name}_animate_v_lr')
-            animate_data_over_time_gif(idx_slice, lr['w'], min_v['w'], max_v['w'], fps = fps//2 , save_as = f'{eval_dir}/{set_name}_animate_w_lr')
+            animate_data_over_time_gif(idx_slice, lr['u'], min_v['u'], max_v['u'], fps = fps//2 , save_as = f'{eval_gifs}/{set_name}_animate_u_lr')
+            animate_data_over_time_gif(idx_slice, lr['v'], min_v['v'], max_v['v'], fps = fps//2 , save_as = f'{eval_gifs}/{set_name}_animate_v_lr')
+            animate_data_over_time_gif(idx_slice, lr['w'], min_v['w'], max_v['w'], fps = fps//2 , save_as = f'{eval_gifs}/{set_name}_animate_w_lr')
 
         # animate abs error
         max_abs_err = np.max([np.abs(gt['u'] - pred['u'])[idx_slice], np.abs(gt['v'] - pred['v'])[idx_slice], np.abs(gt['w'] - pred['w'])[idx_slice]])
-        animate_data_over_time_gif(idx_slice, np.abs(gt['u'] - pred['u']), None, None, fps = fps , save_as = f'{eval_dir}/{set_name}_animate_u_abs_error', show_colorbar = True)
-        animate_data_over_time_gif(idx_slice, np.abs(gt['v'] - pred['v']), None, None, fps = fps , save_as = f'{eval_dir}/{set_name}_animate_v_abs_error', show_colorbar = True)
-        animate_data_over_time_gif(idx_slice, np.abs(gt['w'] - pred['w']), None, None, fps = fps , save_as = f'{eval_dir}/{set_name}_animate_w_abs_error', show_colorbar = True)
+        animate_data_over_time_gif(idx_slice, np.abs(gt['u'] - pred['u']), None, None, fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_u_abs_error', show_colorbar = True)
+        animate_data_over_time_gif(idx_slice, np.abs(gt['v'] - pred['v']), None, None, fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_v_abs_error', show_colorbar = True)
+        animate_data_over_time_gif(idx_slice, np.abs(gt['w'] - pred['w']), None, None, fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_w_abs_error', show_colorbar = True)
 
     if save_as_vti:
         print("Save as vti files..")
@@ -752,14 +770,14 @@ if __name__ == "__main__":
 
 
             # Save dataframes to CSV
-            df_raw.to_csv(f'{eval_dir}/{set_name}_M{data_model}_metric_evaluation_ALL.csv', float_format="%.3f")
-            df_summary.to_csv(f'{eval_dir}/{set_name}_M{data_model}_metric_evaluation_core_bound_summary.csv', float_format="%.3f")
+            df_raw.to_csv(f'{eval_dir_detailed}/{set_name}_M{data_model}_metric_evaluation_ALL.csv', float_format="%.3f")
+            df_summary.to_csv(f'{eval_dir_overview}/{set_name}_M{data_model}_metric_evaluation_core_bound_summary.csv', float_format="%.3f")
 
             df_summary_whole = pd.DataFrame(index=vel_and_speed_colnames.extend(['v_all']))
             columns = ['k_all_avg', '|1-k|_all_avg', 'r2_all_avg',  'rmse_avg', 'rmse_avg_nonfluid', 'abs_err_avg', 'cos_sim_avg', 'RE_avg']
             columns_SR = [f'{col}_SR' for col in columns]
             df_summary_whole[columns_SR] = df_summary[columns_SR]
-            df_summary_whole.to_csv(f'{eval_dir}/{set_name}_M{nn_name}metric_evaluation_summary_selected.csv', float_format="%.3f")
+            df_summary_whole.to_csv(f'{eval_dir_overview}/{set_name}_M{nn_name}metric_evaluation_summary_selected.csv', float_format="%.3f")
             print(df_summary_whole.columns)
 
             print(df_summary)
@@ -864,7 +882,7 @@ if __name__ == "__main__":
 
             # Save dataframe to CSV
             
-            df_summary_interp.to_csv(f'{eval_dir}/{set_name}_M{data_model}_Interpolation_metric_evaluation_summary.csv', float_format="%.3f")
+            df_summary_interp.to_csv(f'{eval_dir_detailed}/{set_name}_M{data_model}_Interpolation_metric_evaluation_summary.csv', float_format="%.3f")
 
             print(df_summary_interp)
             print(df_summary_interp.to_latex(index=False, float_format="%.2f"))
@@ -875,7 +893,7 @@ if __name__ == "__main__":
                     ]
             df_summary_interp_whole[columns] = df_summary_interp[columns]
             df_summary_interp_whole = df_summary_interp_whole.transpose()
-            df_summary_interp_whole.to_csv(f'{eval_dir}/{set_name}_M{data_model}_Interpolation_metric_evaluation_summary_selected.csv', float_format="%.3f")
+            df_summary_interp_whole.to_csv(f'{eval_dir_overview}/{set_name}_M{data_model}_Interpolation_metric_evaluation_summary_selected.csv', float_format="%.3f")
 
             eval_vel = 'v_all'
 
@@ -909,7 +927,7 @@ if __name__ == "__main__":
             df_comparison = df_comparison.apply(pd.to_numeric, errors='coerce')
 
             # Save the DataFrame to a CSV or LaTeX format if needed
-            df_comparison.to_csv(f'{eval_dir}/{set_name}_M{data_model}_comparison_metrics.csv', float_format="%.3f")
+            df_comparison.to_csv(f'{eval_dir_overview}/{set_name}_M{data_model}_comparison_metrics.csv', float_format="%.3f")
             print(df_comparison.to_latex(index=True, float_format="%.3f"))
 
 
