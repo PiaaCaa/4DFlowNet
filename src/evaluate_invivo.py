@@ -169,9 +169,10 @@ if __name__ == "__main__":
 
         # options for plotting
         plot_animation = False
-        plot_corrplot = True
+        plot_corrplot = False
         plot_qualtimeseries = False
         plot_meanspeed = False
+        tabulate_results = True
         save_as_vti = False
 
         # create directories if needed 
@@ -308,7 +309,13 @@ if __name__ == "__main__":
             data_predicted['mean_speed'] = calculate_mean_speed(data_predicted["u_fluid"], data_predicted["v_fluid"] , data_predicted["w_fluid"], data_predicted["mask"])
             
             T_peak_flow_frame = np.argmax(data_original['mean_speed'])
-            eval_peak_flow_frame = T_peak_flow_frame # take next frame if peak flow frame included in lr data
+            synthesized_peak_flow_frame = T_peak_flow_frame # take next frame if peak flow frame included in lr data
+            if synthesized_peak_flow_frame % 2 == 0: 
+                if data_original['mean_speed'][synthesized_peak_flow_frame-1] > data_original['mean_speed'][synthesized_peak_flow_frame+1]:
+                    synthesized_peak_flow_frame -=1
+                else:
+                    synthesized_peak_flow_frame +=1
+            print('Synthesized peak flow frame:', synthesized_peak_flow_frame)
 
 
             if plot_meanspeed:
@@ -332,7 +339,28 @@ if __name__ == "__main__":
                 plt.legend()
                 plt.tight_layout()
                 plt.savefig(f'{eval_dir_overview}/{name_evaluation}_meanspeed.png')
-                # plt.show()
+                plt.show()
+
+                # plot mean velocity over time
+                plt.figure(figsize=(15, 5))
+                colors = ['r', 'g', 'b']
+                for i, vel in enumerate(vel_colnames):
+                    plt.subplot(1,3, i+1)
+                    plt.plot(frame_range_predicted, np.mean(data_predicted[vel], axis = (1, 2, 3), where=data_original['mask'].astype(bool)), '-', label = f'sr {vel}', color = 'black')
+                    plt.plot(frame_range_input, np.mean(data_original[vel], axis = (1, 2, 3), where=data_original['mask'].astype(bool)), '--', label = f'native res {vel}', color = colors[i])
+                    if not super_resolved_prediction:
+                        plt.plot(frame_range_input[::2], np.mean(data_original[vel][::2], axis=(1, 2, 3), where=data_original['mask'][::2].astype(bool)),'.',  label ='sample points',  color= colors[i])
+                    else:
+                        plt.plot(frame_range_input, np.mean(data_original[vel], axis=(1, 2, 3), where=data_original['mask'].astype(bool)),'.',  label ='sample points',  color= colors[i])
+                    plt.xlabel("Frame")
+                    plt.ylabel(f"Mean velocity (cm/s)")
+                    plt.legend()
+                    plt.title(f'Mean {vel} over time')
+                plt.tight_layout()
+                plt.savefig(f'{eval_dir_overview}/{name_evaluation}_mean_velocity_VxVyVz.png')
+
+
+                plt.show()
             
             if save_as_vti:
                 print("Save as vti files..")
@@ -357,8 +385,9 @@ if __name__ == "__main__":
                         if not os.path.isfile(output_filepath):
                             uvw_mask_to_vtk((data_original['u'][t] - data_predicted['u'][t],data_original['v'][t] -data_predicted['v'][t],data_original['w'][t] -data_predicted['v'][t]),data_original['mask'][t], spacing, output_filepath, include_mask = True)
 
-            #---------------correlation + k + r^2 plots -------------------
+            
             if not super_resolved_prediction:
+                #---------------correlation + k + r^2 plots -------------------
                 if plot_corrplot: 
                     font = { # 'weight' : 'bold',
                         'size'   : 12}
@@ -370,13 +399,14 @@ if __name__ == "__main__":
                     frame_corr_plot = T_peak_flow_frame.copy()
                     if frame_corr_plot % 2 == 0: frame_corr_plot +=1 # take next frame if peak flow frame included in lr data
                     plt.figure(figsize=(15, 5))
-                    plot_correlation_nobounds(data_original, data_predicted, frame_idx=frame_corr_plot,show_text=True,  save_as=f'{eval_dir_detailed}/{name_evaluation}_correlation_peakframe{frame_corr_plot}')
+                    plot_correlation_nobounds(data_original, data_predicted, frame_idx=frame_corr_plot,show_text=True,  save_as=f'{eval_dir_detailed}/{name_evaluation}_correlation_synthetic_peakframe{frame_corr_plot}')
+                    plot_correlation_nobounds(data_original, data_predicted, frame_idx=frame_corr_plot,show_text=True,  save_as=f'{eval_dir_detailed}/{name_evaluation}_correlation_peakframe{T_peak_flow_frame}')
 
-                    plot_correlation_nobounds(data_original, data_predicted, frame_idx=3,show_text=True,  save_as=f'{eval_dir_detailed}/{name_evaluation}_correlation_frame3_')
-                    plot_correlation_nobounds(data_original, data_predicted, frame_idx=5,show_text=True,  save_as=f'{eval_dir_detailed}/{name_evaluation}_correlation_frame5')
-                    plot_correlation_nobounds(data_original, data_predicted, frame_idx=7,show_text=True,  save_as=f'{eval_dir_detailed}/{name_evaluation}_correlation_frame7')
-                    plot_correlation_nobounds(data_original, data_predicted, frame_idx=9,show_text=True,  save_as=f'{eval_dir_detailed}/{name_evaluation}_correlation_frame9')
-                    plot_correlation_nobounds(data_original, data_predicted, frame_idx=11,show_text=True, save_as=f'{eval_dir_detailed}/{name_evaluation}_correlation_frame11')
+                    # plot_correlation_nobounds(data_original, data_predicted, frame_idx=3,show_text=True,  save_as=f'{eval_dir_detailed}/{name_evaluation}_correlation_frame3_')
+                    # plot_correlation_nobounds(data_original, data_predicted, frame_idx=5,show_text=True,  save_as=f'{eval_dir_detailed}/{name_evaluation}_correlation_frame5')
+                    # plot_correlation_nobounds(data_original, data_predicted, frame_idx=7,show_text=True,  save_as=f'{eval_dir_detailed}/{name_evaluation}_correlation_frame7')
+                    # plot_correlation_nobounds(data_original, data_predicted, frame_idx=9,show_text=True,  save_as=f'{eval_dir_detailed}/{name_evaluation}_correlation_frame9')
+                    # plot_correlation_nobounds(data_original, data_predicted, frame_idx=11,show_text=True, save_as=f'{eval_dir_detailed}/{name_evaluation}_correlation_frame11')
 
                     
                     print('Peak flow frame:', T_peak_flow_frame)
@@ -409,6 +439,7 @@ if __name__ == "__main__":
                     
 
 
+                if tabulate_results:
                     #print mean k and r^2 values
                     dict_intermediate_results = defaultdict(list)
 
@@ -420,7 +451,9 @@ if __name__ == "__main__":
                             dict_intermediate_results[f'R2_{vel}'].append(r2)
                             dict_intermediate_results[f'|1-k|_{vel}'].append(np.abs(1-k))
                         rmse = calculate_rmse(data_predicted[vel], data_original[vel], data_original['mask'], return_std=False)
+                        mae = np.mean(np.abs(data_predicted[vel] - data_original[vel]), axis=(1, 2, 3), where=data_original['mask'].astype(bool))
                         dict_intermediate_results[f'rmse_{vel}'] = rmse
+                        dict_intermediate_results[f'mae_{vel}'] = mae
                     
                     dict_results['Patient'].append(case)
                     for key in dict_intermediate_results.keys():
@@ -428,13 +461,13 @@ if __name__ == "__main__":
                         dict_results[f'{key}_std'].append(np.std(dict_intermediate_results[key]))
                         print('key', key,dict_results[key])
                         print('key', len(dict_results[key]))
-                        dict_results[f'{key}_peak'].append(dict_intermediate_results[key][eval_peak_flow_frame])
+                        dict_results[f'{key}_peak'].append(dict_intermediate_results[key][synthesized_peak_flow_frame])
 
                     
 
                     print('Mean k values over all patients:', np.average(dict_results[f'k_u']), np.average(dict_results[f'k_v']), np.average(dict_results[f'k_w']))
                     print('Mean R2 values over all patients:', np.average(dict_results[f'R2_u']), np.average(dict_results[f'R2_v']), np.average(dict_results[f'R2_w']))
-                    print('Eval peak flow frame:', eval_peak_flow_frame, T_peak_flow_frame)
+                    print('Eval peak flow frame:', synthesized_peak_flow_frame, T_peak_flow_frame)
 
                 #-----------------plot slices over time---------------------
                 if plot_qualtimeseries:
@@ -515,193 +548,12 @@ if __name__ == "__main__":
                 #     animate_invivo_HR_pred(idx, v_orig, v_gt_fluid, v_pred, min_v, max_v, save_as, fps = 10)
                 # animate_invivo_HR_pred(idx_slice, data_original['u'][::2], hr, pred, vel,min_v, max_v, save_as, fps = 10)
 
+        if tabulate_results:
+            # Display tabular for all subject evaluations
+            result_df = pd.DataFrame(dict_results).round(2)
+            print(result_df.columns)
+            rearaanged_columns = ['Patient','rmse_u','rmse_u_std', 'rmse_v','rmse_v_std', 'rmse_w' ,'rmse_w_std', '|1-k|_u', '|1-k|_u_std', '|1-k|_v', '|1-k|_v_std', '|1-k|_w', '|1-k|_w_std','R2_u', 'R2_u_std', 'R2_v', 'R2_v_std', 'R2_w', 'R2_w_std','rmse_u_peak', 'rmse_v_peak', 'rmse_w_peak', 'k_u_peak',  'k_v_peak',  'k_w_peak', 'R2_u_peak',  'R2_v_peak', 'R2_w_peak']
+            result_df = result_df[rearaanged_columns]
 
-        # Display tabular for all subject evaluations
-        result_df = pd.DataFrame(dict_results).round(2)
-        print(result_df.columns)
-        rearaanged_columns = ['Patient','rmse_u','rmse_u_std', 'rmse_v','rmse_v_std', 'rmse_w' ,'rmse_w_std', '|1-k|_u', '|1-k|_u_std', '|1-k|_v', '|1-k|_v_std', '|1-k|_w', '|1-k|_w_std','R2_u', 'R2_u_std', 'R2_v', 'R2_v_std', 'R2_w', 'R2_w_std','rmse_u_peak', 'rmse_v_peak', 'rmse_w_peak', 'k_u_peak',  'k_v_peak',  'k_w_peak', 'R2_u_peak',  'R2_v_peak', 'R2_w_peak']
-        result_df = result_df[rearaanged_columns]
-
-        print(result_df.to_latex(index=False, float_format="%.2f"))
-        result_df.to_csv(f'{eval_dir_overview}/{name_evaluation}_Results_{network_model}_Results_k_r2.csv', index = False)
-
-    #-------------------------------------------------------------------------------------------------------------------------
-    # comparison of different networks on one invivo dataset
-    if False:
-        
-        patient = 'P01'
-        pred_dir = 'Temporal4DFlowNet/results/in_vivo/THORAX'
-
-        invivo_file = f'Temporal4DFlowNet/data/PIA/THORAX/{patient}/h5/{patient}.h5' 
-        prediction_files = [f'{patient}_20230405-1417_8_4_arch.h5',f'{patient}_20230405-1417_8_4_arch_25Frames_MaskXMagnitude.h5',f'{patient}_20230405-1417_8_4_arch_25Frames_MaskASMagnitude.h5', f'{patient}_20230602-1701_8_4_arch_25Frames.h5']
-        name_prediction = ['MI - Magnitude', r' MI - Mask $\cdot$ Mag.','MI - Mask as Mag.',  'MII Magnitude',  ]
-        eval_dir = 'Temporal4DFlowNet/results/in_vivo/THORAX/plots2'
-        name_comparison = 'THORAX_DifferentMagnitudeInputs'
-        if not os.path.isdir(eval_dir):
-            os.makedirs(eval_dir)
-
-        frame_start = 1
-        frame_end = 6
-        idx_slice = np.index_exp[frame_start:frame_end, 18, :, :]
-        save_slices_individual = False
-        super_resolved_prediction = False
-        vel_colnames = ['u', 'v', 'w']
-        mag_colnames = ['mag_u', 'mag_v', 'mag_w']
-        min_v = {}
-        max_v = {}
-        in_vivo_original = {}
-        in_vivo_predicted = {}
-
-
-        # load first original data 
-        # find vel max and min
-        with h5py.File(invivo_file, mode = 'r' ) as p1:
-                mask = np.array(p1['mask'])[idx_slice]
-                in_vivo_original['mask'] = np.array(p1['mask'])
-                for vel in vel_colnames:
-
-                    #save in dictionary
-                    
-                    in_vivo_original[vel] = np.array(p1[vel])
-                    in_vivo_original[f'{vel}_fluid'] = np.multiply(in_vivo_original[vel], in_vivo_original['mask'])
-
-                    slice_vel = np.array(p1[vel])[idx_slice]
-                    min_v[vel] = np.quantile(slice_vel.flatten(), 0.01)
-                    max_v[vel] = np.quantile(slice_vel.flatten(), 0.99)
-                    
-                    
-                    if save_slices_individual:
-                        t_range = np.arange(frame_start, frame_end)
-                        for i, t in enumerate(t_range):
-                            plt.imshow(slice_vel[i], vmin = min_v[vel], vmax = max_v[vel])
-                            plt.axis('off')
-                            plt.savefig(f'{eval_dir}/{patient}_{vel}_Invivo_Original_Frame{t}.png', bbox_inches='tight')
-
-                            plt.imshow(np.multiply(mask[i], slice_vel[i]), vmin = min_v[vel], vmax = max_v[vel])
-                            plt.axis('off')
-                            plt.savefig(f'{eval_dir}/{patient}_{vel}_Invivo_Original_Frame{t}_OnlyFluid.png', bbox_inches='tight')
-                        
-                in_vivo_original[f'mean_speed'] = calculate_mean_speed(in_vivo_original["u_fluid"], in_vivo_original["v_fluid"] , in_vivo_original["w_fluid"], in_vivo_original["mask"])
-                        
-                if save_slices_individual:
-                    for mag in mag_colnames: 
-                        slice_vel = np.array(p1[mag])[idx_slice]
-                        t_range = np.arange(frame_start, frame_end)
-                        # for i, t in enumerate(t_range):
-                        i = 0
-                        t = t_range[0]
-                        plt.imshow(slice_vel[i], cmap ='Greys_r')
-                        plt.axis('off')
-                        plt.savefig(f'{eval_dir}/{patient}_{mag}_Invivo_OriginalMagnitude_Frame{t}.png', bbox_inches='tight')
-                        plt.show()
-                        
-                        plt.imshow(mask[i], cmap ='Greys_r')
-                        plt.axis('off')
-                        plt.savefig(f'{eval_dir}/{patient}_{mag}_Invivo_Mask_Frame{t}.png', bbox_inches='tight')
-                        plt.show()
-
-                        plt.imshow(np.multiply(slice_vel, mask)[i], cmap ='Greys_r')
-                        plt.axis('off')
-                        plt.savefig(f'{eval_dir}/{patient}_{mag}_Invivo_OriginalMagnitudeXMask_Frame{t}.png', bbox_inches='tight')
-                        plt.show()
-
-
-        # load in-vivo data
-        for p, name_pred in zip(prediction_files, name_prediction):
-            in_vivo = f'{pred_dir}/{p}'
-            print('--------------', p, '------------------')
-            with h5py.File(in_vivo, mode = 'r' ) as p1:
-                for vel in vel_colnames:
-                    in_vivo_predicted[f'{vel}_{name_pred}'] = np.array(p1[f'{vel}_combined'])
-
-                    if save_slices_individual:
-                        slice_vel = np.array(p1[f'{vel}_combined'])[idx_slice]
-                        t_range = np.arange(frame_start, frame_end)
-                        for i, t in enumerate(t_range):
-                            plt.imshow(slice_vel[i], vmin = min_v[vel], vmax = max_v[vel])
-                            plt.axis('off')
-                            plt.savefig(f'{eval_dir}/{patient}_{vel}_{name_pred}_Frame{t}.png', bbox_inches='tight')
-                            plt.show()
-
-                # calculate mean speed
-                print(in_vivo_predicted.keys())
-                in_vivo_predicted[f'mean_speed_{name_pred}'] = calculate_mean_speed(in_vivo_predicted[f"u_{name_pred}"], in_vivo_predicted[f"v_{name_pred}"] , in_vivo_predicted[f"w_{name_pred}"], in_vivo_original["mask"])
-
-        # plot frames slices over time for each velocity component
-        for vel in vel_colnames:
-            plot_slices_over_time3(in_vivo_original[vel],in_vivo_original[vel],  in_vivo_original['mask'], 0, [in_vivo_original[f'{vel}_fluid'], ] + [in_vivo_predicted[f'{vel}_{name_pred}'] for name_pred in name_prediction], ['HR fluid region'] + name_prediction,np.arange(frame_start, frame_end), idx_slice,min_v[vel], max_v[vel],exclude_rel_error = True, save_as = f"{eval_dir}/{patient}_Frame_comparison_{vel}.svg", figsize = (8,8))
-
-        
-        #-------------mean speed plot---------------------
-        plt.figure(figsize=(7, 4))
-        colors = [KI_colors['Blue'],  KI_colors['Plum'], KI_colors['LightBlue'], KI_colors['Orange'], KI_colors['Grey'], KI_colors['DarkGreen'],]
-        # colors = [KTH_colors['blue100'], KTH_colors['lightblue100'],  KTH_colors['grey100'], KTH_colors['pink80'], KTH_colors['grey40'],]#['steelblue', 'darkorange', 'brown', 'orchid', 'darkviolet', 'olivedrab', 'lightcoral', 'maroon', 'yellow', 'seagreen']
-        markers = ['solid', ':',  '--','-.',  (0, (3, 1, 1, 1)),'-.', ]
-        
-        step_pred = 0.5 if super_resolved_prediction else 1
-        
-        N_frames_input_data = in_vivo_original['u'].shape[0]
-        N_frames_pred_data = in_vivo_predicted[f'u_{name_prediction[0]}'].shape[0]
-
-        frame_range_input = np.arange(0, N_frames_input_data)#np.linspace(0, data_1['u'].shape[0]-1,  data_1['u'].shape[0])
-        frame_range_predicted = np.arange(0, N_frames_input_data, step_pred)#np.linspace(0, data_1['u'].shape[0], data_predicted['u'].shape[0])
-        print(frame_range_input, frame_range_predicted)
-        plt.title('Mean speed')
-        plt.plot(frame_range_input, in_vivo_original['mean_speed'],'-', label = 'noisy input data', color= 'black')
-
-        for name_pred, case, marker in zip(name_prediction, colors, markers):
-            plt.plot(frame_range_predicted, in_vivo_predicted[f'mean_speed_{name_pred}'], '.-', label = name_pred, color= case, linestyle = marker)
-
-            print(f'Mean speed {name_pred}:', np.average(in_vivo_predicted[f'mean_speed_{name_pred}']))
-            print(f'Max speed {name_pred}:', np.max(in_vivo_predicted[f'mean_speed_{name_pred}']))
-            print(f'Min speed {name_pred}:', np.min(in_vivo_predicted[f'mean_speed_{name_pred}']))
-            # print(f'Mean speed {name_pred} in peak flow frame:', in_vivo_predicted[f'mean_speed_{name_pred}'][peak_flow_frame])
-            print(f'Mean difference {name_pred}:', np.average(in_vivo_predicted[f'mean_speed_{name_pred}'] - in_vivo_original['mean_speed']))
-            print(f'Max difference {name_pred}:', np.max(np.abs(in_vivo_predicted[f'mean_speed_{name_pred}'] - in_vivo_original['mean_speed'])))
-
-        if not super_resolved_prediction:
-            plt.plot(frame_range_input[::2], in_vivo_original['mean_speed'][::2],'.',  label ='sample points',  color= 'black')
-        else:
-            plt.plot(frame_range_input, in_vivo_original['mean_speed'],'.',  label ='sample points',  color= 'black')
-        plt.xlabel("Frame")
-        plt.ylabel("Mean speed (cm/s)")
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(f'{eval_dir}/{patient}_Meanspeed_{name_comparison}.svg')
-        plt.show()
-
-        #------- k value plot and R^2 plots -------------------
-        #---------------correlation + k + r^2 plots -------------------
-        if not super_resolved_prediction:
-            # correlation
-            T_peak_flow_frame = np.argmax(in_vivo_original['mean_speed'])
-            frame_corr_plot = T_peak_flow_frame.copy()
-            if frame_corr_plot % 2 == 0: frame_corr_plot +=1 # take next frame if peak flow frame included in lr data
-            plt.figure(figsize=(15, 5))
-            # plot_correlation(data_original, data_predicted, bounds=bounds, frame_idx=frame_corr_plot, save_as=f'{eval_dir}/Correlation_frame{frame_corr_plot}_{name_evaluation}.svg')
-            
-            print('Peak flow frame:', T_peak_flow_frame)
-            frames = in_vivo_original['mean_speed'].shape[0]
-           
-            vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
-                
-            
-            # save each plot separately
-            plt.figure(figsize=(5, 5))
-            for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
-                plt.clf()
-                for name_pred, case, marker in zip(name_prediction, colors, markers):
-                    k, r2, = np.zeros(frames), np.zeros(frames)
-                    for t in range(frames):
-                        k[t], r2[t]  = calculate_k_R2( in_vivo_predicted[f'{vel}_{name_pred}'][t], in_vivo_original[vel][t], in_vivo_original['mask'][t])
-                    
-                    
-                    plt.plot(range(frames), k , label = f'{name_pred}', color = case, linestyle = marker)
-                    plt.scatter(np.ones(1)*T_peak_flow_frame, k[T_peak_flow_frame] , color = KI_colors['Grey'])
-                plt.legend(loc = 'upper right')
-                plt.title(title)
-                plt.xlabel('frame')
-                plt.ylabel('k')
-                plt.plot(np.ones(frames), 'k:')
-                plt.ylim([0.05, 1.05])
-                plt.savefig(f'{eval_dir}/{name_comparison}_k_vals_{vel}_.svg', bbox_inches='tight')
+            print(result_df.to_latex(index=False, float_format="%.2f"))
+            result_df.to_csv(f'{eval_dir_overview}/{name_evaluation}_Results_{network_model}_Results_k_r2.csv', index = False)

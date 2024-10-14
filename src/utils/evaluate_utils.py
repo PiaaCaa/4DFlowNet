@@ -190,6 +190,19 @@ def get_indices(frames, axis, slice_idx):
     else: 
         print("Invalid axis! Axis must be 0, 1 or 2")
 
+def get_spatial_indices(axis, slice_idx):
+    '''
+    Returns indices for 3D data with given axis and index
+    '''
+    if axis == 0 :
+        return np.index_exp[slice_idx, :, :]
+    elif axis == 1:
+        return np.index_exp[:, slice_idx, :]
+    elif axis == 2:
+        return np.index_exp[:, :, slice_idx]
+    else: 
+        print("Invalid axis! Axis must be 0, 1 or 2")
+
 def crop_center(img,croph,cropw):
     '''
     Crop center of image given size of the new image
@@ -1145,7 +1158,8 @@ def comparison_plot_slices_over_time(gt_cube,lr_cube,  mask_cube, comparison_lst
 
 
 # adapted with LR is 'not acquired'
-def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, comparison_lst, comparison_name, timepoints, min_v, max_v, include_error = False,  figsize = (10, 10), save_as = "Qualitative_frame_seq.png"):
+def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, comparison_lst, comparison_name, timepoints, 
+                         min_v, max_v, include_error = False,  figsize = (10, 10), save_as = "Qualitative_frame_seq.png", fontsize_lr = 8):
     def row_based_idx(num_rows, num_cols, idx):
         return np.arange(1, num_rows*num_cols + 1).reshape((num_rows, num_cols)).transpose().flatten()[idx-1]
 
@@ -1201,7 +1215,7 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
 
         else:
             plt.imshow(empty_data, cmap='gray',vmin=0, vmax=1)
-            plt.text(dsize[1] / 2, dsize[0] / 2, text, color='black', fontsize=10, ha='center', va='center', multialignment='center', fontweight='bold')
+            plt.text(dsize[1] / 2, dsize[0] / 2, text, color='black', fontsize=fontsize_lr, ha='center', va='center', multialignment='center', fontweight='bold')
             if img_cnt == 1: plt.ylabel("LR", fontsize = fontsize)
  
         # plt.title('frame '+ str(t))
@@ -1591,7 +1605,7 @@ def velocity_through_plane(idx_plane, data, normal, order_normal= [0, 1, 2]):
     ''' Returns the velocity through a plane, i.e. in direction of the normal, using projection on normal vector
     params:
         idx_plane: tuple of indices for the plane
-        data: 4D data
+        data: 4D data dictionary with keys u,v and w
         normal: normal vector of the plane
         order_normal: order of the normal vector, i.e. correspondece between cartesian plane and u, v, w (similar to paraview)
     '''

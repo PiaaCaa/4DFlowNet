@@ -45,9 +45,6 @@ def scalar_to_vtk(scalar_array, spacing, filename):
                             array_type=ns.get_vtk_array_type(array.dtype))
     vtkArray.SetName("Magnitude")
 
-    print('arr component',vtkArray.GetNumberOfComponents())
-    print('nr tuples',vtkArray.GetNumberOfTuples())
-
     imageData = vtk.vtkImageData()
     imageData.SetOrigin(origin)
     imageData.SetSpacing(spacing)
@@ -145,7 +142,6 @@ def uvw_mask_to_vtk(vector_arrays, scalar_array, spacing, filename, include_mask
     # this is only needed for lr (noisy data)
     if include_mask:
         mask = scalar_array.ravel(order='F')
-        print(u.shape, mask.shape)
         u = np.multiply(u, mask)
         v = np.multiply(v, mask)
         w = np.multiply(w, mask)
@@ -223,20 +219,19 @@ def create_difference_field(hr_file, prediction_file,hr_colnames, pred_colnames,
     return u_diff, v_diff, w_diff
 
 if __name__ == "__main__":
-    input_dir =  "data/CARDIAC/" #"/home/pcallmer/Temporal4DFlowNet/data/PIA/THORAX/P01/h5"
+    input_dir =  "data/paired_invivo" #"data/paired_invivo/"#"results/in_vivo/paired_data/v4_wholeheart_25mm_40ms" #"/home/pcallmer/Temporal4DFlowNet/data/PIA/THORAX/P01/h5"
     # mask_file  = "data/CARDIAC/M1_2mm_step1_static_dynamic.h5" #data\CARDIAC
-    # output_dir = "/home/pcallmer/Temporal4DFlowNet/results/vtk/"
+    output_dir = "results/data/invivo/paired_invivo"#results/data/invivo/paired_invivo/v6_wholeheart_25mm_40ms"
     # input_dir = "/home/pcallmer/Temporal4DFlowNet/results/Temporal4DFlowNet_20230620-0909" 
-    # mask_file  = "/home/pcallmer/Temporal4DFlowNet/data/CARDIAC/M4_2mm_step2_static_dynamic.h5"
+    mask_file  = "data/paired_invivo/v5_wholeheart_25mm_20ms.h5"#"data/PIA/THORAX/P01/h5/P01.h5" #"data/paired_invivo/v6_wholeheart_25mm_40ms_new_orient.h5"
     # output_dir = "results/data/insilico"
-    output_dir = "C:/Users/piacal/Code/PINNs/PINN-1458 new"
-    input_dir = output_dir
 
     # columns = ['u_combined', 'v_combined', 'w_combined']
     columns = ['u', 'v', 'w']
     
     # files = ["M1_2mm_step1_static_dynamic", "M2_2mm_step1_static_dynamic", "M3_2mm_step1_static_dynamic", "M4_2mm_step1_static_dynamic"]   
-    files = ["healthy-05mm3_SR_t30"]
+    files = ['v5_wholeheart_25mm_20ms']#, 'v5_wholeheart_25mm_40ms_orientwvu.h5', 'v6_wholeheart_25mm_20ms_orientwvu.h5', 'v6_wholeheart_25mm_40ms_orientwvu.h5']
+    # files = ["v4_wholeheart_25mm_40ms_20240709-2057"]
     
     for file in files:
         print(f"Processing case {file}")
@@ -260,11 +255,15 @@ if __name__ == "__main__":
             if "dx" in hf.keys():
                 dx = np.asarray(hf.get("dx"))[0]
                 print(dx)
-                spacing = (dx[0], dx[1], dx[2])
-                # spacing = (dx, dx, dx)
+                # spacing = (dx[0], dx[1], dx[2])
+                if len(dx) == 3:
+                    spacing = (dx[0], dx[1], dx[2])
+                else:
+                    spacing = (dx, dx, dx)
             else:
-                # spacing = (1.0, 1.0, 1.0)
-                spacing = (0.5, 0.5, 0.5)
+                spacing = (2.5, 2.5, 2.5)
+                print(f"No dx found, using default spacing {spacing}")
+                
         print(spacing)
 
         # Build a vtk file per time frame    
@@ -274,29 +273,28 @@ if __name__ == "__main__":
             # u, v, w = get_vector_fields(input_filepath, columns, idx)
             with h5py.File(input_filepath, 'r') as hf:
                 if hf[columns[0]].ndim == 4:
-
                     u = np.asarray(hf.get(columns[0])).squeeze()[idx]
                     v = np.asarray(hf.get(columns[1])).squeeze()[idx]
                     w = np.asarray(hf.get(columns[2])).squeeze()[idx]
+                    # mag = np.asarray(hf.get('mag_u')).squeeze()[idx]
                 elif hf[columns[0]].ndim == 5:
                     u = np.asarray(hf.get(columns[0]))[0, idx, :, :, :]
                     v = np.asarray(hf.get(columns[1]))[0, idx, :, :, :]
                     w = np.asarray(hf.get(columns[2]))[0, idx, :, :, :]
+                    # mag = np.asarray(hf.get('mag_u'))[0, idx, :, :, :]
                 
                 elif hf[columns[0]].ndim == 3:
                     u = np.asarray(hf.get(columns[0]))
                     v = np.asarray(hf.get(columns[1]))
                     w = np.asarray(hf.get(columns[2]))
+                    # mag = np.asarray(hf.get('mag_u'))
 
-            # u_hr, _, _ = get_vector_fields(f"{input_dir}/healthy-05mm3_sliced.h5", columns, idx)
-            # with h5py.File(f"{input_dir}/healthy-05mm3_sliced.h5", 'r') as hf:
-            #         print(hf[columns[0]].shape)
-            #         u_hr = np.asarray(hf.get(columns[0]))[0, idx, :, :, :]
             # mask = get_mask(input_filepath, idx)
-            mask = np.zeros_like(u)
-            mask[np.where(u != 0)] = 1
-            print(u.shape, mask.shape)
-            print('shapes:', u.shape, mask.shape)
+            mask = get_mask(mask_file, idx)
+            # mask = np.zeros_like(u)
+            # mask[np.where(u != 0)] = 1
+            # print(u.shape, mask.shape)
+            # print('shapes:', u.shape, mask.shape)
 
             # u, v, w = create_difference_field(mask_file, input_filepath,['u', 'v', 'w'], columns,  idx)
             # mask = get_mask(mask_file, idx)
@@ -304,10 +302,8 @@ if __name__ == "__main__":
             output_filepath = f'{output_path}/{output_filename}_{idx}_uvw.vti'
             # output_filepath = os.path.join(output_path, "{}_{}_absHRdiff.vti".format(output_filename, idx))
 
-            # vectors_to_vtk((u,v,w), spacing, output_filepath)
-            # scalar_to_vtk(u, spacing, output_filepath)
-            #scalar_to_vtk(mask, spacing, output_filepath)
             uvw_mask_to_vtk((u,v,w), mask, spacing, output_filepath, include_mask=True)
-            #uvw_mask_to_vtk((u,v,w), spacing, output_filepath)
+            # scalar_to_vtk(mag, spacing, output_filepath.replace("uvw", "mag"))
+
         print(f"Saved as {output_filepath}")
             
