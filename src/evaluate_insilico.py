@@ -9,7 +9,7 @@ from Network.PatchGenerator import PatchGenerator
 from utils import prediction_utils
 from utils.evaluate_utils import *
 
-from utils.vtkwriter_per_dir import uvw_mask_to_vtk
+# from utils.vtkwriter_per_dir import uvw_mask_to_vtk
 
 
 plt.rcParams['figure.figsize'] = [10, 8]
@@ -154,12 +154,12 @@ if __name__ == "__main__":
     show_img_plot = False
     show_RE_plot = False
     show_corr_plot = False
+    show_mean_vel_plot = False
     show_planeMV_plot = True
     show_planeAV_plot = True
-    tabular_eval = False
+    tabular_eval = True
     show_animation = False 
     save_as_vti = False
-
 
     vel_colnames=['u', 'v', 'w']
 
@@ -295,6 +295,23 @@ if __name__ == "__main__":
             plt.show()
             # plt.savefig(f'{eval_dir}/{set_name}_M{model_name}.png')
 
+    if show_mean_vel_plot:
+
+        colors = ['r', 'g', 'b']
+        plt.figure(figsize=(15, 5))
+        for i, vel in enumerate(vel_colnames):
+            plt.subplot(1, 3, i+1)
+            plt.plot(np.mean(gt[vel], axis=(1,2,3), where=gt['mask'].astype(bool)), label='hr', color=colors[i])
+            plt.plot(np.mean(pred[vel], axis=(1,2,3), where=gt['mask'].astype(bool)), label='sr', color='black')
+            plt.plot(range(0,N_frames, 2), np.mean(lr[vel], axis=(1,2,3), where=gt['mask'][::2].astype(bool)), label='lr', color=colors[i], linestyle='--')
+            plt.legend()
+            plt.title(vel)
+            plt.xlabel('frame')
+            plt.ylabel('mean velocity (m/s)')
+        
+        plt.tight_layout()
+        plt.savefig(f'{eval_dir_overview}/{set_name}_M{data_model}_mean_velocities.png')
+        plt.show()
 
     # 3. Plot the correlation between the prediction and the ground truth in peak flow frame
 
@@ -517,6 +534,23 @@ if __name__ == "__main__":
         plt.tight_layout()
         plt.savefig(f'{eval_dir_detailed}/{set_name}_M{data_model}_MV_Flow_rate.png',bbox_inches='tight',transparent=True)
         plt.show()
+
+        # plit velocity
+        plt.figure(figsize=(8, 5))
+        t_range_lr = np.arange(0, N_frames)[::2]
+        plt.plot(np.mean(hr_vel, where=img_MV_mask.astype(bool), axis=(1, 2)),'-o', label = 'HR', color = 'black', markersize = 3)
+        plt.plot(t_range_lr, np.mean(lr_vel, where=img_MV_mask.astype(bool), axis=(1, 2)),'-o', label = 'LR', color = 'forestgreen', markersize = 3)
+        plt.plot(np.mean(pred_vel, where=img_MV_mask.astype(bool), axis=(1, 2)),'--o', label = 'SR', color = KI_colors['Plum'], markersize = 3)
+        plt.xlabel('Frame', fontsize = 16)
+        plt.ylabel('Velocity (m/s)',  fontsize = 16)
+        plt.legend(fontsize = 16)
+        plt.xticks(fontsize = 16)
+        plt.yticks(fontsize = 16)
+        plt.tight_layout()
+        plt.savefig(f'{eval_dir_detailed}/{set_name}_M{data_model}_MV_velocity_plane.png',bbox_inches='tight', transparent = True)
+        plt.savefig(f'{eval_dir_detailed}/{set_name}_M{data_model}_MV_velocity_plane.svg',bbox_inches='tight')
+        plt.show()
+
     
     if show_planeAV_plot:
         print("Plot AV plane flow..")
@@ -525,9 +559,14 @@ if __name__ == "__main__":
         t = 0
         # setting over aortic valvle for M4
         plane_points = [68.5/2, 35.8/2, 79.18/2]
+        # plane_points = [59.65/2, 30.704/2, 71.9836/2]
         plane_normal = [0.6147, -0.1981, -0.7635]
         # plane_points = [75.3/2, 25.26/2, 48.45/2]
         # plane_normal = [0.6236056784528764, -0.21279177467751542, -0.752220458662832]
+        # plane_points = [66.38/2, 24.987/2.5, 57.2585/2]
+        # plane_normal = [0.629457, -0.239211, -0.7392975]
+        # plane_points = [67.391/2, 27.797355/2, 57.54458/2]
+        # plane_normal = [0.629457, -0.2127917, -0.75222]
         order_normal = [2, 1, 0]
         plane_normal /= np.linalg.norm(plane_normal)
 
@@ -549,12 +588,17 @@ if __name__ == "__main__":
 
         #Always adjust to different models
         points_AV = points_plane_core.copy()
-        points_AV[:, :, :15] = 0
+        points_AV[:, :, :10] = 0
         points_AV[:, 22:, :] = 0
-        points_AV[35:, :, :] = 0
-        # points_AV[:, 22:, :] = 0
+        points_AV[:23, :, :] = 0
+        
         # points_AV[:, :, :10] = 0
-        # points_AV[:35, :, :] = 0
+        # points_AV[:, 22:, :] = 0
+        # points_AV[:30, :, :] = 0
+
+        # points_AV[:, :, :15] = 0
+        # points_AV[:, 22:, :] = 0
+        # points_AV[42:, :, :] = 0
 
         #2. Get points in plane and cut out right region
 
@@ -632,21 +676,21 @@ if __name__ == "__main__":
         
         #-----plot AV 4; Plot velocity profile within mask----- 
 
-        #plot flow profile
+        #plot mean velocity
         plt.figure(figsize=(8, 5))
         t_range_lr = np.arange(0, N_frames)[::2]
-        plt.plot(np.mean(hr_vel, where=img_MV_mask.astype(bool), axis=(1, 2)), label = 'HR', color = 'black')
-        plt.plot(t_range_lr, np.mean(lr_vel, where=img_MV_mask.astype(bool), axis=(1, 2)), label = 'LR', color = KI_colors['Orange'])
-        plt.plot(np.mean(pred_vel, where=img_MV_mask.astype(bool), axis=(1, 2)), label = 'SR', color = KI_colors['Plum'])
+        plt.plot(np.mean(hr_vel, where=img_MV_mask.astype(bool), axis=(1, 2)),'-o', label = 'HR', color = 'black', markersize = 3)
+        plt.plot(t_range_lr, np.mean(lr_vel, where=img_MV_mask.astype(bool), axis=(1, 2)),'-o', label = 'LR', color = 'forestgreen', markersize = 3)
+        plt.plot(np.mean(pred_vel, where=img_MV_mask.astype(bool), axis=(1, 2)),'--o', label = 'SR', color = KI_colors['Plum'], markersize = 3)
         plt.xlabel('Frame', fontsize = 16)
-        plt.ylabel('velocity (m/s)',  fontsize = 16)
+        plt.ylabel('Velocity (m/s)',  fontsize = 16)
         plt.legend(fontsize = 16)
         plt.xticks(fontsize = 16)
         plt.yticks(fontsize = 16)
         plt.tight_layout()
+        plt.savefig(f'{eval_dir_detailed}/{set_name}_M{data_model}_AV_velocity_plane.png',bbox_inches='tight', transparent = True)
         plt.savefig(f'{eval_dir_detailed}/{set_name}_M{data_model}_AV_velocity_plane.svg',bbox_inches='tight')
         plt.show()
-
 
     if show_animation:
         print("Plot animation..")
@@ -657,11 +701,11 @@ if __name__ == "__main__":
         idx_slice = np.index_exp[20, :, :]
         fps = 20
         # animate prediction (slice)
-        animate_data_over_time_gif(idx_slice, pred['u'], min_v['u'], max_v['u'], fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_u_pred_cbar_jet', show_colorbar = True, colormap='jet')
-        animate_data_over_time_gif(idx_slice, pred['v'], min_v['v'], max_v['v'], fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_v_pred_cbar_jet', show_colorbar = True, colormap='jet')
-        animate_data_over_time_gif(idx_slice, pred['w'], min_v['w'], max_v['w'], fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_w_pred_cbar_jet', show_colorbar = True, colormap='jet')
+        animate_data_over_time_gif(idx_slice, pred['u'], min_v['u'], max_v['u'], fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_u_pred', show_colorbar = True, colormap='viridis')
+        animate_data_over_time_gif(idx_slice, pred['v'], min_v['v'], max_v['v'], fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_v_pred', show_colorbar = True, colormap='viridis')
+        animate_data_over_time_gif(idx_slice, pred['w'], min_v['w'], max_v['w'], fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_w_pred', show_colorbar = True, colormap='viridis')
 
-        if False: 
+        if True: 
             # animate HR (slice)
             animate_data_over_time_gif(idx_slice, gt['u'], min_v['u'], max_v['u'], fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_u_gt')
             animate_data_over_time_gif(idx_slice, gt['v'], min_v['v'], max_v['v'], fps = fps , save_as = f'{eval_gifs}/{set_name}_animate_v_gt')
@@ -710,9 +754,12 @@ if __name__ == "__main__":
                 # rmse
                 rmse_pred = calculate_rmse(pred[vel], gt[vel], gt["mask"], return_std=False)
                 rmse_pred_nonfluid = calculate_rmse(pred[vel], gt[vel], reverse_mask)
+                rmse_pred_bounds = calculate_rmse(pred[vel], gt[vel], boundary_mask)
 
                 # absolute error
                 abs_err = np.mean(np.abs(pred[vel] - gt[vel]), where = bool_mask, axis = (1,2,3))
+                abs_err_nonfluid = np.mean(np.abs(pred[vel] - gt[vel]), where = reverse_mask.astype(bool), axis = (1,2,3))
+                abs_err_bounds = np.mean(np.abs(pred[vel] - gt[vel]), where = boundary_mask.astype(bool), axis = (1,2,3))
 
                 # k and R2 values
                 k_core, r2_core     = calculate_k_R2_timeseries(pred[vel], gt[vel], core_mask)
@@ -753,17 +800,23 @@ if __name__ == "__main__":
                     df_summary.loc[vel, f'{metric}_max_SR'] = metrics_df[metric].max()
 
                 df_summary.loc[vel, 'rmse_avg_SR'] = np.mean(rmse_pred)
+                df_summary.loc[vel, 'rmse_avg_bounds_SR'] = np.mean(rmse_pred_bounds)
                 df_summary.loc[vel, 'rmse_avg_nonfluid_SR'] = np.mean(rmse_pred_nonfluid)
                 df_summary.loc[vel, 'abs_err_avg_SR'] = np.mean(abs_err)
+                df_summary.loc[vel, 'abs_err_avg_bounds_SR'] = np.mean(abs_err_bounds)
+                df_summary.loc[vel, 'abs_err_avg_nonfluid_SR'] = np.mean(abs_err_nonfluid)
 
 
             # Add relative error to df_raw and df_summary
             df_raw[f'RE'] = rel_error
             df_summary[f'RE_avg_SR'] = np.mean(rel_error)
+            rel_error_boundary = calculate_relative_error_normalized(pred['u'], pred['v'], pred['w'], gt['u'], gt['v'], gt['w'], boundary_mask)
+            df_summary['RE_avg_bounds_SR'] = np.mean(rel_error_boundary)
 
             cos_similarity = cosine_similarity( gt['u'], gt['v'], gt['w'],pred['u'], pred['v'], pred['w'])
             df_raw['cos_sim'] = np.mean(cos_similarity, axis = (1,2,3), where=bool_mask)
             df_summary['cos_sim_avg_SR'] = np.mean(df_raw['cos_sim'])
+            df_summary['cos_sim_avg_bounds_SR'] = np.mean(np.mean(cos_similarity, where=boundary_mask.astype(bool), axis = (1,2,3)))
 
             # add avg row over all vel. components
             df_summary.loc['v_all'] = df_summary.loc[['u', 'v', 'w']].mean()
@@ -802,12 +855,16 @@ if __name__ == "__main__":
                 # rmse
                 rmse_pred_sinc = calculate_rmse(interpolate_sinc[vel], gt[vel], gt["mask"], return_std=False)
                 rmse_pred_linear = calculate_rmse(interpolate_linear[vel], gt[vel], gt["mask"], return_std=False)
+                rmse_pred_bounds_sinc = calculate_rmse(interpolate_sinc[vel], gt[vel], boundary_mask)
+                rmse_pred_bounds_linear = calculate_rmse(interpolate_linear[vel], gt[vel], boundary_mask)
                 rmse_pred_nonfluid_sinc = calculate_rmse(interpolate_sinc[vel], gt[vel], reverse_mask)
                 rmse_pred_nonfluid_linear = calculate_rmse(interpolate_linear[vel], gt[vel], reverse_mask)
 
                 # absolute error
                 abs_err_sinc = np.mean(np.abs(interpolate_sinc[vel] - gt[vel]), where = bool_mask, axis = (1,2,3))
                 abs_err_linear = np.mean(np.abs(interpolate_linear[vel] - gt[vel]), where = bool_mask, axis = (1,2,3))
+                abs_err_bounds_sinc = np.mean(np.abs(interpolate_sinc[vel] - gt[vel]), where = boundary_mask.astype(bool), axis = (1,2,3))
+                abs_err_bounds_linear = np.mean(np.abs(interpolate_linear[vel] - gt[vel]), where = boundary_mask.astype(bool), axis = (1,2,3))
 
                 # k and R2 values
                 k_core_sinc, r2_core_sinc     = calculate_k_R2_timeseries(interpolate_sinc[vel], gt[vel], core_mask)
@@ -860,22 +917,33 @@ if __name__ == "__main__":
 
                 df_summary_interp.loc[vel, 'rmse_avg_sinc'] = np.mean(rmse_pred_sinc)
                 df_summary_interp.loc[vel, 'rmse_avg_linear'] = np.mean(rmse_pred_linear)
+                df_summary_interp.loc[vel, 'rmse_avg_bounds_sinc'] = np.mean(rmse_pred_bounds_sinc)
+                df_summary_interp.loc[vel, 'rmse_avg_bounds_linear'] = np.mean(rmse_pred_bounds_linear)
                 df_summary_interp.loc[vel, 'rmse_avg_nonfluid_sinc'] = np.mean(rmse_pred_nonfluid_sinc)
                 df_summary_interp.loc[vel, 'rmse_avg_nonfluid_linear'] = np.mean(rmse_pred_nonfluid_linear)
                 df_summary_interp.loc[vel, 'abs_err_avg_sinc'] = np.mean(abs_err_sinc)
                 df_summary_interp.loc[vel, 'abs_err_avg_linear'] = np.mean(abs_err_linear)
+                df_summary_interp.loc[vel, 'abs_err_avg_bounds_sinc'] = np.mean(abs_err_bounds_sinc)
+                df_summary_interp.loc[vel, 'abs_err_avg_bounds_linear'] = np.mean(abs_err_bounds_linear)
 
             # Add relative error to df_summary_interp
             RE_sinc = calculate_relative_error_normalized(interpolate_sinc['u'], interpolate_sinc['v'], interpolate_sinc['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
             RE_linear = calculate_relative_error_normalized(interpolate_linear['u'], interpolate_linear['v'], interpolate_linear['w'], gt['u'], gt['v'], gt['w'], gt['mask'])
+            RE_bounds_sinc = calculate_relative_error_normalized(interpolate_sinc['u'], interpolate_sinc['v'], interpolate_sinc['w'], gt['u'], gt['v'], gt['w'], boundary_mask)
+            RE_bounds_linear = calculate_relative_error_normalized(interpolate_linear['u'], interpolate_linear['v'], interpolate_linear['w'], gt['u'], gt['v'], gt['w'], boundary_mask)
 
             df_summary_interp[f'RE_avg_sinc'] = np.mean(RE_sinc)
             df_summary_interp[f'RE_avg_linear'] = np.mean(RE_linear)
+            df_summary_interp[f'RE_avg_bounds_sinc'] = np.mean(RE_bounds_sinc)
+            df_summary_interp[f'RE_avg_bounds_linear'] = np.mean(RE_bounds_linear)
 
             cos_similarity_sinc = cosine_similarity( gt['u'], gt['v'], gt['w'],interpolate_sinc['u'], interpolate_sinc['v'], interpolate_sinc['w'])
             cos_similarity_linear = cosine_similarity( gt['u'], gt['v'], gt['w'],interpolate_linear['u'], interpolate_linear['v'], interpolate_linear['w'])
             df_summary_interp['cos_sim_avg_linear'] = np.mean(np.mean(cos_similarity_linear, axis = (1,2,3), where=bool_mask))
             df_summary_interp['cos_sim_avg_sinc'] = np.mean(np.mean(cos_similarity_sinc, axis = (1,2,3), where=bool_mask))
+            df_summary_interp['cos_sim_avg_bounds_linear'] = np.mean(np.mean(cos_similarity_linear, axis = (1,2,3), where=boundary_mask.astype(bool)))
+            df_summary_interp['cos_sim_avg_bounds_sinc'] = np.mean(np.mean(cos_similarity_sinc, axis = (1,2,3), where=boundary_mask.astype(bool)))
+
 
             # add avg row over all vel. components
             df_summary_interp.loc['v_all'] = df_summary_interp.loc[['u', 'v', 'w']].mean()
@@ -930,5 +998,88 @@ if __name__ == "__main__":
             df_comparison.to_csv(f'{eval_dir_overview}/{set_name}_M{data_model}_comparison_metrics.csv', float_format="%.3f")
             print(df_comparison.to_latex(index=True, float_format="%.3f"))
 
+        # Create a table to compare RMSE, k, R^2, Relative Error (RE), and cosine similarity for SR, linear, and cubic interpolation
+        metrics = ['rmse', '|1-k|', 'r2', 'abs_err', 'RE', 'cos_sim']
+        methods = ['SR', 'linear', 'sinc']
+        components = ['u', 'v', 'w']
+        regions = ['fluid', 'bounds']
+
+        # Initialize a DataFrame to store the results
+        columns = [f'{metric}_{component}' for metric in metrics[:-2] for component in components] + metrics[-2:]
+        comparison_table = pd.DataFrame(index=pd.MultiIndex.from_product([methods, regions]), columns=columns)
+
+        # Populate the DataFrame with the calculated metrics
+        for method in methods:
+            for component in components:
+                for region in regions:
+                    if method == 'SR':
+                        if region == 'fluid':
+                            comparison_table.loc[(method, region), f'rmse_{component}'] = df_summary.loc[component, 'rmse_avg_SR']
+                            comparison_table.loc[(method, region), f'|1-k|_{component}'] = df_summary.loc[component, '|1-k|_all_avg_SR']
+                            comparison_table.loc[(method, region), f'r2_{component}'] = df_summary.loc[component, 'r2_all_avg_SR']
+                            comparison_table.loc[(method, region), f'abs_err_{component}'] = df_summary.loc[component, 'abs_err_avg_SR']
+                        elif region == 'bounds':
+                            comparison_table.loc[(method, region), f'rmse_{component}'] = df_summary.loc[component, 'rmse_avg_bounds_SR']
+                            comparison_table.loc[(method, region), f'|1-k|_{component}'] = df_summary.loc[component, '|1-k|_bounds_avg_SR']
+                            comparison_table.loc[(method, region), f'r2_{component}'] = df_summary.loc[component, 'r2_bounds_avg_SR']
+                            comparison_table.loc[(method, region), f'abs_err_{component}'] = df_summary.loc[component, 'abs_err_avg_bounds_SR']
+                    elif method == 'linear':
+                        if region == 'fluid':
+                            comparison_table.loc[(method, region), f'rmse_{component}'] = df_summary_interp.loc[component, 'rmse_avg_linear']
+                            comparison_table.loc[(method, region), f'|1-k|_{component}'] = df_summary_interp.loc[component, '|1-k|_all_avg_linear']
+                            comparison_table.loc[(method, region), f'r2_{component}'] = df_summary_interp.loc[component, 'r2_all_avg_linear']
+                            comparison_table.loc[(method, region), f'abs_err_{component}'] = df_summary_interp.loc[component, 'abs_err_avg_linear']
+                        elif region == 'bounds':
+                            comparison_table.loc[(method, region), f'rmse_{component}'] = df_summary_interp.loc[component, 'rmse_avg_bounds_linear']
+                            comparison_table.loc[(method, region), f'|1-k|_{component}'] = df_summary_interp.loc[component, '|1-k|_bounds_avg_linear']
+                            comparison_table.loc[(method, region), f'r2_{component}'] = df_summary_interp.loc[component, 'r2_bounds_avg_linear']
+                            comparison_table.loc[(method, region), f'abs_err_{component}'] = df_summary_interp.loc[component, 'abs_err_avg_bounds_linear']
+                    elif method == 'sinc':
+                        if region == 'fluid':
+                            comparison_table.loc[(method, region), f'rmse_{component}'] = df_summary_interp.loc[component, 'rmse_avg_sinc']
+                            comparison_table.loc[(method, region), f'|1-k|_{component}'] = df_summary_interp.loc[component, '|1-k|_all_avg_sinc']
+                            comparison_table.loc[(method, region), f'r2_{component}'] = df_summary_interp.loc[component, 'r2_all_avg_sinc']
+                            comparison_table.loc[(method, region), f'abs_err_{component}'] = df_summary_interp.loc[component, 'abs_err_avg_sinc']
+                        elif region == 'bounds':
+                            comparison_table.loc[(method, region), f'rmse_{component}'] = df_summary_interp.loc[component, 'rmse_avg_bounds_sinc']
+                            comparison_table.loc[(method, region), f'|1-k|_{component}'] = df_summary_interp.loc[component, '|1-k|_bounds_avg_sinc']
+                            comparison_table.loc[(method, region), f'r2_{component}'] = df_summary_interp.loc[component, 'r2_bounds_avg_sinc']
+                            comparison_table.loc[(method, region), f'abs_err_{component}'] = df_summary_interp.loc[component, 'abs_err_avg_bounds_sinc']
+            # Add RE and cos_sim for each method
+            if method == 'SR':
+                comparison_table.loc[(method, 'fluid'), 'RE'] = df_summary.loc['u', 'RE_avg_SR']
+                comparison_table.loc[(method, 'fluid'), 'cos_sim'] = df_summary.loc['u', 'cos_sim_avg_SR']
+                comparison_table.loc[(method, 'bounds'), 'RE'] = df_summary.loc['u', 'RE_avg_bounds_SR']
+                comparison_table.loc[(method, 'bounds'), 'cos_sim'] = df_summary.loc['u', 'cos_sim_avg_bounds_SR']
+            elif method == 'linear':
+                comparison_table.loc[(method, 'fluid'), 'RE'] = df_summary_interp.loc['u', 'RE_avg_linear']
+                comparison_table.loc[(method, 'fluid'), 'cos_sim'] = df_summary_interp.loc['u', 'cos_sim_avg_linear']
+                comparison_table.loc[(method, 'bounds'), 'RE'] = df_summary_interp.loc['u', 'RE_avg_bounds_linear']
+                comparison_table.loc[(method, 'bounds'), 'cos_sim'] = df_summary_interp.loc['u', 'cos_sim_avg_bounds_linear']
+            elif method == 'sinc':
+                comparison_table.loc[(method, 'fluid'), 'RE'] = df_summary_interp.loc['u', 'RE_avg_sinc']
+                comparison_table.loc[(method, 'fluid'), 'cos_sim'] = df_summary_interp.loc['u', 'cos_sim_avg_sinc']
+                comparison_table.loc[(method, 'bounds'), 'RE'] = df_summary_interp.loc['u', 'RE_avg_bounds_sinc']
+                comparison_table.loc[(method, 'bounds'), 'cos_sim'] = df_summary_interp.loc['u', 'cos_sim_avg_bounds_sinc']
+
+        # Save the comparison table to a CSV file
+      
+
+        # Rearrange the rows of the table
+
+        new_order = [
+             ('SR', 'fluid'), ('linear', 'fluid'), ('sinc', 'fluid'),
+            ('SR', 'bounds'), ('linear', 'bounds'), ('sinc', 'bounds')
+
+           ]
+
+        comparison_table = comparison_table.loc[new_order]
+        print(comparison_table.to_latex(index=True, float_format="%.3f"))
+        # print to latex format
+
+        print(comparison_table)
+    # Print the comparison table
+
+    
 
     print('---------------DONE-----------------------')

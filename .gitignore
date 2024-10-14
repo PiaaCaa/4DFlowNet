@@ -28,3 +28,12 @@ src/prepare_data/cfl.py
 src/test5_cs_cfltoh5.py
 src/test3_merge_cs_data.py
 src/test6_invivomag_to_insilicovel.py
+pia_utils/test10_load_paired_invivo.py
+pia_utils/test12_merge_segmentation_with_vel.py
+pia_utils/test13_reorient_and_transpose_invivo.py
+pia_utils/test13b_swap_vel_directions_invivo.py
+pia_utils/test14_adjust_venc_invivo.py
+pia_utils/test14b_adjust_venc_insilico.py
+pia_utils/test15_create_lr_hr_dataset.py
+pia_utils/test16_correct_M2_boundaries.py
+pia_utils/test10_load_paired_invivo.py
