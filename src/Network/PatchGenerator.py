@@ -58,13 +58,13 @@ class PatchGenerator():
         """
             Pad image to the right, until it is exactly divisible by patch size
         """
-        print('(1) _pad_to_patch_size_with_overlap', img.shape)
+        # print('(1) _pad_to_patch_size_with_overlap', img.shape)
         if (self.all_axis and self.downsample_input_first):
             
             img = img[::2, :, :]  # from shape (T, X, Y) to (1/2 T, X, Y) (or other combinations of X; Y; Z)
 
         side_pad = (self.patch_size-self.effective_patch_size) // 2
-        print('(2) _pad_to_patch_size_with_overlap', img.shape)
+        # print('(2) _pad_to_patch_size_with_overlap', img.shape)
         # mandatory padding
         
         #img = np.pad(img, ((side_pad, side_pad),(side_pad, side_pad),(side_pad, side_pad)), 'constant')
@@ -96,7 +96,7 @@ class PatchGenerator():
         self.padding = (pad_x*self.res_increase, pad_y, pad_z)
         # self.padding = (pad_x*self.res_increase, pad_y*self.res_increase, pad_z*self.res_increase)
         # print("LR padding:", self.padding)
-        print('(3) _pad_to_patch_size_with_overlap', img.shape)
+        # print('(3) _pad_to_patch_size_with_overlap', img.shape)
         return img
 
     def _generate_overlapping_patches(self, img):
@@ -144,7 +144,7 @@ class PatchGenerator():
         n = patch_size_thr-side_pad_hr # n=20
         n_spatial = patch_size_shr - side_pad_hr_spatial
 
-        print("side pad hr:n", side_pad_hr, n, " spatial side pad: n", side_pad_hr, n_spatial)
+        # print("side pad hr:n", side_pad_hr, n, " spatial side pad: n", side_pad_hr, n_spatial)
         patches = patches[:,side_pad_hr:n, side_pad_hr_spatial:n_spatial, side_pad_hr_spatial:n_spatial]
         # patches = patches[:,side_pad_hr:-side_pad_hr, side_pad_hr:-side_pad_hr, side_pad_hr:-side_pad_hr]
         #patches shape: n pacthes, 20, 10, 10
@@ -175,7 +175,7 @@ class PatchGenerator():
         if self.padding[2] > 0:
             end_results = end_results[:, :, :-self.padding[2]]
 
-        print("____patchup shape: ", end_results.shape, "__________________________")
+        # print("____patchup shape: ", end_results.shape, "__________________________")
         return end_results     
     
     
