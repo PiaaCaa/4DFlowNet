@@ -10,7 +10,7 @@ from prepare_data.h5functions import save_to_h5
 import matplotlib
 from utils.colors import *
 import matplotlib.animation as animation
-from utils.vtkwriter_per_dir import uvw_mask_to_vtk
+# from utils.vtkwriter_per_dir import uvw_mask_to_vtk
 
 plt.rcParams['figure.figsize'] = [10, 8]
 
