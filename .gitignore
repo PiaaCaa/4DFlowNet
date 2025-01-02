@@ -51,3 +51,4 @@ pia_utils/test19_make_aorta_and_lv_mask_smooth.py
 pia_utils/test20_evaluate_on_patches.py
 pia_utils/test21_include_hb_invivo.py
 src/notebooks/data_inspection_copied.ipynb
+src/utils/eddycurrent_correction.py
