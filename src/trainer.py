@@ -30,13 +30,14 @@ def write_settings_into_csv_file(filename,name, training_file, validation_file, 
 
 if __name__ == "__main__":
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
+    csv_dir = f'{data_dir}/csv_files'
     
     # ---- Patch index files ----
-    training_file = '{}/Temporal16MODEL2356_2mm_step2_cs_invivomagn.csv'.format(data_dir) 
-    validate_file = '{}/Temporal16MODEL1_2mm_step2_cs_invivomagn.csv'.format(data_dir) #Temporal16MODEL23_2mm_step2_invivoP04P03_magn_tempsmooth_toeger.csv
+    training_file = '{}/Temporal16MODEL2356_2mm_step2_cs_invivomagn_exclfirst2frames_WITHaugmentation_tpatchsize16_mixed_more_less_noise.csv'.format(csv_dir) 
+    validate_file = '{}/Temporal16MODEL4_2mm_step2_cs_invivomagn_exclfirst2frames_NOaugmentation.csv'.format(csv_dir) #Temporal16MODEL23_2mm_step2_invivoP04P03_magn_tempsmooth_toeger.csv
 
     QUICKSAVE = True
-    benchmark_file = '{}/Temporal16MODEL1_2mm_step2_cs_invivomagn.csv'.format(data_dir)
+    benchmark_file = '{}/Temporal16MODEL1_2mm_step2_cs_invivomagn_exclfirst2frames_NOaugmentation.csv'.format(csv_dir)
     
     overview_csv = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/results/Overview_models.csv'
 
@@ -67,14 +68,14 @@ if __name__ == "__main__":
     n_hi_resblock = 4
     low_res_block  = 'resnet_block' # 'resnet_block' 'dense_block' csp_block
     high_res_block = 'resnet_block' #'resnet_block'
-    upsampling_block = 'linear'     #'Conv3DTranspose'#'nearest_neigbor'#'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
+    upsampling_block = 'linear' #'linear'     #'Conv3DTranspose'#'nearest_neigbor'#'linear' #' 'linear'  'nearest_neigbor' 'Conv3DTranspose'
     post_processing_block = None #  'unet_block'#None#'unet_block'
     sampling = '-' # this is not used for training but saved in the csv file for a better overview of what data it was trained on 
 
     shuffle = True       
 
     #notes: if something about this training is more 'special' is can be added to the overview csv file
-    notes= ' CS data (more noise 14-17db + include first two frames), HR: original CFD, LR: CFD to MR pipeline, also train on models 2,3,5,6 with invivo magn, note validation=test set, fixed loss, fixed t patch loading'
+    notes= 'Test GPU - delete this line'
     # Load data file and indexes
     trainset = load_indexes(training_file)
     valset =   load_indexes(validate_file)
