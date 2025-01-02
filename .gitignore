@@ -37,3 +37,8 @@ pia_utils/test14b_adjust_venc_insilico.py
 pia_utils/test15_create_lr_hr_dataset.py
 pia_utils/test16_correct_M2_boundaries.py
 pia_utils/test10_load_paired_invivo.py
+pia_utils/test12_ajust_insilico_venc.py
+pia_utils/test18_smooth_and_erode_invivo_mask.py
+pia_utils/test19_make_aorta_and_lv_mask_smooth.py
+pia_utils/test20_evaluate_on_patches.py
+pia_utils/test21_include_hb_invivo.py
