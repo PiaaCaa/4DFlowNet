@@ -47,14 +47,14 @@ if __name__ == '__main__':
     if args.model is not None:
         model_name = args.model
     else:
-        model_name = '20240709-2057' # this model: training 2, 3, validation: 1, test:4 
+        model_name = '20241018-1552' # this model: training 2, 3, validation: 1, test:4 
 
     # # Define directories and filenames
     # model_name = '20240807-1745' #'20230405-1417'#'20230602-1701'#'20230405-1417' ##'20230508-1433' 
 
     # set filenames and directories
     data_dir = 'Temporal4DFlowNet/data/PIA/THORAX'
-    patients = ['P01', 'P02',  'P03', 'P04', 'P05'] #TODO double check this if the right mask is used # 'P01', 'P02', #['Volunteer3_4D_WholeHeart_2mm_40ms']#
+    patients = ['P03']#['P01', 'P02',  'P03', 'P04', 'P05'] #TODO double check this if the right mask is used # 'P01', 'P02', #['Volunteer3_4D_WholeHeart_2mm_40ms']#
     output_root = f'Temporal4DFlowNet/results/in_vivo/THORAX'
 
     output_root = f'Temporal4DFlowNet/results/in_vivo/THORAX'
@@ -67,9 +67,7 @@ if __name__ == '__main__':
         # Setting up
         input_filepath = f'{data_dir}/{patient}/h5/{patient}.h5' 
         output_dir = f'{output_root}/{patient}'
-        # input_filepath = f'{data_dir}/{patient}.h5' 
-        # output_dir = f'{output_root}/SR/{patient}'
-        output_filepath = f'{output_dir}/{patient}_{model_name}_25Frames.h5'    
+        output_filepath = f'{output_dir}/{patient}_{model_name}_25Frames_unwrapped_adjusted_venc26_new.h5'    
         
         model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
@@ -91,6 +89,9 @@ if __name__ == '__main__':
     
         venc_colnames = ['u_max', 'v_max', 'w_max']
 
+        if os.path.exists(output_filepath):
+            print(f"Output file already exists: {output_filepath}, skipping prediction")
+            continue
         assert(not os.path.exists(output_filepath)) #STOP if output file is already created
 
         pgen = PatchGenerator(patch_size, res_increase,include_all_axis = True, downsample_input_first = downsample_input_first)
@@ -143,6 +144,8 @@ if __name__ == '__main__':
 
                 # Load data file and indexes
                 dataset.load_vectorfield(input_filepath, nrow, axis = a)
+                # dataset.venc = np.max([dataset.venc, 2.4]) # make sure venc is at least 1
+                # print(f"Venc: {dataset.venc}")
                 print(f"Original image shape: {dataset.u.shape}")
                 
                 velocities, magnitudes = pgen.patchify(dataset)
@@ -208,7 +211,7 @@ if __name__ == '__main__':
             v_combined += volume[1, :, :, :] 
             w_combined += volume[2, :, :, :] 
 
-        print(f"save combined predictions to output_filepath" )
+        print(f"save combined predictions to {output_filepath}" )
         print("Elapsed time: ", time.time() - t_0)
         # save and divide by 3 to get average
         prediction_utils.save_to_h5(output_filepath, "u_combined", u_combined/len(axis), compression='gzip')

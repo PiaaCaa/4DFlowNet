@@ -42,27 +42,23 @@ if __name__ == '__main__':
     if args.model is not None:
         model_name = args.model
     else:
-        model_name = '20240709-2057' # this model: training 2, 3, validation: 1, test:4 
+        model_name ='20241018-1552' # this model: training 2, 3, validation: 1, test:4 
 
     print("Model name: ", model_name)
+
     # set_names = ['Test', 'Validation', 'Training', 'Training', 'Training', 'Training']
     # data_models= ['4', '1', '2', '3', '5', '6',]
     # steps = [ 2, 2, 2, 2, 2, 2]
-    # file_names = ['M4_2mm_step2_cs_invivoP02_lr.h5', 'M1_2mm_step2_cs_invivoP01_lr.h5', 
-                #   'M2_2mm_step2_cs_invivoP04_lr.h5', 'M3_2mm_step2_cs_invivoP03_lr.h5', 
-                #   'M5_2mm_step2_cs_invivoP05_lr.h5', 'M6_2mm_step2_cs_invivoP03_lr.h5',]
-    # file_names = [ 'M1_2mm_step2_cs_invivoP01_lr_50frames.h5', 
-    #                'M2_2mm_step2_cs_invivoP04_lr_50frames.h5', ]
-    #TODO
-    set_names = ['Test', 'Validation', 'Training', 'Training', 'Training', 'Training']
-    data_models= ['4', '1', '2', '3', '5', '6',]
+    # file_names = ['M4_2mm_step2_cs_invivoP02_lr.h5','M1_2mm_step2_cs_invivoP01_lr.h5', 
+    #               'M2_2mm_step2_cs_invivoP04_lr_corrected.h5', 'M3_2mm_step2_cs_invivoP03_lr.h5', 
+    #               'M5_2mm_step2_cs_invivoP05_lr.h5', 'M6_2mm_step2_cs_invivoP03_lr.h5']
+
+    set_names = ['Test', 'Test', 'Test','Test', 'Test', 'Test',]
+    data_models= ['4', '4', '4','4', '4', '4', ]
     steps = [ 2, 2, 2, 2, 2, 2]
-    file_names = ['M4_2mm_step2_cs_invivoP02_lr.h5','M1_2mm_step2_cs_invivoP01_lr.h5', 
-                  'M2_2mm_step2_cs_invivoP04_lr.h5', 'M3_2mm_step2_cs_invivoP03_lr.h5', 
-                  'M5_2mm_step2_cs_invivoP05_lr.h5', 'M6_2mm_step2_cs_invivoP03_lr.h5']
+    file_names = ['M4_2mm_step2_cs_invivoP02_lr_120ms.h5',]#['M4_2mm_step2_cs_invivoP02_lr_60ms.h5',  'M4_2mm_step2_cs_invivoP02_lr_120ms.h5']
 
     #file_names = ['M4_2mm_step2_static_dynamic_noise.h5', 'M1_2mm_step2_static_dynamic_noise.h5'] #'M2_2mm_step2_static_dynamic_noise.h5', 'M3_2mm_step2_static_dynamic_noise.h5', 
-    # file_names = ['M4_2mm_step2_temporalsmoothing_toeger_periodic_LRfct_noise.h5', 'M1_2mm_step2_temporalsmoothing_toeger_periodic_LRfct_noise.h5'] #'M2_2mm_step2_static_dynamic_noise.h5', 'M3_2mm_step2_static_dynamic_noise.h5', 
     # set filenamaes and directories
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
@@ -73,17 +69,17 @@ if __name__ == '__main__':
 
         # set filenamaes and directories
         output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
-        output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'
-        
+        output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal_{filename.split(".")[0].split("_")[-1]}_6x.h5'#f'{set_name}_{model_name[-4::]}_{filename}'#f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'
+        print("Output file name: ", output_filename)
         model_path = f'{model_dir}/Temporal4DFlowNet-best.h5'
 
         # Params
         patch_size = 16
-        res_increase = 2
-        batch_size = 16
+        res_increase = 6
+        batch_size = 32
         round_small_values = False
         downsample_input_first = False # For LR data, which is downsampled on the fly this should be set to True
-        upsampling_factor = 2
+        upsampling_factor = res_increase
 
         # Network - default 8-4
         n_low_resblock = 8
@@ -97,6 +93,9 @@ if __name__ == '__main__':
         input_filepath = '{}/{}'.format(data_dir, filename)
         output_filepath = '{}/{}'.format(output_dir, output_filename)
         print("Output file path: ", output_filepath)
+        if os.path.exists(output_filepath):
+            print("Output file already exists. Skipping prediction")
+            continue
         assert(not os.path.exists(output_filepath))  #STOP if output file is already created
 
         pgen = PatchGenerator(patch_size, res_increase,include_all_axis = True, downsample_input_first=downsample_input_first)
@@ -105,8 +104,7 @@ if __name__ == '__main__':
         print("Path exists:", os.path.exists(input_filepath), os.path.exists(model_path))
         print("Outputfile exists already: ", os.path.exists(output_filename))
 
-        if not os.path.isdir(output_dir):
-                os.makedirs(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
 
         with h5py.File(input_filepath, mode = 'r' ) as h5:
             lr_shape = h5.get("u").shape
