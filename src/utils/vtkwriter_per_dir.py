@@ -198,9 +198,9 @@ def get_vector_fields(input_filepath, columns, idx):
         w = np.asarray(hf.get(columns[2])).squeeze()[idx]
     return u,v,w
 
-def get_mask(input_filepath, idx):
+def get_mask(input_filepath, idx, key='mask'):
     with h5py.File(input_filepath, 'r') as hf:
-        mask = np.asarray(hf.get('mask'))
+        mask = np.asarray(hf.get(key))
         mask = np.squeeze(mask) # Remove single time dimension if exists
         if mask.ndim == 4:
             mask = mask[idx]
@@ -219,19 +219,30 @@ def create_difference_field(hr_file, prediction_file,hr_colnames, pred_colnames,
     return u_diff, v_diff, w_diff
 
 if __name__ == "__main__":
-    input_dir =  "data/paired_invivo" #"data/paired_invivo/"#"results/in_vivo/paired_data/v4_wholeheart_25mm_40ms" #"/home/pcallmer/Temporal4DFlowNet/data/PIA/THORAX/P01/h5"
-    # mask_file  = "data/CARDIAC/M1_2mm_step1_static_dynamic.h5" #data\CARDIAC
-    output_dir = "results/data/invivo/paired_invivo"#results/data/invivo/paired_invivo/v6_wholeheart_25mm_40ms"
-    # input_dir = "/home/pcallmer/Temporal4DFlowNet/results/Temporal4DFlowNet_20230620-0909" 
-    mask_file  = "data/paired_invivo/v5_wholeheart_25mm_20ms.h5"#"data/PIA/THORAX/P01/h5/P01.h5" #"data/paired_invivo/v6_wholeheart_25mm_40ms_new_orient.h5"
+    # input_dir =  "data/paired_invivo" #"data/paired_invivo/"#"results/in_vivo/paired_data/v4_wholeheart_25mm_40ms" #"/home/pcallmer/Temporal4DFlowNet/data/PIA/THORAX/P01/h5"
+    # # mask_file  = "data/CARDIAC/M1_2mm_step1_static_dynamic.h5" #data\CARDIAC
+    # output_dir = "results/data/invivo/paired_invivo"#results/data/invivo/paired_invivo/v6_wholeheart_25mm_40ms"
+    # # input_dir = "/home/pcallmer/Temporal4DFlowNet/results/Temporal4DFlowNet_20230620-0909" 
+    # mask_file  = "data/paired_invivo/v4_wholeheart_25mm_20ms.h5"#"data/PIA/THORAX/P01/h5/P01.h5" #"data/paired_invivo/v6_wholeheart_25mm_40ms_new_orient.h5"
     # output_dir = "results/data/insilico"
+    input_dir =  "data/CARDIAC/" #"data/paired_invivo/"#"results/in_vivo/paired_data/v4_wholeheart_25mm_40ms" #"/home/pcallmer/Temporal4DFlowNet/data/PIA/THORAX/P01/h5"
+    # mask_file  = "data/CARDIAC/M1_2mm_step1_static_dynamic.h5" #data\CARDIAC
+    output_dir = "results/data/insilico"#results/data/invivo/paired_invivo/v6_wholeheart_25mm_40ms"
+    # input_dir = "/home/pcallmer/Temporal4DFlowNet/results/Temporal4DFlowNet_20230620-0909" 
+    # mask_file  = "data/PIA/THORAX/P03/h5/P03.h5"#"data/PIA/THORAX/P01/h5/P01.h5" #"data/paired_invivo/v6_wholeheart_25mm_40ms_new_orient.h5"
+    # output_dir = "results/data/insilico" #data\PIA\THORAX\P03\h5\P03.h5
 
     # columns = ['u_combined', 'v_combined', 'w_combined']
     columns = ['u', 'v', 'w']
     
-    # files = ["M1_2mm_step1_static_dynamic", "M2_2mm_step1_static_dynamic", "M3_2mm_step1_static_dynamic", "M4_2mm_step1_static_dynamic"]   
-    files = ['v5_wholeheart_25mm_20ms']#, 'v5_wholeheart_25mm_40ms_orientwvu.h5', 'v6_wholeheart_25mm_20ms_orientwvu.h5', 'v6_wholeheart_25mm_40ms_orientwvu.h5']
+    files = ["M4_2mm_step2_cs_invivoP02_hr"]#["M1_2mm_step1_static_dynamic", "M2_2mm_step1_static_dynamic", "M3_2mm_step1_static_dynamic", "M4_2mm_step1_static_dynamic"]   
+    # files = ['v3_wholeheart_25mm_40ms', 'v3_wholeheart_25mm_20ms', 
+    #         'v4_wholeheart_25mm_40ms', 'v4_wholeheart_25mm_20ms', 
+    #         'v5_wholeheart_25mm_40ms', 'v5_wholeheart_25mm_20ms',
+    #         'v6_wholeheart_25mm_40ms', 'v6_wholeheart_25mm_20ms', 
+    #         'v7_wholeheart_25mm_40ms', 'v7_wholeheart_25mm_20ms']
     # files = ["v4_wholeheart_25mm_40ms_20240709-2057"]
+    # files = ['P03_20241015-1050_25Frames']
     
     for file in files:
         print(f"Processing case {file}")
@@ -253,10 +264,12 @@ if __name__ == "__main__":
 
         with h5py.File(input_filepath, 'r') as hf:
             if "dx" in hf.keys():
-                dx = np.asarray(hf.get("dx"))[0]
+                dx = np.array(hf.get("dx"))[0]
                 print(dx)
+                #if dx scalar, make it a tuple
+
                 # spacing = (dx[0], dx[1], dx[2])
-                if len(dx) == 3:
+                if not np.isscalar(dx):
                     spacing = (dx[0], dx[1], dx[2])
                 else:
                     spacing = (dx, dx, dx)
@@ -288,18 +301,23 @@ if __name__ == "__main__":
                     v = np.asarray(hf.get(columns[1]))
                     w = np.asarray(hf.get(columns[2]))
                     # mag = np.asarray(hf.get('mag_u'))
+                
+                if 'mask' in hf.keys():
+                    mask_file = input_filepath
 
             # mask = get_mask(input_filepath, idx)
-            mask = get_mask(mask_file, idx)
+            mask = get_mask(mask_file, idx, key = 'mask')#_smoot
+
+            print(u.shape, mask.shape)
             # mask = np.zeros_like(u)
             # mask[np.where(u != 0)] = 1
             # print(u.shape, mask.shape)
             # print('shapes:', u.shape, mask.shape)
 
             # u, v, w = create_difference_field(mask_file, input_filepath,['u', 'v', 'w'], columns,  idx)
-            # mask = get_mask(mask_file, idx)
+            # mask = get_mask(mask_file, idx) 
             
-            output_filepath = f'{output_path}/{output_filename}_{idx}_uvw.vti'
+            output_filepath = f'{output_path}/{output_filename}_{idx}_uvw_mask.vti'
             # output_filepath = os.path.join(output_path, "{}_{}_absHRdiff.vti".format(output_filename, idx))
 
             uvw_mask_to_vtk((u,v,w), mask, spacing, output_filepath, include_mask=True)
