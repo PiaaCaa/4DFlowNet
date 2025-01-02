@@ -11,6 +11,10 @@ models/
 4DFlowNet/*
 data/*
 results/*
+pia_utils/*
+src/SpatialSR/*
+src/panel/*
+src/testing/*
 .vscode/
 venv_setup.txt
 outputfiles/*
