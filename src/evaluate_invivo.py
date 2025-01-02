@@ -299,8 +299,6 @@ if __name__ == "__main__":
             plt.savefig(f'{eval_dir_detailed}/{case}_SUBPLOT_Invivo_Original_Frame{time_point}.png', bbox_inches='tight')
             plt.show()
         
-
-        
         #--------------------calculate mean speed --------------------------
         magn = np.sqrt(data_original['mag_u']**2 + data_original['mag_v']**2 + data_original['mag_w']**2)
         speed = np.sqrt(data_original['u']**2 + data_original['v']**2 + data_original['w']**2)

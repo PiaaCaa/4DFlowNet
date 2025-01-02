@@ -109,14 +109,12 @@ def vectors_to_vtk(vector_arrays, spacing, filename):
     w_arr.SetName("W")
     imageData.GetPointData().AddArray(w_arr)
     
-    
-
     writer = vtk.vtkXMLImageDataWriter()
     writer.SetFileName(filename)
     writer.SetInputData(imageData)
     writer.Write()
     
-def uvw_mask_to_vtk(vector_arrays, scalar_array, spacing, filename, include_mask=False):
+def vectors_and_mask_to_vtk(vector_arrays, scalar_array, spacing, filename, include_mask=False):
     """This function write a VtkImageData vti file from a numpy array.
 
     :param array: input array
@@ -161,8 +159,6 @@ def uvw_mask_to_vtk(vector_arrays, scalar_array, spacing, filename, include_mask
                                 array_type=ns.get_vtk_array_type(array.dtype))
         vtkMask.SetName("Mask")
     
-    # print(spacing, spacing[0], spacing[1], spacing[2])
-
     imageData = vtk.vtkImageData()
     imageData.SetOrigin(origin)
     imageData.SetSpacing(spacing)
@@ -192,6 +188,7 @@ def uvw_mask_to_vtk(vector_arrays, scalar_array, spacing, filename, include_mask
 
 
 def get_vector_fields(input_filepath, columns, idx):
+    """ load vector fields from hdf5 file"""
     with h5py.File(input_filepath, 'r') as hf:
         u = np.asarray(hf.get(columns[0])).squeeze()[idx]
         v = np.asarray(hf.get(columns[1])).squeeze()[idx]
@@ -199,14 +196,14 @@ def get_vector_fields(input_filepath, columns, idx):
     return u,v,w
 
 def get_mask(input_filepath, idx, key='mask'):
+    """ load mask from hdf5 file"""
     with h5py.File(input_filepath, 'r') as hf:
-        mask = np.asarray(hf.get(key))
-        mask = np.squeeze(mask) # Remove single time dimension if exists
+        mask = np.asarray(hf.get(key)).squeeze()
         if mask.ndim == 4:
             mask = mask[idx]
     return mask
 
-def create_difference_field(hr_file, prediction_file,hr_colnames, pred_colnames,  idx):
+def calculate_difference_field(hr_file, prediction_file,hr_colnames, pred_colnames,  idx):
     """
         Create difference field between HR and prediction
     """
@@ -294,12 +291,11 @@ if __name__ == "__main__":
                 if 'mask' in hf.keys():
                     mask_file = input_filepath
 
-            # mask = get_mask(input_filepath, idx)
             mask = get_mask(mask_file, idx, key = 'mask')
             
             output_filepath = f'{output_path}/{output_filename}_{idx}_uvw_mask.vti'
 
-            uvw_mask_to_vtk((u,v,w), mask, spacing, output_filepath, include_mask=True)
+            vectors_and_mask_to_vtk((u,v,w), mask, spacing, output_filepath, include_mask=True)
             # scalar_to_vtk(mag, spacing, output_filepath.replace("uvw", "mag"))
 
         print(f"Saved as {output_filepath}")
