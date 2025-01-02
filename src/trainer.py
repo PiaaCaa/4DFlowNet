@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import csv
-from Network.PatchHandler3D_temporal import PatchHandler4D, PatchHandler4D_all_axis
+from Network.PatchHandler3D_temporal import PatchHandler4D, PatchHandler4D_all_axis, PatchHandler4D_extended_data_augmentation
 from Network.TrainerController_temporal import TrainerController_temporal
 
 def load_indexes(index_file):
@@ -10,6 +10,12 @@ def load_indexes(index_file):
     """
     indexes = np.genfromtxt(index_file, delimiter=',', skip_header=True, dtype='unicode') # 'unicode' or None
     return indexes
+
+def check_csv_header(index_file, expected_headers):
+    with open(index_file, 'r') as file:
+        header = file.readline().strip().split(',')
+    is_valid = all(header_name in header for header_name in expected_headers)
+    return is_valid
 
 def write_settings_into_csv_file(filename,name, training_file, validation_file, test_file, epochs,batch_size,patch_size, low_resblock, high_resblock, upsampling_type, low_block_type, high_block_type, post_block_type, sampling, notes):
     """
@@ -68,22 +74,34 @@ if __name__ == "__main__":
     shuffle = True       
 
     #notes: if something about this training is more 'special' is can be added to the overview csv file
-    notes= ' CS data (more noise 14-17db + include first two frames), HR: original CFD, LR: CFD to MR pipeline, also train on models 2,3,5,6 with invivo magn, note validation=test set, fixed loss'
+    notes= ' CS data (more noise 14-17db + include first two frames), HR: original CFD, LR: CFD to MR pipeline, also train on models 2,3,5,6 with invivo magn, note validation=test set, fixed loss, fixed t patch loading'
     # Load data file and indexes
     trainset = load_indexes(training_file)
     valset =   load_indexes(validate_file)
+    # check wether is contains data augmenttaion parameters
+    if check_csv_header(training_file, ['s_patchsize','t_patchsize','flip_1','flip_2','rot','sign_u','sign_v','sign_w','swap_u','swap_v','swap_w']):
+        print('Data augmentation parameters found in csv file')
+        extended_data_augmentation = True
+    else:
+        extended_data_augmentation = False
     
     # ----------------- TensorFlow stuff -------------------
     # TRAIN dataset iterator
-    if load_patches_all_axis: 
-        z = PatchHandler4D_all_axis(data_dir, patch_size, res_increase, batch_size, mask_threshold)
+    if load_patches_all_axis:
+        if extended_data_augmentation:
+            z = PatchHandler4D_extended_data_augmentation(data_dir, patch_size, res_increase, batch_size, mask_threshold)
+        else:
+            z = PatchHandler4D_all_axis(data_dir, patch_size, res_increase, batch_size, mask_threshold)
     else:
         z = PatchHandler4D(data_dir, patch_size, res_increase, batch_size, mask_threshold)
     trainset = z.initialize_dataset(trainset, shuffle=shuffle, n_parallel=None)
 
     # VALIDATION iterator
     if load_patches_all_axis: 
-        valdh = PatchHandler4D_all_axis(data_dir, patch_size, res_increase, batch_size, mask_threshold)
+        if extended_data_augmentation:
+            valdh = PatchHandler4D_extended_data_augmentation(data_dir, patch_size, res_increase, batch_size, mask_threshold)
+        else:
+            valdh = PatchHandler4D_all_axis(data_dir, patch_size, res_increase, batch_size, mask_threshold)
     else:
         valdh = PatchHandler4D(data_dir, patch_size, res_increase, batch_size, mask_threshold)
     valset = valdh.initialize_dataset(valset, shuffle=shuffle, n_parallel=None)
@@ -94,7 +112,10 @@ if __name__ == "__main__":
         # WE use this bechmarking set so we can see the prediction progressing over time
         benchmark_set = load_indexes(benchmark_file)
         if load_patches_all_axis: 
-            ph = PatchHandler4D_all_axis(data_dir, patch_size, res_increase, batch_size, mask_threshold)
+            if extended_data_augmentation:
+                ph = PatchHandler4D_extended_data_augmentation(data_dir, patch_size, res_increase, batch_size, mask_threshold)
+            else:
+                ph = PatchHandler4D_all_axis(data_dir, patch_size, res_increase, batch_size, mask_threshold)
         else:
             ph = PatchHandler4D(data_dir, patch_size, res_increase, batch_size, mask_threshold)
         # No shuffling, so we can save the first batch consistently
