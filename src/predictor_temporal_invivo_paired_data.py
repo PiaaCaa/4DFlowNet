@@ -47,14 +47,11 @@ if __name__ == '__main__':
     if args.model is not None:
         model_name = args.model
     else:
-        model_name = '20240709-2057' # this model: training 2, 3, validation: 1, test:4 
-
-    # # Define directories and filenames
-    # model_name = '20240807-1745' #'20230405-1417'#'20230602-1701'#'20230405-1417' ##'20230508-1433' 
+        model_name = '20240709-2057' 
 
     # set filenames and directories
     data_dir = 'Temporal4DFlowNet/data/paired_invivo'
-    patients = ['v5_wholeheart_25mm_40ms', 'v6_wholeheart_25mm_40ms'] #['v3_wholeheart_25mm_40ms', 'v4_wholeheart_25mm_40ms', 'v7_wholeheart_25mm_40ms'] #'v5_wholeheart_25mm_40ms', 'v6_wholeheart_25mm_40ms', 
+    patients = ['v3_wholeheart_25mm_40ms', 'v4_wholeheart_25mm_40ms', 'v5_wholeheart_25mm_40ms', 'v6_wholeheart_25mm_40ms', 'v7_wholeheart_25mm_40ms'] #['v3_wholeheart_25mm_40ms', 'v4_wholeheart_25mm_40ms', 'v7_wholeheart_25mm_40ms'] #'v5_wholeheart_25mm_40ms', 'v6_wholeheart_25mm_40ms', 
     # patients = [ 'v3_wholeheart_25mm_20ms', 'v5_wholeheart_25mm_20ms', 'v6_wholeheart_25mm_20ms', 'v7_wholeheart_25mm_20ms']
     output_root = f'Temporal4DFlowNet/results/in_vivo/paired_data'
 
@@ -68,7 +65,7 @@ if __name__ == '__main__':
         input_filepath = f'{data_dir}/{patient}.h5' 
         output_dir = f'{output_root}/{patient}'
 
-        output_filepath = f'{output_dir}/{patient}_{model_name}_updated.h5'    
+        output_filepath = f'{output_dir}/{patient}_{model_name}.h5'    
         
         model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
 
@@ -82,13 +79,16 @@ if __name__ == '__main__':
         # Network - default 8-4
         n_low_resblock = 8
         n_hi_resblock = 4
-        low_res_block  = 'resnet_block'     # 'resnet_block' 'dense_block' 'csp_block'
+        low_res_block  = 'resnet_block'     
         high_res_block = 'resnet_block'     
-        upsampling_block = 'linear'         #'Conv3DTranspose' 'nearest_neigbor' 'linear'
+        upsampling_block = 'linear'      
 
         venc_colnames = ['u_max', 'v_max', 'w_max']
 
-        assert(not os.path.exists(output_filepath)) #STOP if output file is already created
+        if os.path.exists(output_filepath):
+            print(f"Output file already exists: {output_filepath}")
+            continue
+        #assert(not os.path.exists(output_filepath)) #STOP if output file is already created
 
         pgen = PatchGenerator(patch_size, res_increase,include_all_axis = True, downsample_input_first = downsample_input_first)
         dataset = ImageDataset_temporal(venc_colnames=['u_max', 'v_max', 'w_max'])
@@ -204,12 +204,13 @@ if __name__ == '__main__':
             v_combined += volume[1, :, :, :] 
             w_combined += volume[2, :, :, :] 
 
-        print(f"save combined predictions to output_filepath" )
+
         print("Elapsed time: ", time.time() - t_0)
         # save and divide by 3 to get average
         prediction_utils.save_to_h5(output_filepath, "u_combined", u_combined/len(axis), compression='gzip')
         prediction_utils.save_to_h5(output_filepath, "v_combined", v_combined/len(axis), compression='gzip')
         prediction_utils.save_to_h5(output_filepath, "w_combined", w_combined/len(axis), compression='gzip')
 
-        print("Done!")
+    print("Done!")
+    
 
