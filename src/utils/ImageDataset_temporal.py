@@ -82,9 +82,6 @@ class ImageDataset_temporal():
                 w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()
                 mag_w = np.asarray(hl.get(self.mag_colnames[i])).squeeze()
 
-                # w = w.transpose(3, 0, 1, 2)
-                # mag_w = mag_w.transpose(3, 0, 1, 2)
-
                 w = w[idx_vol]
                 mag_w = mag_w[idx_vol]
 

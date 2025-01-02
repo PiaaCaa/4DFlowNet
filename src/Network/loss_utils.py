@@ -85,7 +85,6 @@ def calculate_relative_error(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_ma
 
     multiplier = 1e4 # round it so we don't get any infinitesimal number
     corrected_speed_loss = tf.round(corrected_speed_loss * multiplier) / multiplier
-    # print(corrected_speed_loss)
     
     # Apply mask
     # binary_mask_condition = (mask > threshold)

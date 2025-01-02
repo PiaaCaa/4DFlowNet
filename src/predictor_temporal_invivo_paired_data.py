@@ -51,8 +51,8 @@ if __name__ == '__main__':
 
     # set filenames and directories
     data_dir = 'Temporal4DFlowNet/data/paired_invivo'
-    patients = ['v3_wholeheart_25mm_40ms', 'v4_wholeheart_25mm_40ms', 'v5_wholeheart_25mm_40ms', 'v6_wholeheart_25mm_40ms', 'v7_wholeheart_25mm_40ms'] #['v3_wholeheart_25mm_40ms', 'v4_wholeheart_25mm_40ms', 'v7_wholeheart_25mm_40ms'] #'v5_wholeheart_25mm_40ms', 'v6_wholeheart_25mm_40ms', 
-    # patients = [ 'v3_wholeheart_25mm_20ms', 'v5_wholeheart_25mm_20ms', 'v6_wholeheart_25mm_20ms', 'v7_wholeheart_25mm_20ms']
+    patients = ['v3_wholeheart_25mm_40ms', 'v4_wholeheart_25mm_40ms', 'v5_wholeheart_25mm_40ms', 'v6_wholeheart_25mm_40ms', 'v7_wholeheart_25mm_40ms'] 
+    
     output_root = f'Temporal4DFlowNet/results/in_vivo/paired_data'
 
 
@@ -87,18 +87,15 @@ if __name__ == '__main__':
 
         if os.path.exists(output_filepath):
             print(f"Output file already exists: {output_filepath}")
+            print("Skipping this patient..")
             continue
-        #assert(not os.path.exists(output_filepath)) #STOP if output file is already created
+        assert os.path.exists(input_filepath), f"Input file does not exist: {input_filepath}"
+        assert os.path.exists(model_path), f"Model file does not exist: {model_path}"
 
         pgen = PatchGenerator(patch_size, res_increase,include_all_axis = True, downsample_input_first = downsample_input_first)
         dataset = ImageDataset_temporal(venc_colnames=['u_max', 'v_max', 'w_max'])
         
-
-        print("Path exists:", os.path.exists(input_filepath), os.path.exists(model_path))
-        print("Outputfile exists already: ", os.path.exists(output_filepath))
-
-        if not os.path.isdir(output_dir):
-                os.makedirs(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
 
         axis = [0, 1, 2]
 
@@ -144,7 +141,6 @@ if __name__ == '__main__':
                 velocities, magnitudes = pgen.patchify(dataset)
                 data_size = len(velocities[0])
                 print(f"Patchified. Nr of patches: {data_size} - {velocities[0].shape}")
-                
 
                 # Predict the patches
                 results = np.zeros((0,patch_size*res_increase, patch_size, patch_size, 3))
@@ -180,7 +176,7 @@ if __name__ == '__main__':
                         v[np.abs(v) < dataset.velocity_per_px] = 0
                     
                     v = np.expand_dims(v, axis=0)
-                    # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'{dataset.velocity_colnames[i]}__axis{a}', v, compression='gzip')
+                    # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'{dataset.velocity_colnames[i]}_axis{a}', v, compression='gzip')
                     print('Original volume: ', volume.shape, 'shape of predicition', v.shape)
                     if v.shape[1] != N_frames:
                         print('reshaped v from: ', v.shape)
@@ -198,7 +194,6 @@ if __name__ == '__main__':
                 if dataset.dx is not None:
                     new_spacing = dataset.dx / res_increase
                     new_spacing = np.expand_dims(new_spacing, axis=0) 
-                    #prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', dataset.dx_colname, new_spacing, compression='gzip')
 
             u_combined += volume[0, :, :, :] 
             v_combined += volume[1, :, :, :] 

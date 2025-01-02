@@ -43,18 +43,14 @@ if __name__ == '__main__':
     parser.add_argument("--model", type=str, help="Optional argument to pass the name of the model")
     args = parser.parse_args()
 
-    # Define directories and filenames
     if args.model is not None:
         model_name = args.model
     else:
         model_name = '20241018-1552' # this model: training 2, 3, validation: 1, test:4 
 
-    # # Define directories and filenames
-    # model_name = '20240807-1745' #'20230405-1417'#'20230602-1701'#'20230405-1417' ##'20230508-1433' 
-
-    # set filenames and directories
+    # Define directories and filenames
     data_dir = 'Temporal4DFlowNet/data/PIA/THORAX'
-    patients = ['P03']#['P01', 'P02',  'P03', 'P04', 'P05'] #TODO double check this if the right mask is used # 'P01', 'P02', #['Volunteer3_4D_WholeHeart_2mm_40ms']#
+    patients = ['P03']#['P01', 'P02',  'P03', 'P04', 'P05'] 
     output_root = f'Temporal4DFlowNet/results/in_vivo/THORAX'
 
     output_root = f'Temporal4DFlowNet/results/in_vivo/THORAX'
@@ -109,7 +105,6 @@ if __name__ == '__main__':
         with h5py.File(input_filepath, mode = 'r' ) as h5:
             lr_shape = np.asarray(h5.get("u")).squeeze().shape
             print("Shape of in-vivo data", lr_shape)
-            # X, Y, Z, N_frames = lr_shape #TODO chnage back!!!
             N_frames, X, Y, Z = lr_shape
 
 
@@ -144,8 +139,7 @@ if __name__ == '__main__':
 
                 # Load data file and indexes
                 dataset.load_vectorfield(input_filepath, nrow, axis = a)
-                # dataset.venc = np.max([dataset.venc, 2.4]) # make sure venc is at least 1
-                # print(f"Venc: {dataset.venc}")
+                
                 print(f"Original image shape: {dataset.u.shape}")
                 
                 velocities, magnitudes = pgen.patchify(dataset)
@@ -170,8 +164,7 @@ if __name__ == '__main__':
 
                     results = np.append(results, sr_images, axis=0)
                 # End of batch loop    
-                print("results:", results.shape)
-            
+                
                 time_taken = time.time() - start_time
                 print(f"\rProcessed {data_size}/{data_size} Elapsed: {time_taken:.2f} secs.")
 

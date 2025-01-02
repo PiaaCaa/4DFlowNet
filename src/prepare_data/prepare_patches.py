@@ -26,7 +26,7 @@ if __name__ == "__main__":
         hr_file = args.hrdata
     else:
         hr_file = 'M1_2mm_step2_cs_invivoP01_TODO.h5'       #HiRes velocity data
-        lr_file = 'M1_2mm_step2_cs_invivoD_TODO.h5' #LowRes velocity data 
+        lr_file = 'M1_2mm_step2_cs_invivoD_TODO.h5'         #LowRes velocity data 
 
     # Parameters
     temporal_preparation = True
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     mask_threshold = 0.5 # Threshold for non-binary mask 
     minimum_coverage = 0.2 # Minimum fluid region within a patch. Any patch with less than this coverage will not be taken. Range 0-1
 
-    base_path = '/mnt/c/Users/piacal/Code/SuperResolution4DFlowMRI/Temporal4DFlowNet/data/CARDIAC'#'data/CARDIAC'#'/mnt/c/Users/piacal/Code/Supon4DFlowMRI/Temporal4DFlowNet/data/CARDIAC'#'data/CARDIAC'
+    base_path = '/mnt/c/Users/piacal/Code/SuperResolution4DFlowMRI/Temporal4DFlowNet/data/CARDIAC'
     output_filename = f'{base_path}/csv_files/Temporal{spatial_patch_size}MODEL{hr_file[1]}_2mm_step2_cs_invivomagn_exclfirst2frames_tpatchsize16_augmentation1-4_with_orig_lessnoise.csv'
 
     # Check if the files exist  

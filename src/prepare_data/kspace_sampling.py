@@ -299,7 +299,7 @@ if __name__ == '__main__':
     path_order = f"{data_dir}/{settings['sampling_mask']}"
     path_datamodel = f'{data_dir}/CARDIAC/{model_name}_2mm_step1_static_dynamic.h5'
 
-    load_external_magnitude = False
+    load_external_magnitude = False # set to True if magnitude data is loaded from external file, e.g. include invivo magnitude
     path_magnitude = f'{data_dir}/CARDIAC/{model_name}_2mm_step2_cs_invivoP01_hr.h5'
 
     # Settings
@@ -349,18 +349,12 @@ if __name__ == '__main__':
         venc_v = np.max(np.array(p1[f'v_max']))
         venc_w = np.max(np.array(p1[f'w_max']))
         venc_max = np.max([venc_u, venc_v, venc_w])
-        print('Venc max', venc_max)
 
         velocity = adjust_image_size_centered(np.asarray(p1[vel]), (np.asarray(p1[vel].shape[0]), *coil_images.shape[:3]))
         magn     = adjust_image_size_centered(magn, (mask.shape[0], *coil_images.shape[:3]))
 
-
-
         # normalize velocity to [0, 2pi]
         phase    = (velocity/venc_max)*np.pi + np.pi
-
-        print('max velocity:', np.max(velocity), 'min velocity:', np.min(velocity))
-        print('max phase:', np.max(phase), 'min phase:', np.min(phase))
 
         # load velocity data and convert to complex image
         complex_img = np.multiply(magn, np.exp(1j * phase)).astype(np.complex64)
@@ -370,7 +364,6 @@ if __name__ == '__main__':
         vel_csm = coil_images[np.newaxis, :, :, :, :] * complex_img[..., np.newaxis] 
     
     # Free up memory
-    # TODO: check up on garbage collector
     del complex_img 
     del velocity 
     del phase
@@ -397,7 +390,7 @@ if __name__ == '__main__':
         cfl.writecfl(path_ksp, transform_cfl_format(ksp_sampled))
         print(f'Saved file under {path_ksp}')
 
-    if False:
+    if save_state:
         print('Save reconstructions of k-space sampled data without compressed sensing')
         h5functions.save_to_h5(f'{path_ksp}.h5', f'{vel} kspace' , img_fft, expand_dims=False)
 
@@ -408,8 +401,6 @@ if __name__ == '__main__':
             
     # 3. Reconstruct undersampled k-space with compressed sensing (CS) - save as clf file
     print('Run compressed sensing on bart ..')
-    print('kspace shape:', ksp_sampled.shape)
-    print('csm shape', coil_images.shape)
 
     cs_result = bart(1, f'pics -d5 -e -S --lowmem-stack 8 --fista --wavelet haar -R W:1024:0:0.0075 --fista_pqr 0.05:0.5:4 -i20', transform_cfl_format(ksp_sampled), coil_images)
     # cs_result = bart(1, f'pics -d5 -e -S --lowmem-stack 8 -l2 0.0001 --pridu -P 1e-6 --wavelet haar -R W:1024:0:0.0075 -i 10', transform_cfl_format(ksp_sampled), coil_images)
@@ -421,10 +412,8 @@ if __name__ == '__main__':
 
     # crop to smaller image size
     cs_result = cs_result.squeeze().transpose(3, 0, 1, 2)
-    print(cs_result.shape)
     cs_result = adjust_image_size_centered(cs_result, (settings['t_res'], *spatial_res))
-    print(cs_result.shape)
-
+    
     # convert to phase and velocity data [m/s]
     # output of compressed sensing is between [-pi, pi]
     vel_cs = np.angle(cs_result)/np.pi*venc_max

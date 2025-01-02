@@ -23,7 +23,6 @@ def cartesian_temporal_downsampling(hr, sampling_factor, offset = 0):
 
 
 
-#TODO : maybe use convolution instead of averaging to increase speed
 def temporal_box_averaging(hr, stepsize):
     """
     Average the temporal dimension with a given radius

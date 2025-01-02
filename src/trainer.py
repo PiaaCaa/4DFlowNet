@@ -34,7 +34,7 @@ if __name__ == "__main__":
     
     # ---- Patch index files ----
     training_file = '{}/Temporal16MODEL2356_2mm_step2_cs_invivomagn_exclfirst2frames_WITHaugmentation_tpatchsize16_mixed_more_less_noise.csv'.format(csv_dir) 
-    validate_file = '{}/Temporal16MODEL4_2mm_step2_cs_invivomagn_exclfirst2frames_NOaugmentation.csv'.format(csv_dir) #Temporal16MODEL23_2mm_step2_invivoP04P03_magn_tempsmooth_toeger.csv
+    validate_file = '{}/Temporal16MODEL4_2mm_step2_cs_invivomagn_exclfirst2frames_NOaugmentation.csv'.format(csv_dir) 
 
     QUICKSAVE = True
     benchmark_file = '{}/Temporal16MODEL1_2mm_step2_cs_invivomagn_exclfirst2frames_NOaugmentation.csv'.format(csv_dir)

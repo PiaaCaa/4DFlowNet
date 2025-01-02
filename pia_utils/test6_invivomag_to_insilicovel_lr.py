@@ -25,9 +25,9 @@ if __name__ == '__main__':
 
     data_dir = 'data/CARDIAC'
 
-    models = [ 'M1', 'M2', 'M3', 'M4', 'M5', 'M6']
-    name_invivomagn = ['M1_2mm_step2_cs_invivoP01_lr.h5', 
-                       'M2_2mm_step2_cs_invivoP04_lr.h5',
+    models = ['M4']#[ 'M1', 'M2', 'M3', 'M4', 'M5', 'M6']
+    name_invivomagn = ['M4_2mm_step2_cs_invivoP02_lr.h5', 
+                    #    'M2_2mm_step2_cs_invivoP04_lr.h5',
     ]
     # this is now for lr resolution data
 
@@ -37,7 +37,7 @@ if __name__ == '__main__':
     for model, p_invivo in zip(models, name_invivomagn): 
         
         path_invivomagn = f'{data_dir}/{p_invivo}'
-        path_new = f'{path_invivomagn[:-3]}_50frames.h5'
+        output_path = f'{path_invivomagn[:-3]}_50frames.h5'
 
         new_data = {}
         # load magnitude data
@@ -58,11 +58,14 @@ if __name__ == '__main__':
                 new_data[venc][::2] = data
                 new_data[venc][1::2] = data
 
+            dx = np.array(h5['dx']).squeeze()
+            new_data['dx'] = dx
+
         # save new data
         for v in new_data.keys():
-            print('Save new data to:', v, path_new)
+            print('Save new data to:', v, output_path)
             print(new_data[v].shape)
-            save_to_h5(path_new,  v, new_data[v], expand_dims = False)
+            save_to_h5(output_path,  v, new_data[v], expand_dims = False)
 
 
 

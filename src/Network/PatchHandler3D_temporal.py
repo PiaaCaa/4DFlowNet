@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 import h5py
 import os
-import time
 
 class PatchHandler4D():
     # constructor
@@ -196,7 +195,6 @@ class PatchHandler4D_all_axis():
                     tf.float32, tf.float32])
 
     def load_patches_from_index_file(self, indexes):
-        # t = time.time()
         # Do typecasting, we need to make sure everything has the correct data type
         # Solution for tf2: https://stackoverflow.com/questions/56122670/how-to-get-string-value-out-of-tf-tensor-which-dtype-is-string
         lr_hd5path = '{}/{}'.format(self.data_directory, bytes.decode(indexes[0].numpy()))
@@ -372,13 +370,13 @@ class PatchHandler4D_extended_data_augmentation():
                     tf.float32, tf.float32])
 
     def load_patches_from_index_file(self, indexes):
-        # t = time.time()
+        
         # Do typecasting, we need to make sure everything has the correct data type
         # Solution for tf2: https://stackoverflow.com/questions/56122670/how-to-get-string-value-out-of-tf-tensor-which-dtype-is-string
         lr_hd5path = '{}/{}'.format(self.data_directory, bytes.decode(indexes[0].numpy()))
         hd5path    = '{}/{}'.format(self.data_directory, bytes.decode(indexes[1].numpy()))
         
-        # TODO atapt this for new attributes
+        
         #read out attributes from csvline
         axis= int(indexes[2])
         idx = int(indexes[3])
@@ -392,12 +390,11 @@ class PatchHandler4D_extended_data_augmentation():
         sign_u = int(indexes[13])
         sign_v = int(indexes[14])
         sign_w = int(indexes[15])
-        swap_u = bytes.decode(indexes[16].numpy())#str(indexes[16])
-        swap_v = bytes.decode(indexes[17].numpy())#str(indexes[17])
-        swap_w = bytes.decode(indexes[18].numpy())#str(indexes[18])
+        swap_u = bytes.decode(indexes[16].numpy())
+        swap_v = bytes.decode(indexes[17].numpy())
+        swap_w = bytes.decode(indexes[18].numpy())
         coverage = float(indexes[19])
 
-        # print(f'CSV FILE:, idx: {idx}, start_t: {start_t}, start_1: {start_1}, start_2: {start_2}, step_t: {step_t}, temporal_patch_size: {t_patchsize}, flip_1: {flip_1}, flip_2: {flip_2}, rot_angle: {rot_angle}, sign_u: {sign_u}, sign_v: {sign_v}, sign_w: {sign_w}, swap_u: {swap_u}, swap_v: {swap_v}, swap_w: {swap_w}, coverage: {coverage}')
         
         # if step is 1, the loaded LR data is already downsampled
         if step_t == 1:
@@ -415,9 +412,6 @@ class PatchHandler4D_extended_data_augmentation():
             hr_patch_size = t_patchsize * step_t    #self.res_increase
             lr_patch_size = hr_patch_size
             start_t_hr = start_t
-
-        # print('LR from:', start_t_lr , 'to', start_t_lr+lr_patch_size)
-        # print('HR from: ', start_t_hr, start_t + hr_patch_size)
 
         # ============ get the patch ============ 
         if axis == 0 :
