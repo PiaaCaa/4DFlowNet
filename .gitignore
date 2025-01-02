@@ -44,3 +44,4 @@ pia_utils/test17_concatenate_csv_files.py
 pia_utils/test18_smooth_and_erode_mask.py
 pia_utils/test19_smooth_LV_aorta_mask.py
 pia_utils/test6_invivomag_to_insilicovel_lr.py
+src/notebooks/anti_aliasing.ipynb
