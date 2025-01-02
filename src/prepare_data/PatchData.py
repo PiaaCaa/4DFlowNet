@@ -252,8 +252,8 @@ def generate_temporal_random_patches_extended_data_augmentation(input_filename, 
     augmentations_applied = [(func, name) for func, name in augmentations if func]
 
 
-    if len(augmentations_applied) == 0:
-        print('No augmentation applied, only creating non-augmented patches')
+    # if len(augmentations_applied) == 0:
+    #     print('No augmentation applied, only creating non-augmented patches')
 
     while j < n_patch:
         
@@ -305,7 +305,6 @@ def generate_temporal_random_patches_extended_data_augmentation(input_filename, 
                     
                     _, augmentation = rnd.choice(augmentations_applied)
                     print(f'Applying only {augmentation} augmentation technique')
-                    print('Augmentation applied:', augmentations_applied)
 
                     if augmentation == 'flipping':
                         

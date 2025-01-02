@@ -25,38 +25,38 @@ if __name__ == "__main__":
         lr_file = args.lrdata
         hr_file = args.hrdata
     else:
-        hr_file = 'M1_2mm_step2_cs_invivoP01_hr.h5'       #HiRes velocity data
-        lr_file = 'M1_2mm_step2_cs_invivoP01_lr_hr_data_TBD.h5' #LowRes velocity data 
+        hr_file = 'M1_2mm_step2_cs_invivoP01_TODO.h5'       #HiRes velocity data
+        lr_file = 'M1_2mm_step2_cs_invivoD_TODO.h5' #LowRes velocity data 
 
     # Parameters
     temporal_preparation = True
     spatial_patch_size = 16 # Patch size, this will be checked to make sure the generated patches do not go out of bounds
     
-    n_patch = 4    # number of patch per time frame
-    n_empty_patch_allowed = 0 # max number of empty patch per frame
-    all_rotation = False # When true, include 90,180, and 270 rotation for each patch. When False, only include 1 random rotation. (not possible for temporal sampling)
-    reverse_1 = False
+    n_patch = 10    # number of patch per time frame
+    n_empty_patch_allowed = 1 # max number of empty patch per frame
+    all_rotation = True # When true, include 90,180, and 270 rotation for each patch. When False, only include 1 random rotation. (not possible for temporal sampling)
+    reverse_1 = True
     extended_data_augmentation = True
 
     # extended data augmentation parameters
     if extended_data_augmentation:
-        temporal_patch_size = 4
+        # general augmentation parameters
+        temporal_patch_size = 16
         all_rotation = True
         swap_velocity_components = True
         change_sign_velocity_components = True
-        # if reverese_1 is true we enable both flipping in vertical and horizontal direction
-        save_nonaugmented_patch= True
-        n_patches_augmented_from_original_patch = 1
-        only_choose_apply_one_augmentation_technique=False
-        sign_change_on_all_components = True
-
-
+        reverse_1 = reverse_1# if reverese_1 is true we enable both flipping in vertical and horizontal direction
+        # specific augmentation parameters
+        save_nonaugmented_patch = True
+        n_patches_augmented_from_original_patch = 4
+        only_choose_apply_one_augmentation_technique=True
+        sign_change_on_all_components = True 
     
     mask_threshold = 0.5 # Threshold for non-binary mask 
-    minimum_coverage = 0.5 # Minimum fluid region within a patch. Any patch with less than this coverage will not be taken. Range 0-1
+    minimum_coverage = 0.2 # Minimum fluid region within a patch. Any patch with less than this coverage will not be taken. Range 0-1
 
-    base_path = 'data/CARDIAC'#'/mnt/c/Users/piacal/Code/Supon4DFlowMRI/Temporal4DFlowNet/data/CARDIAC'#'data/CARDIAC'
-    output_filename = f'{base_path}/csv_files/Temporal{spatial_patch_size}MODEL{hr_file[1]}_2mm_step2_cs_invivomagn_exclfirst2frames_highcoverage_HRHR_step1_TBD_.csv'
+    base_path = '/mnt/c/Users/piacal/Code/SuperResolution4DFlowMRI/Temporal4DFlowNet/data/CARDIAC'#'data/CARDIAC'#'/mnt/c/Users/piacal/Code/Supon4DFlowMRI/Temporal4DFlowNet/data/CARDIAC'#'data/CARDIAC'
+    output_filename = f'{base_path}/csv_files/Temporal{spatial_patch_size}MODEL{hr_file[1]}_2mm_step2_cs_invivomagn_exclfirst2frames_tpatchsize16_augmentation1-4_with_orig_lessnoise.csv'
 
     # Check if the files exist  
     assert(os.path.isfile(f'{base_path}/{hr_file}'))    # HR file does not exist
@@ -108,6 +108,20 @@ if __name__ == "__main__":
         pd.save_csv_file_settings_json(lr_file, hr_file, output_filename, n_patch, binary_mask, spatial_patch_size,temporal_patch_size, minimum_coverage, n_empty_patch_allowed, 
                                         reverse_1,  all_rotation, swap_velocity_components, change_sign_velocity_components, step_t ,
                                         save_nonaugmented_patch, n_patches_augmented_from_original_patch, only_choose_apply_one_augmentation_technique, sign_change_on_all_components)
+        augmentations = [
+        (reverse_1, 'flipping'),
+        (all_rotation, 'all_rotation'),
+        (swap_velocity_components, 'swap_velocity_components'),
+        (change_sign_velocity_components, 'change_sign_velocity_components')
+        ]
+
+        # Apply augmentations and store applied ones along with their names
+        augmentations_applied = [(func, name) for func, name in augmentations if func]
+
+        if len(augmentations_applied) == 0:
+            print('No augmentation applied, only creating non-augmented patches')
+        else:
+            print('Applied augmentations:', [name for _, name in augmentations_applied])
 
     if temporal_preparation:
         if extended_data_augmentation:

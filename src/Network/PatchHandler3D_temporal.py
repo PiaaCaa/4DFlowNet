@@ -213,31 +213,30 @@ class PatchHandler4D_all_axis():
         
         # if step is 1, the loaded LR data is already downsampled
         if step_t == 1:
-            start_t_lr = int(start_t//self.res_increase)
+            start_t_lr = start_t
             hr_patch_size = int(patch_size*self.res_increase)
             lr_patch_size = patch_size
+            start_t_hr = int(start_t*self.res_increase)
         else:
             start_t_lr = start_t
-            hr_patch_size = self.patch_size * step_t    #self.res_increase
+            hr_patch_size = self.patch_size * step_t    
             lr_patch_size = hr_patch_size
+            start_t_hr = start_t
 
-        # print(start_t, start_t_lr, hr_patch_size, lr_patch_size)
-        # print('LR from:', start_t_lr , 'to', start_t_lr+lr_patch_size)
-        # print('HR from: ', start_t, start_t + hr_patch_size)
 
         # ============ get the patch ============ 
         if axis == 0 :
             patch_t_index       = np.index_exp[start_t_lr :start_t_lr+lr_patch_size:step_t,   idx, start_1:start_1+patch_size, start_2:start_2+patch_size]
-            hr_t_patch_index    = np.index_exp[start_t :start_t+hr_patch_size,          idx, start_1:start_1+patch_size, start_2:start_2+patch_size]
-            mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,          idx, start_1:start_1+patch_size, start_2:start_2+patch_size]
+            hr_t_patch_index    = np.index_exp[start_t_hr :start_t_hr+hr_patch_size,          idx, start_1:start_1+patch_size, start_2:start_2+patch_size]
+            mask_t_index        = np.index_exp[start_t_hr :start_t_hr+hr_patch_size,          idx, start_1:start_1+patch_size, start_2:start_2+patch_size]
         elif axis == 1:
             patch_t_index       = np.index_exp[start_t_lr :start_t_lr+lr_patch_size:step_t, start_1:start_1+patch_size,idx, start_2:start_2+patch_size]
-            hr_t_patch_index    = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size,idx, start_2:start_2+patch_size]
-            mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size,idx, start_2:start_2+patch_size]
+            hr_t_patch_index    = np.index_exp[start_t_hr :start_t_hr+hr_patch_size,        start_1:start_1+patch_size,idx, start_2:start_2+patch_size]
+            mask_t_index        = np.index_exp[start_t_hr :start_t_hr+hr_patch_size,        start_1:start_1+patch_size,idx, start_2:start_2+patch_size]
         elif axis == 2:
             patch_t_index       = np.index_exp[start_t_lr :start_t_lr+lr_patch_size:step_t, start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
-            hr_t_patch_index    = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
-            mask_t_index        = np.index_exp[start_t :start_t+hr_patch_size,        start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
+            hr_t_patch_index    = np.index_exp[start_t_hr :start_t_hr+hr_patch_size,        start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
+            mask_t_index        = np.index_exp[start_t_hr :start_t_hr+hr_patch_size,        start_1:start_1+patch_size, start_2:start_2+patch_size, idx]
 
         
         u_patch, u_hr_patch, mag_u_patch, v_patch, v_hr_patch, mag_v_patch, w_patch, w_hr_patch, mag_w_patch, venc, mask_patch = self.load_vectorfield(hd5path, lr_hd5path, idx, mask_t_index, patch_t_index, hr_t_patch_index, reverse)
@@ -399,11 +398,6 @@ class PatchHandler4D_extended_data_augmentation():
         coverage = float(indexes[19])
 
         # print(f'CSV FILE:, idx: {idx}, start_t: {start_t}, start_1: {start_1}, start_2: {start_2}, step_t: {step_t}, temporal_patch_size: {t_patchsize}, flip_1: {flip_1}, flip_2: {flip_2}, rot_angle: {rot_angle}, sign_u: {sign_u}, sign_v: {sign_v}, sign_w: {sign_w}, swap_u: {swap_u}, swap_v: {swap_v}, swap_w: {swap_w}, coverage: {coverage}')
-
-
-        # reverse = int(indexes[8]) # 1 for no reverse, -1 for reverse order, only reverse te first spatial component
-       
-        # patch_size = self.patch_size
         
         # if step is 1, the loaded LR data is already downsampled
         if step_t == 1:
