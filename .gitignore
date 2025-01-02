@@ -37,3 +37,10 @@ pia_utils/test14b_adjust_venc_insilico.py
 pia_utils/test15_create_lr_hr_dataset.py
 pia_utils/test16_correct_M2_boundaries.py
 pia_utils/test10_load_paired_invivo.py
+pia_utils/test6_invivomag_to_insilicovel_lr.py
+pia_utils/test6b_merge_invivomag_with_insilicovel_lr.py
+pia_utils/test6c_invivomag_to_insilicovel_lr_diff_temporalresolutions.py
+pia_utils/test17_concatenate_csv_files.py
+pia_utils/test18_smooth_and_erode_mask.py
+pia_utils/test19_smooth_LV_aorta_mask.py
+pia_utils/test6_invivomag_to_insilicovel_lr.py
