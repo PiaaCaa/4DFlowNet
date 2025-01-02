@@ -531,15 +531,163 @@ def calculate_flow_profile(velocity, binary_mask,spacing = [2.0, 2.0, 2.0]):
 
 #---------------PLOTTING-------------------
 
+def bland_altman_plot(pred_vel, gt_vel, mask, timepoint, p=0.1, y_lim = None, centered_ylim = False,  set_background = True, ax=None, fontsize=15, save_as=None):
+       
+    if mask.ndim ==3:
+        mask_comp = mask
+    elif mask.ndim == 4:
+        mask_comp = mask[timepoint]
+    else:
+        print("Mask should be 3D or 4D")
+    
 
-def plot_correlation_nobounds(gt, prediction, frame_idx,color_points = 'black',show_text = False, save_as = None, figsize = (7, 7)):
+    # Apply the mask to select only fluid region
+    pred_masked = pred_vel[timepoint][np.where(mask_comp > 0.5)].flatten()
+    gt_masked   = gt_vel[timepoint][np.where(mask_comp > 0.5)].flatten()
+
+    # Compute mean and difference
+    mean_values = (pred_masked + gt_masked) / 2
+    diff_values = gt_masked-pred_masked
+    
+    # Mean and ±1.96 SD lines
+    mean_diff = np.mean(diff_values)
+    std_diff = np.std(diff_values)
+    upper_limit = mean_diff + 1.96 * std_diff
+    lower_limit = mean_diff - 1.96 * std_diff
+
+    random_selection = np.random.randint(0, len(mean_values), size=int(len(mean_values) * p))
+    mean_values_plot = mean_values[random_selection]
+    diff_values_plot = diff_values[random_selection]
+
+    # Plot on provided ax or create a new figure if ax is None
+    if ax is None:
+        ax = plt.gca()
+        single_plot = True
+        y_limits_max = 0
+    else:
+        single_plot = False
+        _, y_limits_max = ax.get_ylim()
+    
+
+    # get y limits
+    if set_background:
+        if y_lim is None:
+            if centered_ylim:
+                # get max
+                y_lim_up = np.max(np.abs(diff_values_plot)) * 1.1
+                ax.set_ylim(-y_lim_up, y_lim_up)
+            else:
+                # Set y-limits to ensure space for the shading
+                ax.set_ylim(np.min(diff_values_plot) * 1.1, np.maximum(np.max(diff_values_plot) * 1.1, y_limits_max))
+        else:
+            y_lim_down = y_lim[0]
+            y_lim_up = y_lim[1]
+            ax.set_ylim(y_lim_down, y_lim_up)
+
+        # Shading the area above the mean difference line in light gray
+        ax.axhspan(mean_diff, ax.get_ylim()[1], color='lightgray', alpha=0.5)
+        print(f'Y lim is {ax.get_ylim()} and is set by given ylim {y_lim} and is centered {centered_ylim}')
+    # Scatter plot
+    ax.scatter(mean_values_plot, diff_values_plot, s=12, color='black')
+
+    # Plot lines and labels
+    ax.axhline(mean_diff, color='red', linestyle='--', label="Mean Difference")
+    ax.axhline(upper_limit, color='gray', linestyle='--')
+    ax.axhline(lower_limit, color='gray', linestyle='--')
+
+    # Text annotations for ±1.96 SD
+    x_left, x_right = ax.get_xlim()
+    ax.text(x_right * 0.9, upper_limit, f'{upper_limit:.2f}', color='gray', ha='right', va='bottom', fontsize=fontsize)
+    ax.text(x_right * 0.9, lower_limit * 1.05, f'{lower_limit:.2f}', color='gray', ha='right', va='top', fontsize=fontsize)
+
+    # Labels, ticks, and save
+    ax.set_xlabel(r'0.5(V$_{HR}$ + V$_{SR}$) [m/s]', fontsize=fontsize)
+    if single_plot: ax.set_ylabel(r'V$_{HR}$ - V$_{SR}$ [m/s]', fontsize=fontsize)
+    ax.locator_params(axis='x', nbins=3, tight=True)
+    ax.locator_params(axis='y', nbins=3, tight=True)
+    # ax.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.3)
+    # ax.tick_params(axis='both', direction='in', length=4, width=0.5, labelsize=8, pad=2)
+    # ax.minorticks_on()
+    # ax.tick_params(which='minor', length=2, width=0.5)
+    # ax.tick_params(axis='both', labelsize=fontsize//2, colo)
+    ax.tick_params(axis='both', which='minor', color='lightgray', labelsize=fontsize//2 + 2, labelcolor='gray')
+    ax.tick_params(axis='both', which='major', color='gray', labelcolor='gray', labelsize=fontsize//2 +2)
+    for spine in ax.spines.values():
+        spine.set_color("gray")       # Change the spine color to gray
+        spine.set_linewidth(0.5) 
+    if save_as is not None:
+        plt.savefig(save_as, transparent=True)
+
+
+
+def set_axis_properties(ax, xlabel='', ylabel='', title='', xlim=None, ylim=None, 
+                        fontsize=18, tick_color='gray', label_color='black', tick_number=3, add_grid=False, col_index = 0, set_figure_box = False):
+    """Configures common axis properties with options for tick, label colors, and a grid line at y=1."""
+    ax.set_xlabel(xlabel, fontsize=fontsize, color=label_color)
+    ax.set_title(title, fontsize=fontsize, color=label_color)
+    
+    # Set y-axis label only if it's the first column in the subplot row
+    if ylabel and col_index == 0:
+        ax.set_ylabel(ylabel, fontsize=fontsize, color=label_color)
+
+    # Tick settings
+    ax.tick_params(axis='both', which='major', labelsize=fontsize//2 + 2, color=tick_color, labelcolor=tick_color)
+    ax.locator_params(axis='x', nbins=tick_number)
+    ax.locator_params(axis='y', nbins=tick_number)
+    
+    # Grid line for k plot at y=1
+    if add_grid:
+        ax.axhline(y=1, color='gray', linestyle='--', linewidth=1)
+        ax.grid(True, which='major', color='lightgray', linestyle='--')
+
+    # Set axis limits if provided
+    if xlim:
+        ax.set_xlim(xlim)
+    if ylim:
+        ax.set_ylim(ylim)
+    
+    if set_figure_box:
+        for spine in ax.spines.values():
+            spine.set_color("gray")       # Change the spine color to gray
+            spine.set_linewidth(0.5)
+
+
+def plot_regression_points_new(ax, hr_vals, sr_vals, all_hr, all_sr, abs_max, direction, color='black', show_text=False, fontsize=18):
+    """Plots regression line and points for a single axis."""
+    x_range = np.linspace(-abs_max, abs_max, 100)
+    corr_line, text = get_corr_line_and_r2(all_hr, all_sr, x_range)
+    
+    ax.plot(x_range, x_range, color='grey', label='diagonal')
+    ax.plot(x_range, corr_line, 'k--', color = KI_colors['Plum'])
+    ax.scatter(hr_vals, sr_vals, s=30, c=color, label='core voxels')
+    set_axis_properties(ax, xlabel=r"V$_{HR}$ [m/s]", ylabel=r"V$_{SR}$ [m/s]", title=direction, xlim=(-abs_max, abs_max), ylim=(-abs_max, abs_max), fontsize=fontsize, set_figure_box=True)
+    
+    if show_text:
+        ax.text(0.05, 0.95, text, transform=ax.transAxes, fontsize=fontsize, verticalalignment='top')
+
+def plot_k_r2_values(ax, t_range, k_vals, r2_vals, peak_frame, min_val, max_val, k_label, r2_label, color_k='black', color_r2='purple', fontsize=18, only_k = False):
+    """Plots k and R2 values over time on a single axis."""
+    ax.set_ylim([min_val, max_val])
+    ax.scatter([t_range[peak_frame]], [k_vals[peak_frame]], color='grey', label='peak synthesized frame')
+    if not only_k:
+        ax.plot(t_range, r2_vals,  label=r2_label, color=color_r2)
+        ax.scatter([t_range[peak_frame]], [r2_vals[peak_frame]], color='grey')
+    ax.plot(t_range, k_vals,'--', label=k_label, color=color_k)
+    col_index = 1 if ('x' in k_label.lower() or 'u' in k_label.lower()) else 0
+    if only_k:
+        set_axis_properties(ax, xlabel='time [s]', ylabel=k_label, fontsize=fontsize, add_grid=True, col_index=col_index)
+    else:
+        set_axis_properties(ax, xlabel='time [s]', fontsize=fontsize, add_grid=True, col_index=col_index, set_figure_box=True) #ylabel=r'$k/R^2$',
+        # ax.legend(loc='lower right', fontsize=fontsize)
+
+
+def plot_correlation_nobounds(gt, prediction, frame_idx,color_points = 'black',show_text = False, save_as = None, figsize = (7, 7), fontsize = 16, show_title = True):
     '''
     Plot correlation plot between ground truth and prediction at a given frame
     '''
-    fontsize = 16
     # set percentage of how many random points are used
     p = 0.1
-    mask_threshold = 0.6
+    mask_threshold = 0.5
 
     mask = np.asarray(gt['mask']).squeeze()
 
@@ -550,29 +698,27 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_points = 'black',s
     # threshold mask
     mask[np.where(mask > mask_threshold)] = 1 
 
-    # get indices of core 
     idx_core = np.where(mask[frame_idx] == 1)
 
     # get random indices for core to plot a subset of the points
     x_idx, y_idx, z_idx = random_indices3D((mask)[frame_idx], n=int(p*np.count_nonzero(mask[frame_idx])))
 
-    
     # Get velocity values in all directions
     # HR
     hr_u = np.asarray(gt['u'][frame_idx])
-    hr_u_core = hr_u[x_idx, y_idx, z_idx]
+    hr_u_rnd = hr_u[x_idx, y_idx, z_idx]
     hr_v = np.asarray(gt['v'][frame_idx])
-    hr_v_core = hr_v[x_idx, y_idx, z_idx]
+    hr_v_rnd = hr_v[x_idx, y_idx, z_idx]
     hr_w = np.asarray(gt['w'][frame_idx])
-    hr_w_core = hr_w[x_idx, y_idx, z_idx]
+    hr_w_rnd = hr_w[x_idx, y_idx, z_idx]
 
     # SR 
     sr_u = np.asarray(prediction['u'][frame_idx])
-    sr_u_vals = sr_u[x_idx, y_idx, z_idx]
+    sr_u_rnd = sr_u[x_idx, y_idx, z_idx]
     sr_v = np.asarray(prediction['v'][frame_idx])
-    sr_v_vals = sr_v[x_idx, y_idx, z_idx]
+    sr_v_rnd = sr_v[x_idx, y_idx, z_idx]
     sr_w = np.asarray(prediction['w'][frame_idx])
-    sr_w_vals = sr_w[x_idx, y_idx, z_idx]
+    sr_w_rnd = sr_w[x_idx, y_idx, z_idx]
 
     def plot_regression_points(hr_vals, sr_vals, all_hr, all_sr, direction = 'u'):
         N = 100
@@ -588,20 +734,158 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_points = 'black',s
         plt.plot(x_range, corr_line, 'k--')
         plt.scatter(hr_vals, sr_vals, s=30, c=[color_points], label = 'core voxels')
         
-        plt.title(direction, fontsize=fontsize)
-        plt.xlabel("V HR (m/s)", fontsize=fontsize)
-        plt.ylabel("V SR (m/s)", fontsize=fontsize)
+        if show_title:
+            plt.title(direction, fontsize=fontsize)
+        plt.xlabel(r"V$_{HR}$ [m/s]", fontsize=fontsize)
+        plt.ylabel(r"V$_{SR}$ [m/s]", fontsize=fontsize)
         # lgnd = plt.legend(loc = 'lower right', markerscale=2.0, fontsize=10)
         plt.ylim(-abs_max, abs_max)
         plt.xlim(-abs_max, abs_max)
         plt.locator_params(axis='y', nbins=3)
         plt.locator_params(axis='x', nbins=3)
-        plt.tick_params(axis='y', labelsize = fontsize)
-        plt.tick_params(axis='x', labelsize = fontsize)
+        plt.tick_params(axis='y', labelsize = fontsize//2+2, labelcolor='gray', color = 'gray')
+        plt.tick_params(axis='x', labelsize = fontsize//2+2, labelcolor='gray', color = 'gray')
+
+        #set tickcolor to gray
+        # plt.tick_params(axis='both', which='major', color='gray', labelcolor='gray')
+
+        #maek box gray
+        for spine in plt.gca().spines.values():
+            spine.set_color("gray")
+            spine.set_linewidth(0.5)
+        plt.tight_layout()
         # lgnd.legendHandles[1]._sizes = [30]
         # lgnd.legendHandles[2]._sizes = [30]
 
-    def get_corr_line_and_r2(hr_vals, sr_vals, x_range):
+    
+
+    
+    print("Plotting correlation lines...")
+    min_vals = np.min([np.min(sr_u_rnd), np.min(sr_v_rnd), np.min(sr_w_rnd)])
+    max_vals = np.max([np.max(sr_u_rnd), np.max(sr_v_rnd), np.max(sr_w_rnd)])
+    abs_max  = np.max([np.abs(min_vals), np.abs(max_vals)])
+
+    plt.close()
+
+    # plot regression line for Vx, Vy and Vz
+    plt.figure(figsize=figsize)
+    plot_regression_points(hr_u_rnd, sr_u_rnd, hr_u[idx_core], sr_u[idx_core],  direction=r'$V_x$')
+    plt.tight_layout()
+    if save_as is not None: plt.savefig(f"{save_as}_LRXplot.png")
+    
+    plt.clf()
+    plt.figure(figsize=figsize)
+    plot_regression_points(hr_v_rnd, sr_v_rnd, hr_v[idx_core], sr_v[idx_core], direction=r'$V_y$')
+    plt.tight_layout()
+    if save_as is not None: plt.savefig(f"{save_as}_LRYplot.png")
+
+    plt.clf()
+    plt.figure(figsize=figsize)
+    plot_regression_points(hr_w_rnd, sr_w_rnd, hr_w[idx_core], sr_w[idx_core],  direction=r'$V_z$')
+    plt.tight_layout()
+    if save_as is not None: plt.savefig(f"{save_as}_LRZplot.png")
+
+    plt.clf()
+    save_subplots = True
+    
+    plt.close()
+    # plot Vx, Vy and Vz in subplots
+    if save_subplots: 
+        fig = plt.figure(figsize=(12, 4))
+        plt.subplot(1, 3, 1)
+        plot_regression_points(hr_u_rnd, sr_u_rnd, hr_u[idx_core], sr_u[idx_core], direction=r'$V_x$')
+        plt.subplot(1, 3, 2)
+        plot_regression_points(hr_v_rnd, sr_v_rnd, hr_v[idx_core], sr_v[idx_core], direction=r'$V_y$')
+        plt.subplot(1, 3, 3)
+        plot_regression_points(hr_w_rnd, sr_w_rnd, hr_w[idx_core], sr_w[idx_core],  direction=r'$V_z$')
+        plt.tight_layout()
+        if save_as is not None: plt.savefig(f"{save_as}_all_LRXYZ_subplots.png", transparent=True)
+        
+    return fig
+
+
+def plot_correlation_nobounds_new(gt, prediction, frame_idx, color_points='black', show_text=False, save_as=None, figsize=(12, 4), fontsize=16):
+    '''
+    Plot correlation plot between ground truth and prediction at a given frame
+    '''
+    # Parameters for random sampling and mask threshold
+    p = 0.1
+    mask_threshold = 0.5
+
+    # Create mask if needed
+    mask = np.asarray(gt['mask']).squeeze()
+    if len(mask.shape) == 3:
+        mask = create_dynamic_mask(mask, prediction['u'].shape[0])
+    mask[mask > mask_threshold] = 1
+    idx_core = np.where(mask[frame_idx] == 1)
+
+    # Get random indices for plotting a subset of points
+    x_idx, y_idx, z_idx = random_indices3D(mask[frame_idx], n=int(p * np.count_nonzero(mask[frame_idx])))
+
+    # Extract velocity components
+    hr_velocities = {dir: np.asarray(gt[dir][frame_idx])[x_idx, y_idx, z_idx] for dir in ['u', 'v', 'w']}
+    sr_velocities = {dir: np.asarray(prediction[dir][frame_idx])[x_idx, y_idx, z_idx] for dir in ['u', 'v', 'w']}
+    
+    abs_max = max(abs(np.min(list(sr_velocities.values()))), abs(np.max(list(sr_velocities.values()))))
+
+    # Define function to plot each subplot with consistent formatting
+    def plot_regression_points(ax, hr_vals, sr_vals, all_hr, all_sr, direction):
+        x_range = np.linspace(-abs_max, abs_max, 100)
+        corr_line, text = get_corr_line_and_r2(all_hr, all_sr, x_range)
+        
+        ax.plot(x_range, x_range, color='gray', label='diagonal line')  # Diagonal line
+        ax.plot(x_range, corr_line, 'k--')  # Regression line
+        ax.scatter(hr_vals, sr_vals, s=30, c=color_points, label='core voxels')
+
+        ax.set_title(direction, fontsize=fontsize)
+        ax.set_xlim(-abs_max, abs_max)
+        ax.set_ylim(-abs_max, abs_max)
+        ax.locator_params(axis='y', nbins=3)
+        ax.locator_params(axis='x', nbins=3)
+        ax.set_xlabel(r"V$_{HR}$ [m/s]", fontsize=fontsize)
+        ax.spines['top'].set_color('gray')
+        ax.spines['bottom'].set_color('gray')
+        ax.spines['left'].set_color('gray')
+        ax.spines['right'].set_color('gray')
+        ax.tick_params(axis='both', which='minor', color='lightgray', labelsize=fontsize//2, labelcolor='gray')
+        ax.tick_params(axis='both', which='major', color='gray', labelcolor='gray', labelsize=fontsize//2)
+        ax.tick_params(axis='y', labelleft=True)
+        
+        if show_text:
+            ax.text(0.05, 0.95, text, transform=ax.transAxes, fontsize=fontsize, verticalalignment='top')
+
+    # Create a single figure with subplots for each velocity component
+    fig, axs = plt.subplots(1, 3, figsize=figsize, sharey=True)
+    directions = ['u', 'v', 'w']
+    labels = [r'$V_x$', r'$V_y$', r'$V_z$']
+    
+    # Plot for each component
+    for i, direction in enumerate(directions):
+        plot_regression_points(
+            axs[i],
+            hr_velocities[direction],
+            sr_velocities[direction],
+            np.asarray(gt[direction][frame_idx])[idx_core],
+            np.asarray(prediction[direction][frame_idx])[idx_core],
+            labels[i]
+        )
+        if i == 0:
+            axs[i].set_ylabel(r"V$_{SR}$ [m/s]", fontsize=fontsize)
+    
+    
+    # Adjust layout and save figure
+    plt.tight_layout()
+    # plt.tight_layout(rect=[0.05, 0.05, 1, 1])  # Adjust to avoid overlapping with shared labels
+    if save_as:
+        plt.savefig(f"{save_as}_all_LRXYZ_subplots.png", transparent=True)
+
+    plt.show()
+    return fig
+
+
+
+
+def get_corr_line_and_r2(hr_vals, sr_vals, x_range):
         '''
         Returns correlation line and text for plot
         '''
@@ -612,51 +896,7 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_points = 'black',s
         
         return corr_line, text
 
-    
-    print("Plotting correlation lines...")
 
-    min_vals = np.min([np.min(sr_u_vals), np.min(sr_v_vals), np.min(sr_w_vals)])
-    max_vals = np.max([np.max(sr_u_vals), np.max(sr_v_vals), np.max(sr_w_vals)])
-    abs_max  = np.max([np.abs(min_vals), np.abs(max_vals)])
-    print('min/max/abs max', min_vals, max_vals, abs_max)
-
-    plt.close()
-
-    # plot regression line for Vx, Vy and Vz
-    plt.figure(figsize=figsize)
-    plot_regression_points(hr_u_core, sr_u_vals, hr_u[idx_core], sr_u[idx_core],  direction=r'$V_x$')
-    plt.tight_layout()
-    if save_as is not None: plt.savefig(f"{save_as}_LRXplot.svg")
-    
-    plt.clf()
-    plt.figure(figsize=figsize)
-    plot_regression_points(hr_v_core, sr_v_vals, hr_v[idx_core], sr_v[idx_core], direction=r'$V_y$')
-    plt.tight_layout()
-    if save_as is not None: plt.savefig(f"{save_as}_LRYplot.svg")
-
-    plt.clf()
-    plt.figure(figsize=figsize)
-    plot_regression_points(hr_w_core, sr_w_vals, hr_w[idx_core], sr_w[idx_core],  direction=r'$V_z$')
-    plt.tight_layout()
-    if save_as is not None: plt.savefig(f"{save_as}_LRZplot.svg")
-
-    plt.clf()
-    save_subplots = True
-    
-    plt.close()
-    # plot Vx, Vy and Vz in subplots
-    if save_subplots: 
-        fig = plt.figure(figsize=(12, 4))
-        plt.subplot(1, 3, 1)
-        plot_regression_points(hr_u_core, sr_u_vals, hr_u[idx_core], sr_u[idx_core], direction=r'$V_x$')
-        plt.subplot(1, 3, 2)
-        plot_regression_points(hr_v_core, sr_v_vals, hr_v[idx_core], sr_v[idx_core], direction=r'$V_y$')
-        plt.subplot(1, 3, 3)
-        plot_regression_points(hr_w_core, sr_w_vals, hr_w[idx_core], sr_w[idx_core],  direction=r'$V_z$')
-        plt.tight_layout()
-        if save_as is not None: plt.savefig(f"{save_as}_all_notext_LRXYZ_subplots.png")
-    return fig
-    
 def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KI_colors['Plum'], save_as = None):
     '''
     Plot correlation plot between ground truth and prediction at a given frame
@@ -734,17 +974,6 @@ def plot_correlation(gt, prediction, bounds, frame_idx,color_b = KI_colors['Plum
         plt.locator_params(axis='x', nbins=3)
         lgnd.legendHandles[1]._sizes = [30]
         lgnd.legendHandles[2]._sizes = [30]
-
-    def get_corr_line_and_r2(hr_vals, sr_vals, x_range):
-        '''
-        Returns correlation line and text for plot
-        '''
-        z = np.polyfit(hr_vals, sr_vals, 1)
-        corr_line = np.poly1d(z)(x_range)
-        slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(hr_vals, sr_vals)
-        text = f"$y={z[0]:0.4f}\;x{z[1]:+0.4f}$\n$R^2 = {r_value**2:0.4f}$"
-        
-        return corr_line, text
 
     
     print("Plotting correlation lines...")
@@ -1005,9 +1234,14 @@ def plot_mean_speed(gt, pred, lr, comparison_lst, name_comparison,save_as,colors
     lr_meanspeed    = calculate_mean_speed(lr['u'], lr['v'], lr['w'], lr['mask'])
     pred_meanspeed  = calculate_mean_speed(pred['u'], pred['v'], pred['w'], gt['mask'])
 
-    plt.plot(gt_meanspeed, '.-',label ='High resolution', color = 'black')
-    plt.plot(pred_meanspeed,'.-', label= '4DFlowNet', color = KI_colors['Blue'])
-    plt.plot(range(0, len(gt_meanspeed), 2),  lr_meanspeed,'.-',  label = 'Low resolution', color = KI_colors['Green'])
+    t_hr_range = np.linspace(0, 1, len(gt_meanspeed), endpoint=True)
+    t_lr_range = np.linspace(0, 1, len(lr_meanspeed), endpoint=True)
+    t_sr_range = np.linspace(0, 1, len(pred_meanspeed), endpoint=True)
+
+
+    plt.plot(t_hr_range, gt_meanspeed, '.-',label ='High resolution', color = 'black')
+    plt.plot(t_sr_range, pred_meanspeed,'.-', label= '4DFlowNet', color = KI_colors['Blue'])
+    plt.plot(t_lr_range,  lr_meanspeed,'.-',  label = 'Low resolution', color = KI_colors['Green'])
     for i, (comp_res, name) in enumerate(zip(comparison_lst, name_comparison)):
         if colors_comp is not None: 
             color = colors_comp[i]
@@ -1026,6 +1260,78 @@ def plot_mean_speed(gt, pred, lr, comparison_lst, name_comparison,save_as,colors
 
 
 
+def plot_qual_comparison_peak(u_hr, v_hr, w_hr, u_sr, v_sr, w_sr, mask_cube, abserror_cube, comparison_lst, comparison_names, timepoint, min_v, max_v, include_error=False, figsize=(10, 10), save_as=None, colormap = 'viridis', fontsize=16):
+    
+    print(f"Plotting qualitative comparison of flow at timepoint {timepoint}...")
+
+    cmap = colormap
+
+    # Determine the number of columns and rows
+    N_columns = 2 + len(comparison_lst)
+    N_rows = 3
+    if include_error:
+        N_columns += 1
+
+    fig, axes = plt.subplots(nrows=N_rows, ncols=N_columns, constrained_layout=True, figsize=figsize)
+
+    # Set dynamic min and max values for color normalization if not provided
+    if min_v is None or max_v is None:
+        if len(mask_cube.shape) == 2:
+            mask_cube = np.repeat(mask_cube[np.newaxis, ...], u_hr.shape[0])
+            min_v = np.quantile(u_hr.flatten(), 0.01)
+            max_v = np.quantile(u_hr.flatten(), 0.99)
+        else:
+            min_v = np.quantile(u_hr[mask_cube != 0].flatten(), 0.01)
+            max_v = np.quantile(u_hr[mask_cube != 0].flatten(), 0.99)
+
+    if include_error:
+        min_rel_error = np.min(np.array(abserror_cube))
+        max_rel_error = np.max(np.array(abserror_cube))
+
+    
+    for j, col_name in enumerate(['HR', 'SR'] + comparison_names):
+        # Assign the correct data based on the column (HR, SR, or comparison)
+        if col_name == 'HR':
+            img_data_u, img_data_v, img_data_w = u_hr, v_hr, w_hr
+        elif col_name == 'SR':
+            img_data_u, img_data_v, img_data_w = u_sr, v_sr, w_sr
+        else:
+            img_data_u, img_data_v, img_data_w = comparison_lst[j - 2]
+
+        # Plot u, v, w for each column (HR, SR, comparison)
+        for i, (img_data, label) in enumerate(zip([img_data_u, img_data_v, img_data_w], [r'$V_x$', r'$V_y$', r'$V_z$'])):
+            ax = axes[i, j]
+            im = ax.imshow(img_data, vmin=min_v, vmax=max_v, cmap=cmap)
+            if j == 0:
+                ax.set_ylabel(label, fontsize=fontsize)
+            if i == 0:
+                ax.set_title(col_name, fontsize=fontsize)
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+    # Plot absolute error if included
+    if include_error:
+        for i in range(N_rows):
+            ax = axes[i, -1]
+            err_img = ax.imshow(abserror_cube[i], vmin=min_rel_error, vmax=max_rel_error, cmap=cmap)
+            if i == 0:
+                ax.set_title("Abs. Error", fontsize=fontsize)
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+        fig.colorbar(err_img, ax=axes[:, -1], aspect=15, pad=0.01, label='Abs. error [m/s]')
+
+    # Add the main color bar for the velocity
+    cbar = fig.colorbar(im, ax=axes.ravel().tolist(), aspect=15, pad=0.01, label='Velocity [m/s]')
+    # set ticks size 
+    cbar.ax.tick_params(labelsize=fontsize//2)
+    cbar.set_label('Velocity [m/s]', fontsize=fontsize//2 + 4)	
+    # Set number of ticks
+    cbar.ax.locator_params(nbins=3)
+    # plt.tight_layout()
+    print(f'Qualitative comparison saved under {save_as}')
+    if save_as is not None:
+        plt.savefig(save_as, bbox_inches='tight', transparent=True)
 
 
 def plot_spatial_comparison(low_res, ground_truth, prediction, frame_idx = 9, axis=1, slice_idx = 50):
@@ -1159,7 +1465,7 @@ def comparison_plot_slices_over_time(gt_cube,lr_cube,  mask_cube, comparison_lst
 
 # adapted with LR is 'not acquired'
 def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, comparison_lst, comparison_name, timepoints, 
-                         min_v, max_v, include_error = False,  figsize = (10, 10), save_as = "Qualitative_frame_seq.png", fontsize_lr = 8):
+                         min_v, max_v, include_error = False,  figsize = (10, 10), save_as = "Qualitative_frame_seq.png", fontsize_lr = 8, colormap = 'viridis', center_vmin_vmax = False):
     def row_based_idx(num_rows, num_cols, idx):
         return np.arange(1, num_rows*num_cols + 1).reshape((num_rows, num_cols)).transpose().flatten()[idx-1]
 
@@ -1172,7 +1478,7 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
     #     comparison_lst[i] = np.abs(comparison_lst[i])
 
     ups_factor = 2
-    cmap = 'viridis'
+    cmap = colormap#'viridis'
     fontsize = 16
 
     T = 3 + len(comparison_lst)
@@ -1191,6 +1497,10 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
         else:
             min_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.01)
             max_v = np.quantile(gt_cube[np.where(mask_cube != 0)].flatten(), 0.99)
+    
+    if center_vmin_vmax:
+        max_v = np.max([abs(min_v), abs(max_v)])
+        min_v = -max_v
 
     if include_error:
         min_rel_error = np.min(np.array(abserror_cube))
@@ -1210,7 +1520,7 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
         plt.subplot(T, N, row_based_idx(T, N, img_cnt))
         if t%ups_factor == 0:
             lr_slice = lr_cube[j//2]
-            plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap=cmap, )
+            plt.imshow(lr_slice, vmin = min_v, vmax = max_v, cmap=cmap,)
             if img_cnt == 1: plt.ylabel("LR", fontsize = fontsize)
 
         else:
@@ -1254,19 +1564,19 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
             plt.xticks([])
             plt.yticks([])
             if t == timepoints[-1]:
-                fig.colorbar(err_img, ax = axes[-1], aspect = 15,pad=0.01, label = 'abs. error (m/s)')
+                fig.colorbar(err_img, ax = axes[-1], aspect = 5,pad=0.01, label = 'abs. error [m/s]')
 
             img_cnt +=1
 
     if include_error:
-        cbar = fig.colorbar(im, ax=axes.ravel()[:-N].tolist(), aspect = 15,pad=0.01, label = 'velocity (m/s)')
+        cbar = fig.colorbar(im, ax=axes.ravel()[:-N].tolist(), aspect = 23,pad=0.01, label = 'velocity [m/s]')
     else:
-        cbar = fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 15,pad=0.01, label = 'velocity (m/s)')
+        cbar = fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 23,pad=0.01, label = 'velocity [m/s]')
 
-    cbar.set_label('velocity (m/s)', fontsize=fontsize)
+    cbar.set_label('velocity [m/s]', fontsize=fontsize)#//2+ 4
     cbar.locator = ticker.MaxNLocator(nbins=4)  # Set the maximum number of ticks
     cbar.update_ticks()
-    cbar.ax.tick_params(labelsize=fontsize)
+    cbar.ax.tick_params(labelsize=fontsize//2 + 2)
     print(f'Qualitative comparison saved under {save_as}')
     plt.savefig(save_as,bbox_inches='tight', transparent=True)
 
@@ -1789,7 +2099,7 @@ def plot_k_r2_vals(gt, pred, bounds, peak_flow_frame,color_b = KI_colors['Plum']
         plt.savefig(f'{save_as}_R2_{vel}.svg', bbox_inches='tight')
 
 
-def plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbounds = False,  save_as= 'K_R2_values_all'):
+def plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbounds = False,  save_as= None):
     print('Plot k and r2 values with peak flow frame', peak_flow_frame, ' ..')
 
     vel_colnames = ['u', 'v', 'w']
@@ -1828,13 +2138,13 @@ def plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbo
         axs[i].locator_params(axis='x', nbins=3)
         axs[i].tick_params(axis='y', labelsize = fontsize)
         axs[i].tick_params(axis='x', labelsize = fontsize)
-        
+        print('Peak flow frame:', peak_flow_frame, t_range[idx_peak_flow_frame])
         # k-values
         axs[i].plot(t_range, k[i, :], label=k_legendname[i], color='black')
-        axs[i].scatter(np.ones(1)*peak_flow_frame, [k[i, idx_peak_flow_frame]], color=KI_colors['Grey'])
+        axs[i].scatter(np.ones(1)*t_range[idx_peak_flow_frame], [k[i, idx_peak_flow_frame]], color=KI_colors['Grey'])
         # R2 values 
         axs[i].plot(t_range, r2[i, :], '--', label=R2_legendname[i], color=KI_colors['Plum'])
-        axs[i].scatter(np.ones(1)*peak_flow_frame, [r2[i, idx_peak_flow_frame]],  color=KI_colors['Grey']) #label='peak flow frame',
+        axs[i].scatter(np.ones(1)*t_range[idx_peak_flow_frame], [r2[i, idx_peak_flow_frame]],  color=KI_colors['Grey']) #label='peak flow frame',
 
 
         axs[i].plot(np.ones(frames), 'k:')
@@ -1862,10 +2172,10 @@ def plot_k_r2_vals_nobounds(k, r2, peak_flow_frame, figsize = (15,5),exclude_tbo
         
         # k-values
         ax.plot(t_range, k[i, :], label='k', color='black')
-        ax.scatter(np.ones(1)*peak_flow_frame, [k[i, peak_flow_frame]], color=KI_colors['Grey'])
+        ax.scatter(np.ones(1)*t_range[idx_peak_flow_frame], [k[i, peak_flow_frame]], color=KI_colors['Grey'])
         # R2 values 
         ax.plot(t_range, r2[i, :], '--', label=r'$R^2$', color=KI_colors['Plum'])
-        ax.scatter(np.ones(1)*peak_flow_frame, [r2[i, peak_flow_frame]], label='peak flow frame', color=KI_colors['Grey'])
+        ax.scatter(np.ones(1)*t_range[idx_peak_flow_frame], [r2[i, peak_flow_frame]], label='peak flow frame', color=KI_colors['Grey'])
         ax.plot(np.ones(frames), 'k:')
         ax.text(text_frame, 1.0, '1.0', verticalalignment='bottom', horizontalalignment='left', fontsize=fontsize, color='black')
         ax.legend(loc='lower right')
@@ -1891,13 +2201,14 @@ def calculate_and_plot_k_r2_vals_nobounds(gt, pred, mask, peak_flow_frame, figsi
     return k, r2
 
 
-def combined_correlation_k_r2_plots(gt, prediction, frame_idx, k, r2, peak_flow_frame, color_points='black', show_text=False, save_as=None, figsize=(15, 10), exclude_tbounds=False):
+def combined_correlation_k_r2_plots(gt, prediction, frame_idx, k, r2, peak_flow_frame, color_points='black', show_text=False, save_as=None, figsize=(15, 10), exclude_tbounds=False, t_s_range = [0, 1]):
     '''
     Combine correlation plots and k/r2 value plots into a single subplot of size (2, 3).
     '''
     fontsize = 18
     p = 0.1
     mask_threshold = 0.6
+    plot_time_in_sec = True
 
     # Handle mask
     mask = np.asarray(gt['mask']).squeeze()
@@ -1934,21 +2245,14 @@ def combined_correlation_k_r2_plots(gt, prediction, frame_idx, k, r2, peak_flow_
         plt.plot(x_range, corr_line, 'k--')
         plt.scatter(hr_vals, sr_vals, s=30, c=[color_points], label='core voxels')
         plt.title(direction, fontsize=fontsize+2)
-        plt.xlabel("V HR (m/s)", fontsize=fontsize)
-        plt.ylabel("V SR (m/s)", fontsize=fontsize)
+        plt.xlabel("V HR [m/s]", fontsize=fontsize)
+        plt.ylabel("V SR [m/s]", fontsize=fontsize)
         plt.ylim(-abs_max, abs_max)
         plt.xlim(-abs_max, abs_max)
         plt.locator_params(axis='y', nbins=3)
         plt.locator_params(axis='x', nbins=3)
         plt.tick_params(axis='y', labelsize=fontsize)
         plt.tick_params(axis='x', labelsize=fontsize)
-
-    def get_corr_line_and_r2(hr_vals, sr_vals, x_range):
-        z = np.polyfit(hr_vals, sr_vals, 1)
-        corr_line = np.poly1d(z)(x_range)
-        r_value = scipy.stats.linregress(hr_vals, sr_vals)[2]
-        text = f"$y={z[0]:0.3f}\;x{z[1]:+0.3f}$\n$R^2 = {r_value**2:0.3f}$"
-        return corr_line, text
 
     vel_colnames = ['u', 'v', 'w']
     vel_plotname = [r'$V_x$', r'$V_y$', r'$V_z$']
@@ -1958,6 +2262,8 @@ def combined_correlation_k_r2_plots(gt, prediction, frame_idx, k, r2, peak_flow_
     frames = k.shape[1]
 
     t_range = range(frames)
+    if plot_time_in_sec:
+        t_range = np.linspace(t_s_range[0], t_s_range[1], frames)
     if exclude_tbounds:
         t_range = t_range[1:-1]
         k = k[:, 1:-1]
@@ -1965,6 +2271,7 @@ def combined_correlation_k_r2_plots(gt, prediction, frame_idx, k, r2, peak_flow_
         idx_peak_flow_frame = peak_flow_frame - 1
     else:
         idx_peak_flow_frame = peak_flow_frame
+    
 
     min_val = np.minimum(0.45, np.minimum(np.min(k), np.min(r2)))
     max_val = np.maximum(1.05, np.maximum(np.max(k), np.max(r2)))
@@ -1990,7 +2297,10 @@ def combined_correlation_k_r2_plots(gt, prediction, frame_idx, k, r2, peak_flow_
     for i, (vel, title) in enumerate(zip(vel_colnames, vel_plotname)):
         axs[1, i].set_ylim([min_val, max_val])
         # axs[1, i].set_title(title, fontsize=fontsize)
-        axs[1, i].set_xlabel('frame', fontsize=fontsize)
+        if plot_time_in_sec:
+            axs[1, i].set_xlabel('time [s]', fontsize=fontsize)
+        else:
+            axs[1, i].set_xlabel('frame', fontsize=fontsize)
         axs[1, i].set_ylabel(r'k/$R^2$', fontsize=fontsize)
         axs[1, i].locator_params(axis='y', nbins=3)
         axs[1, i].locator_params(axis='x', nbins=3)
@@ -1999,13 +2309,13 @@ def combined_correlation_k_r2_plots(gt, prediction, frame_idx, k, r2, peak_flow_
 
         # k-values
         axs[1, i].plot(t_range, k[i, :], label=k_legendname[i], color='black')
-        axs[1, i].scatter(np.ones(1) * peak_flow_frame, [k[i, idx_peak_flow_frame]], color='grey')
+        axs[1, i].scatter(np.ones(1) * t_range[idx_peak_flow_frame], [k[i, idx_peak_flow_frame]], color='grey')
         # R² values
         axs[1, i].plot(t_range, r2[i, :], '--', label=R2_legendname[i], color=KI_colors['Plum'])
-        axs[1, i].scatter(np.ones(1) * peak_flow_frame, [r2[i, idx_peak_flow_frame]], color='grey')
+        axs[1, i].scatter(np.ones(1) * t_range[idx_peak_flow_frame], [r2[i, idx_peak_flow_frame]], color='grey')
 
-        axs[1, i].plot(np.ones(frames), 'k:')
-        text_frame = len(t_range) - 7
+        axs[1, i].plot(t_range, np.ones(frames), 'k:')
+        text_frame = t_range[-1] - 0.1*t_range[-1]
         axs[1, i].text(text_frame, 1.0, '1.0', verticalalignment='bottom', horizontalalignment='left', fontsize=fontsize-2, color='black')
         axs[1, i].legend(loc='lower right', fontsize=fontsize)
 
@@ -2055,6 +2365,169 @@ def animate_data_over_time_gif(spatial_idx, data,  min_v, max_v, save_as = 'Anim
                                 frames = data.shape[0],
                                 interval = 100, repeat = False) # in ms)
     anim.save(f'{save_as}_{fps}fps.gif', fps=fps)
+
+def animate_comparison_gif(lr_data, hr_data, sr_data,spatial_idx, min_v, max_v, save_as='Comparison_', fps=10, colormap='viridis'):
+    """
+    Create a synchronized animation comparing LR, HR, and SR data in a 3x3 grid (vx, vy, vz rows; LR, HR, SR columns).
+    
+    Parameters:
+        lr_data (dict): Low-resolution data dictionary with keys ['u', 'v', 'w'].
+        hr_data (dict): High-resolution data dictionary with keys ['u', 'v', 'w'].
+        sr_data (dict): Super-resolution data dictionary with keys ['u', 'v', 'w'].
+        min_v (float): Minimum value for color scale.
+        max_v (float): Maximum value for color scale.
+        save_as (str): Prefix for the saved GIF file.
+        fps (int): Frames per second for the animation.
+        colormap (str): Colormap to use for the plots.
+    """
+    print('Creating comparison animation with dictionary input...')
+
+    # Determine frame synchronization
+    lr_factor = int(hr_data['u'].shape[0] / lr_data['u'].shape[0])  # Ratio of HR/SR to LR frames
+    lr_frames = {key: np.repeat(data, lr_factor, axis=0) for key, data in lr_data.items()}  # Synchronize LR frames
+
+    # Set up the figure
+    fig, axes = plt.subplots(3, 3, figsize=(5.5, 5), gridspec_kw={'height_ratios': [1, 1, 1]})
+    ims = []
+
+    components = ['u', 'v', 'w']  # Velocity components vx, vy, vz
+    titles = ['LR', 'HR', 'SR']   # Column titles
+    row_labels = [r'$V_x$', r'$V_y$', r'$V_z$']  # Row labels
+
+    # Initialize subplots for each component and resolution
+    for row, (comp, row_label) in enumerate(zip(components, row_labels)):
+        for col, (data_dict, title) in enumerate(zip([lr_frames, hr_data, sr_data], titles)):
+            ax = axes[row, col]
+            if col == 0:
+                print('Row label:', row_label, col)
+                # ax.set_ylabel(row_label, fontsize=14, labelpad=15)
+                # fig.text(0.05, 0.88 - row * 0.28, row_label, fontsize=14, ha='center', va='center', rotation=0)
+                fig.text(0.02, 0.77 - row * 0.255, row_label, fontsize=14, ha='center', va='center', rotation=0)
+            if row == 0:
+                ax.set_title(title, fontsize=14)
+            ax.axis('off')
+            im = ax.imshow(data_dict[comp][0, spatial_idx[0], spatial_idx[1], spatial_idx[2]], interpolation='none', vmin=min_v, vmax=max_v, cmap=colormap)
+            
+            ims.append(im)
+    # Adjust layout to make space for the colorbar
+    fig.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.15, hspace=0.1, wspace=0.1)
+
+    # Add a horizontal colorbar below the grid
+    cbar_ax = fig.add_axes([0.05, 0.13, 0.9, 0.02])  # Adjust colorbar position
+    cb = fig.colorbar(ims[-1], cax=cbar_ax, orientation='horizontal')
+    cb.set_label('velocity [m/s]', fontsize=14)
+    cb.ax.tick_params(labelsize=10)
+
+    def animate(i):
+        # Update each subplot with new frame data
+        for idx, (data_dict, im) in enumerate(zip([lr_frames, hr_data, sr_data] * 3, ims)):
+            row = idx // 3
+            comp = components[row]
+            im.set_array(data_dict[comp][i, spatial_idx[0], spatial_idx[1], spatial_idx[2]])
+        return ims
+
+    anim = animation.FuncAnimation(fig, animate, frames=hr_data['u'].shape[0], interval=1000 / fps, blit=False)
+
+    # Save the animation as a GIF
+    anim.save(f'{save_as}_{fps}fps.gif', fps=fps)
+    plt.close(fig)
+
+def animate_comparison_with_error_gif(
+        lr_data, hr_data, sr_data, spatial_idx, min_v, max_v, min_err, max_err, 
+        save_as='Comparison_Error_', fps=10, colormap='viridis'):
+    """
+    Create a synchronized animation comparing LR, HR, SR, and their absolute error in a 3x4 grid.
+    
+    Parameters:
+        lr_data (dict): Low-resolution data dictionary with keys ['u', 'v', 'w'].
+        hr_data (dict): High-resolution data dictionary with keys ['u', 'v', 'w'].
+        sr_data (dict): Super-resolution data dictionary with keys ['u', 'v', 'w'].
+        min_v (float): Minimum value for velocity color scale.
+        max_v (float): Maximum value for velocity color scale.
+        min_err (float): Minimum value for error color scale.
+        max_err (float): Maximum value for error color scale.
+        save_as (str): Prefix for the saved GIF file.
+        fps (int): Frames per second for the animation.
+        colormap (str): Colormap to use for the plots.
+    """
+    print('Creating comparison animation with error column...')
+
+    t_range = np.linspace(0, 1, hr_data['u'].shape[0])  # Time range in seconds
+    # Determine frame synchronization
+    lr_factor = int(hr_data['u'].shape[0] / lr_data['u'].shape[0])  # Ratio of HR/SR to LR frames
+    lr_frames = {key: np.repeat(data, lr_factor, axis=0) for key, data in lr_data.items()}  # Synchronize LR frames
+
+    # Set up the figure
+    fig, axes = plt.subplots(3, 4, figsize=(7.5, 5.5), gridspec_kw={'height_ratios': [1, 1, 1]})
+    ims = []
+
+    components = ['u', 'v', 'w']  # Velocity components vx, vy, vz
+    titles = ['LR', 'HR', 'SR', 'Abs. Error']  # Column titles
+    row_labels = [r'$V_x$', r'$V_y$', r'$V_z$']  # Row labels
+
+    # Initialize subplots for each component and resolution
+    for row, (comp, row_label) in enumerate(zip(components, row_labels)):
+        for col, title in enumerate(titles):
+            ax = axes[row, col]
+            if col == 0:
+                fig.text(0.02, 0.77 - row * 0.25, row_label, fontsize=14, ha='center', va='center', rotation=0)
+            if row == 0:
+                ax.set_title(title, fontsize=14)
+            ax.axis('off')
+
+            if col < 3:  # LR, HR, SR columns
+                data_dict = [lr_frames, hr_data, sr_data][col]
+                im = ax.imshow(data_dict[comp][0, spatial_idx[0], spatial_idx[1], spatial_idx[2]], 
+                               interpolation='none', vmin=min_v, vmax=max_v, cmap=colormap)
+            else:  # Error column
+                error = np.abs(hr_data[comp] - sr_data[comp])
+                im = ax.imshow(error[0, spatial_idx[0], spatial_idx[1], spatial_idx[2]], 
+                               interpolation='none', vmin=min_err, vmax=max_err, cmap=colormap)
+            
+            ims.append(im)
+
+    # Adjust layout to make space for the colorbars
+    fig.subplots_adjust(left=0.05, right=0.92, top=0.9, bottom=0.15, hspace=0.1, wspace=0.1)
+
+    # Add horizontal colorbar for velocity below the entire grid (spanning LR, HR, SR columns)
+    cbar_ax_v = fig.add_axes([0.05, 0.13, 0.645, 0.02])  # Position for velocity colorbar
+    cb_v = fig.colorbar(ims[-2], cax=cbar_ax_v, orientation='horizontal')  # Use the last velocity plot for colorbar
+    cb_v.set_label('velocity [m/s]', fontsize=14)
+    cb_v.ax.tick_params(labelsize=10)
+
+    # Add horizontal colorbar for absolute error, only below the error column
+    cbar_ax_e = fig.add_axes([0.72, 0.13, 0.198, 0.02])  # Position for error colorbar, right of error column
+    cb_e = fig.colorbar(ims[-1], cax=cbar_ax_e, orientation='horizontal')  # Use the error plot for colorbar
+    cb_e.set_label('error [m/s]', fontsize=14)
+    cb_e.ax.tick_params(labelsize=10)
+    time_text = axes[2, 3].text(0.95, 0.05, f'0.0s', transform=axes[2, 3].transAxes,
+                            fontsize=14, color='white', ha='right', va='bottom')
+
+    def animate(i):
+        # Update each subplot with new frame data
+        for idx, im in enumerate(ims):
+            col = idx % 4
+            row = idx // 4
+            comp = components[row]
+            
+            if col < 3:  # Update LR, HR, SR columns
+                data_dict = [lr_frames, hr_data, sr_data][col]
+                im.set_array(data_dict[comp][i, spatial_idx[0], spatial_idx[1], spatial_idx[2]])
+            else:  # Update Error column
+                error = np.abs(hr_data[comp] - sr_data[comp])
+                im.set_array(error[i, spatial_idx[0], spatial_idx[1], spatial_idx[2]])
+         # Calculate the time in seconds and update the text in the last plot (Error plot)
+        
+        # axes[2, 3].text(0.95, 0.05, f'{t_range[i]:.1f}s', transform=axes[2, 3].transAxes,
+        #                 fontsize=12, color='white', ha='right', va='bottom')
+        time_text.set_text(f'{t_range[i]:.2f}s')
+        return ims
+
+    anim = animation.FuncAnimation(fig, animate, frames=hr_data['u'].shape[0], interval=1000 / fps, blit=False)
+
+    # Save the animation as a GIF
+    anim.save(f'{save_as}_{fps}fps.gif', fps=fps)
+    plt.close(fig)
 
 
 #TODO extend to time 
@@ -2138,20 +2611,6 @@ def temporal_linear_interpolation(lr, hr_shape):
     interpolate = scipy.ndimage.map_coordinates(lr,coord, mode='constant').reshape(hr_shape)
     return interpolate
 
-def temporal_linear_interpolation_np(lr, hr_shape, offset = 0):
-    '''
-    Linear interpolation in time, from (t, h, w, d) to (2t, h, w, d)
-    Be aware that if the hr shape is twice as high the last frame will be set to zero, since it it not in-between slices.
-    Using a equidistant grid, leading to taking the average of two consequtive frames
-    '''
-    T, x, y, z = hr_shape
-    interpolate = np.zeros((T, x, y, z))
-
-    interpolate[offset::2, :, :, :] = lr
-    for t in range(0, T-2, 2):
-        interpolate[1+t, :, :, :] = (interpolate[t, :, :, :] + interpolate[1+t+1, :, :, :]) /2
-
-    return interpolate
 
 def temporal_NN_interpolation(lr, hr_shape):
     '''
@@ -2218,11 +2677,12 @@ def temporal_linear_interpolation_np(lr, hr_shape):
     """
     Linear interpolation in time, from (t, h, w, d) to (2t, h, w, d)
     """
+    factor = int(hr_shape[0] / lr.shape[0])
     T, x, y, z = hr_shape
     interpolate = np.zeros((hr_shape))
-    interpolate[::2, :, :, :] = lr
-    for t in range(0, T-2, 2):
-        interpolate[1+t, :, :, :] = (interpolate[t, :, :, :] + interpolate[1+t+1, :, :, :]) /2
+    interpolate[::factor, :, :, :] = lr
+    for t in range(0, T-factor, factor):
+        interpolate[1+t, :, :, :] = (interpolate[t, :, :, :] + interpolate[1+t+1, :, :, :])/factor
 
     interpolate[-1, :, :, :] = interpolate[-2, :, :, :] 
 
