@@ -14,7 +14,7 @@ def idx_invivo_to_insilico(mask_v_transformed, mask_LV_s):
     x_coord_v, y_coord_v, z_coord_v = np.where(mask_v_transformed>0)
     x_coord_LV_s, y_coord_LV_s, z_coord_LV_s = np.where(mask_LV_s>0)
 
-    #find center of gravity in invivo and insilico w.r.t left ventricle
+    # find center of gravity in invivo and insilico w.r.t left ventricle
     x_LV_v,y_LV_v, z_LV_v  = int(np.sum(x_coord_v)/np.sum(mask_v_transformed)), int(np.sum(y_coord_v)/np.sum(mask_v_transformed)), int(np.sum(z_coord_v)/np.sum(mask_v_transformed))
     x_LV_s, y_LV_s, z_LV_s = int(np.sum(x_coord_LV_s)/np.sum(mask_LV_s)),  int(np.sum(y_coord_LV_s)/np.sum(mask_LV_s)), int(np.sum(z_coord_LV_s)/np.sum(mask_LV_s))
 
@@ -69,7 +69,7 @@ def combine_mag_images(mask_v, mask_s, mag_u_invivo ,idx_insilico, idx_invivo, i
     avg_fluid_region_invivo = np.average(mag_u_invivo[np.where(mask_v == 1)])
     std_fluid_region_invivo = np.std(mag_u_invivo[np.where(mask_v == 1 )])
 
-    #Step 1.1 replace masked invivo region with average of surrounding tissue
+    #Step 2.1 replace masked invivo region with average of surrounding tissue
     mag_u_invivo[np.where(mask_v > 0)] = avg_surrounding_tissue
 
     # Step 3
@@ -85,8 +85,6 @@ def combine_mag_images(mask_v, mask_s, mag_u_invivo ,idx_insilico, idx_invivo, i
     combined_mask += mask_s*2
     
     # Step 5
-    # print(avg_fluid_region_invivo, std_fluid_region_invivo, avg_surrounding_tissue)
-
     # fill vales from insilico mask with normal ditributed values with same standard deviation as original. Then smoothen the result with gaussian filter
     smoothen = np.ones(mask_s.shape)*avg_fluid_region_invivo
     smoothen[np.where(mask_s==1)] = np.random.normal(avg_fluid_region_invivo, np.sqrt(std_fluid_region_invivo), size=mag_u_transformed[np.where(mask_s)].shape).reshape(mag_u_transformed[np.where(mask_s==1)].shape)
@@ -94,15 +92,9 @@ def combine_mag_images(mask_v, mask_s, mag_u_invivo ,idx_insilico, idx_invivo, i
 
     mag_u_transformed[np.where(mask_s==1)] = smoothen[np.where(mask_s==1)]
 
-    return mag_u_transformed[idx_insilico], combined_mask[idx_insilico] # return values cropped on the in silico data
+    # return values cropped on the in silico data
+    return mag_u_transformed[idx_insilico], combined_mask[idx_insilico] 
 
-
-def transform_magnitude( mask_s,mag_u_invivo, idx_insilico, idx_invivo, indivial_transformation_scale_rotate):
-    """ 
-    Transform magnitude image from invivo to insilico data
-    """
-    temp = indivial_transformation_scale_rotate(mag_u_invivo, scale = [2,2,2], interpolation='linear')
-    return temp[idx_invivo]
 
 
 def bbox2_3D(mask):

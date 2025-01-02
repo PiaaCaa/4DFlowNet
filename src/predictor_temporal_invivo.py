@@ -50,7 +50,7 @@ if __name__ == '__main__':
 
     # Define directories and filenames
     data_dir = 'Temporal4DFlowNet/data/PIA/THORAX'
-    patients = ['P03']#['P01', 'P02',  'P03', 'P04', 'P05'] 
+    patients = ['P01', 'P02',  'P03', 'P04', 'P05'] 
     output_root = f'Temporal4DFlowNet/results/in_vivo/THORAX'
 
     output_root = f'Temporal4DFlowNet/results/in_vivo/THORAX'
@@ -60,13 +60,11 @@ if __name__ == '__main__':
         t_0 = time.time()
         
         # Change this for every new dataset
-        # Setting up
         input_filepath = f'{data_dir}/{patient}/h5/{patient}.h5' 
         output_dir = f'{output_root}/{patient}'
-        output_filepath = f'{output_dir}/{patient}_{model_name}_25Frames_unwrapped_adjusted_venc26_new.h5'    
+        output_filepath = f'{output_dir}/{patient}_{model_name}_25Frames.h5'    
         
         model_path = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
-
 
         # Params
         patch_size = 12 # take larger patchsize for only upsampling operation
@@ -92,13 +90,11 @@ if __name__ == '__main__':
 
         pgen = PatchGenerator(patch_size, res_increase,include_all_axis = True, downsample_input_first = downsample_input_first)
         dataset = ImageDataset_temporal(venc_colnames=['u_max', 'v_max', 'w_max'])
-        
 
         print("Path exists:", os.path.exists(input_filepath), os.path.exists(model_path))
         print("Outputfile exists already: ", os.path.exists(output_filepath))
 
-        if not os.path.isdir(output_dir):
-                os.makedirs(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
 
         axis = [0, 1, 2]
 
@@ -183,12 +179,11 @@ if __name__ == '__main__':
                     # prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', f'{dataset.velocity_colnames[i]}__axis{a}', v, compression='gzip')
                     print('Original volume: ', volume.shape, 'shape of predicition', v.shape)
                     if v.shape[1] != N_frames:
-                        print('reshaped v from: ', v.shape)
                         if v.shape[1] < N_frames:
                             v = np.pad(v, (0, 0), (0, N_frames - v.shape[1]), (0, 0), (0, 0))
                         else:
                             v = v[:, :N_frames, :, :]
-                        print(v.shape)
+                        
                     #volume u/v/w, T, X, Y, Z
                     if a == 0:      volume[i, :, nrow,  :,      :] = v
                     elif a == 1:    volume[i, :, :,     nrow,   :] = v

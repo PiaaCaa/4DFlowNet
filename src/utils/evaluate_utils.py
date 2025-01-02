@@ -20,7 +20,6 @@ sys.path.insert(0, '../src')
 def load_lossdata(file):
     print('Loading ', file)
     df_loss = pd.read_csv(file,  on_bad_lines='warn', skiprows = 4, skipfooter = 4, header = 5, engine = 'python')
-
     return df_loss
 
 def load_vel_interpolation(dict_interpolation,lr,  filename, method, mask, vel_colnames, savefile = True):
@@ -271,7 +270,7 @@ def calculate_relative_error_np(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary
     # binary_mask_condition = (mask > threshold)
     binary_mask_condition = np.equal(binary_mask, 1.0)          
     corrected_speed_loss = np.where(binary_mask_condition, corrected_speed_loss, np.zeros_like(corrected_speed_loss))
-    # print(found_indexes)
+    
     # Calculate the mean from the total non zero accuracy, divided by the masked area
     # reduce first to the 'batch' axis
     mean_err = np.sum(corrected_speed_loss, axis=(1,2,3)) / (np.sum(binary_mask, axis=(0,1,2)) + 1) 
@@ -344,7 +343,7 @@ def cosine_similarity(u_hr, v_hr, w_hr, u_sr, v_sr, w_sr, eps =1e-10):
 def l2_norm(u, v, w):
     return np.sqrt(u**2 + v**2 + w**2)
 
-def calculate_rmse(pred,gt, binary_mask, return_std= False):
+def calculate_rmse(pred,gt, binary_mask, return_std= False, mask_threshold = 0.5):
     '''
     Calculate root mean squared error between prediction and ground truth for each frame
     i.e. rmse(t) = sqrt((pred - gt)**2/N), where N number of point in fluid region
@@ -358,21 +357,14 @@ def calculate_rmse(pred,gt, binary_mask, return_std= False):
         binary_mask = create_dynamic_mask(binary_mask, pred.shape[0])
         print('Reshaped to', binary_mask.shape)
     
-    binary_mask[np.where(binary_mask > 0.5)] = 1
-    binary_mask[np.where(binary_mask <= 0.5)] = 0
+    binary_mask[np.where(binary_mask > mask_threshold)] = 1
+    binary_mask[np.where(binary_mask <= mask_threshold)] = 0
     
-    bool_mask = np.equal(binary_mask, 1.0)
-    # points_in_mask = np.where(binary_mask !=0)
-
-    # reshaped_pred = pred[:, points_in_mask[1], points_in_mask[2], points_in_mask[3]].reshape(gt.shape[0], -1)
-    # reshaped_gt     = gt[:, points_in_mask[1], points_in_mask[2], points_in_mask[3]].reshape(gt.shape[0], -1)
-
-    rmse = np.sqrt(np.mean((pred - gt)**2, axis = (1, 2, 3), where=bool_mask))
+    rmse = np.sqrt(np.mean((pred - gt)**2, axis = (1, 2, 3), where=binary_mask.astype(bool)))
     
     if return_std:
-        #std(a) = sqrt(mean(x)), where x = abs(a - a.mean())**2.
-        var = np.std((pred - gt)**2, axis = (1, 2, 3), where=bool_mask)
-        # var = np.std((reshaped_pred - np.repeat(np.expand_dims(np.mean(reshaped_gt, axis=1), -1), reshaped_pred.shape[1], axis = 1))**2, axis = 1) 
+        
+        var = np.std((pred - gt)**2, axis = (1, 2, 3), where=binary_mask.astype(bool))
         return rmse, var
     return rmse
 
@@ -448,20 +440,10 @@ def signaltonoise(fluid_region, non_fluid_region, axis=0, ddof=0):
 def signaltonoise_db(a, axis=0, ddof=0):
     return 20*np.log10(np.abs(signaltonoise(a, axis, ddof)))
 
-def peak_signal_to_noise_ratio(img, noisy_img):
-    #TODO
-    ''' 
-    Compute PSNR with PSNR=20log10(max()/RMSE)
-    '''
-    mse = np.mean((img - noisy_img) ** 2)
-    max_pixel = np.max(img)-np.min(img) #since smallest values can be smaller than 0
-    psnr = 20*np.log10(max_pixel/np.sqrt(mse))
-    return psnr
-
 
 def compare_mask_and_velocitymask(u_hi, v_hi, w_hi, binary_mask):
     '''
-    Compares the given binary mask with created mask on the nonzero values of u, v and w and returns the overlap mask
+    Compares the given binary mask with created mask to the nonzero values of u, v and w and returns the overlap mask
     '''
 
     # create binary mask for u, v and w
@@ -519,14 +501,12 @@ def calculate_k_R2_timeseries(pred, gt, binary_mask):
 
 
 def calculate_flow_profile(velocity, binary_mask,spacing = [2.0, 2.0, 2.0]):
-    assert len(velocity.shape) ==3
+    assert len(velocity.shape) == 3
     assert len(binary_mask.shape) == 2
     # assert velocity.shape == binary_mask.shape # check that the shapes are the same
     area = np.sum(binary_mask)*spacing[0]*spacing[1]*spacing[2]
     mean_vel = np.mean(velocity, where=binary_mask.astype(bool), axis=(1, 2))
     return mean_vel*area
-
-
 
 
 #---------------PLOTTING-------------------
@@ -568,7 +548,6 @@ def bland_altman_plot(pred_vel, gt_vel, mask, timepoint, p=0.1, y_lim = None, ce
         single_plot = False
         _, y_limits_max = ax.get_ylim()
     
-
     # get y limits
     if set_background:
         if y_lim is None:
@@ -758,8 +737,6 @@ def plot_correlation_nobounds(gt, prediction, frame_idx,color_points = 'black',s
         # lgnd.legendHandles[2]._sizes = [30]
 
     
-
-    
     print("Plotting correlation lines...")
     min_vals = np.min([np.min(sr_u_rnd), np.min(sr_v_rnd), np.min(sr_w_rnd)])
     max_vals = np.max([np.max(sr_u_rnd), np.max(sr_v_rnd), np.max(sr_w_rnd)])
@@ -881,8 +858,6 @@ def plot_correlation_nobounds_new(gt, prediction, frame_idx, color_points='black
 
     plt.show()
     return fig
-
-
 
 
 def get_corr_line_and_r2(hr_vals, sr_vals, x_range):
@@ -1037,9 +1012,9 @@ def show_temporal_development_line(gt, lr, pred, mask, axis, indices, save_as = 
         else:
             print("Invalid axis: Please choose axis 1, 2, 3")
 
-    prediction = get_line(pred).transpose()
-    ground_truth = get_line(gt).transpose()
-    low_resolution= get_line(lr).transpose()
+    prediction      = get_line(pred).transpose()
+    ground_truth    = get_line(gt).transpose()
+    low_resolution  = get_line(lr).transpose()
     print('prediction shape', prediction.shape)
 
     min_v = np.min([np.min(prediction), np.min(ground_truth), np.min(low_resolution)])
@@ -1065,6 +1040,8 @@ def show_temporal_development_line(gt, lr, pred, mask, axis, indices, save_as = 
     plt.yticks([])
 
     plt.savefig(save_as,bbox_inches='tight')
+
+
 def show_quiver( u, v, w, mask,frame,save_as = "Quiver_3DFlow.png"):
     x_len, y_len, z_len = u.shape
     fig = plt.figure()
@@ -1220,6 +1197,7 @@ def plot_relative_error(gt, pred, comparison_lst, name_comparison, save_as, colo
     # plt.plot(50*np.ones(len(rel_error)), 'k:')
     plt.xlabel("Frame", fontsize = 14)
     plt.title("Relative error")
+    plt.grid(color = 'grey', linestyle = '--', linewidth = 0.5)
     plt.ylabel("Relative error (%)", fontsize = 14)
     #plt.ylim((0, 50))
     plt.legend(loc = 'upper left', fontsize = 14)
@@ -1238,7 +1216,6 @@ def plot_mean_speed(gt, pred, lr, comparison_lst, name_comparison,save_as,colors
     t_lr_range = np.linspace(0, 1, len(lr_meanspeed), endpoint=True)
     t_sr_range = np.linspace(0, 1, len(pred_meanspeed), endpoint=True)
 
-
     plt.plot(t_hr_range, gt_meanspeed, '.-',label ='High resolution', color = 'black')
     plt.plot(t_sr_range, pred_meanspeed,'.-', label= '4DFlowNet', color = KI_colors['Blue'])
     plt.plot(t_lr_range,  lr_meanspeed,'.-',  label = 'Low resolution', color = KI_colors['Green'])
@@ -1256,7 +1233,6 @@ def plot_mean_speed(gt, pred, lr, comparison_lst, name_comparison,save_as,colors
     plt.title('Mean speed')
     plt.savefig(save_as,bbox_inches='tight')
     return fig
-
 
 
 
@@ -1402,7 +1378,7 @@ def plot_spatial_comparison(low_res, ground_truth, prediction, frame_idx = 9, ax
 
 
 #TODO:merge with other function? 
-def comparison_plot_slices_over_time(gt_cube,lr_cube,  mask_cube, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v, save_as = "Qualitative_Frame_comparison.png", figsize=(10,10)):
+def comparison_plot_slices_over_time(gt_cube,lr_cube, mask_cube, comparison_lst, comparison_name, timepoints, axis, idx,min_v, max_v, save_as = "Qualitative_Frame_comparison.png", figsize=(10,10)):
     """ Qualitative comparison of different network models over timeframe for one velocity direction"""
 
     def row_based_idx(num_rows, num_cols, idx):

@@ -113,11 +113,6 @@ if __name__ == '__main__':
         plt.legend()
         plt.show()
 
-
-        # u[idx_line] = u.max()
-        # u_corrected[idx_line] = u.max()
-
-
         plt.subplot(1, 3, 1)
         plt.imshow(u[idx_plane])
         plt.axis('off')

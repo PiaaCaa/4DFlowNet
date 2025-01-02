@@ -62,8 +62,6 @@ def animate_invivo_HR_pred(idx, v_orig, v_gt_fluid, v_pred, min_v, max_v, save_a
     anim.save(f'{save_as}_{fps}fps.gif', fps=fps)
 
 
-
-
 def plot_slices_over_time3(gt_cube,lr_cube,  mask_cube, rel_error_cube, comparison_lst, comparison_name,timepoints, idxs,min_v, max_v,exclude_rel_error = True, save_as = "Frame_comparison.png", figsize = (30,20)):
     # assert len(timepoints) == gt_cube.shape[0] # timepoints must match size of first dimension of HR
 
@@ -167,17 +165,12 @@ if __name__ == "__main__":
     else:
         network_model = '20241018-1552' 
 
-
-    # for one network evluation on multiple invivo datasets
-    # network_model = '20240709-2057'#'20240807-1745'#'20240709-2057'
-
     # set directories 
     input_dir = 'Temporal4DFlowNet/data/PIA/THORAX'
     res_dir   = 'Temporal4DFlowNet/results/in_vivo/THORAX'
-    eval_dir  = f'Temporal4DFlowNet/results/in_vivo/THORAX/plots/{network_model}/IEEETMI' # #20230602_1701
+    eval_dir  = f'Temporal4DFlowNet/results/in_vivo/THORAX/plots/{network_model}/'
     eval_dir_overview = f'{eval_dir}/overview'
     eval_dir_detailed = f'{eval_dir}/detailed_view'
-    #Temporal4DFlowNet/results/in_vivo/THORAX/P01/P01_20241014-1443_25Frames.h5
 
     # options for plotting
     plot_animation = False
@@ -199,10 +192,7 @@ if __name__ == "__main__":
         print('-------------------', case, '-------------------')
         in_vivo = f'{input_dir}/{case}/h5/{case}.h5'
         in_vivo_upsampled = f'{res_dir}/{case}/{case}_{network_model}_25Frames.h5' #results\in_vivo\P05_20230602-1701_8_4_arch_25Frames.h5
-        # in_vivo_upsampled = f'{res_dir}/{c}/{c}_20230602_1701_25Frames.h5' 
-
-        # in_vivo = f'{input_dir}/{c}/h5/{c}.h5'
-        # in_vivo_upsampled = f'{res_dir}/{c}/{c}_20240617-0933_25Frames_edd_corr.h5' 
+        
         name_evaluation = f'THORAX_{case}'
 
         #set slice index for animation
@@ -311,8 +301,6 @@ if __name__ == "__main__":
         
 
         
-
-
         #--------------------calculate mean speed --------------------------
         magn = np.sqrt(data_original['mag_u']**2 + data_original['mag_v']**2 + data_original['mag_w']**2)
         speed = np.sqrt(data_original['u']**2 + data_original['v']**2 + data_original['w']**2)

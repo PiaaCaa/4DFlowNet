@@ -79,11 +79,11 @@ class ImageDataset_temporal():
 
 
                 # TODO delete later: 
-                w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()
-                mag_w = np.asarray(hl.get(self.mag_colnames[i])).squeeze()
+                w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[idx_vol]
+                mag_w = np.asarray(hl.get(self.mag_colnames[i])).squeeze()[idx_vol]
 
-                w = w[idx_vol]
-                mag_w = mag_w[idx_vol]
+                # w = w[idx_vol]
+                # mag_w = mag_w[idx_vol]
 
                 # if axis == 0:
                 #     w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[:, idx, :, :]
@@ -100,8 +100,6 @@ class ImageDataset_temporal():
                 
                 w_venc = np.asarray(hl.get(self.venc_colnames[i]))#)[idx])
 
-                # mag_w = np.multiply(mag_w, mask) #mask*80.0 #
-                # print("PLEASE DELETE LATER __________________ magnitude is ersetzt bei mask")
                 # add them to the list
                 lowres_images.append(w)
                 mag_images.append(mag_w)
